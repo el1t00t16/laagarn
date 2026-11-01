@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronRight,
   ChevronLeft,
@@ -884,17 +885,18 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             <span>{gpsLoading ? 'Locating' : gpsState ? 'GPS Locked' : 'Locate'}</span>
           </button>
 
-          {/* Map Touch Mode Dropdown (Hover on Desktop / Tap on Mobile) */}
+          {/* Map Touch Mode Dropdown (Click-to-Toggle, Stays open until option is clicked or tapped outside) */}
           <div
             ref={modeMenuRef}
             className="relative shrink-0"
-            onMouseEnter={() => setModeMenuOpen(true)}
-            onMouseLeave={() => setModeMenuOpen(false)}
           >
             <button
               type="button"
-              onClick={() => setModeMenuOpen((v) => !v)}
-              className={`h-9 px-3 backdrop-blur-xl border rounded-xl text-xs mono uppercase tracking-wider flex items-center gap-1.5 shadow-lg transition-all cursor-pointer font-bold ${
+              onClick={() => {
+                setModeMenuOpen((v) => !v);
+                setShowLayersMenu(false);
+              }}
+              className={`h-9 px-3 backdrop-blur-xl border rounded-xl text-xs mono uppercase tracking-wider flex items-center gap-1.5 shadow-lg transition-all cursor-pointer font-bold select-none ${
                 mapClickAction !== 'none'
                   ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white border-[#c084fc] shadow-purple-500/30'
                   : theme === 'dark'
@@ -936,52 +938,58 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${modeMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Dropdown Flyout Menu */}
-            {modeMenuOpen && (
-              <div
-                className={`absolute top-11 left-0 w-52 backdrop-blur-2xl border p-1.5 shadow-2xl rounded-2xl z-[450] space-y-1 ${
-                  theme === 'dark'
-                    ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
-                    : 'bg-white/95 border-purple-300/50 text-[#160a2c]'
-                }`}
-              >
-                <div className="px-2.5 py-1 text-[9px] mono uppercase tracking-wider text-[var(--ink-dim)] font-bold border-b border-[var(--border-subtle)]">
-                  Map Touch Mode
-                </div>
-                {[
-                  { id: 'none', label: 'Pan & Explore', desc: 'Drag map & view route', icon: Hand },
-                  { id: 'origin', label: 'Set Departure (A)', desc: 'Tap map to place origin', icon: MapPin },
-                  { id: 'destination', label: 'Set Arrival (B)', desc: 'Tap map to place dest', icon: Flag },
-                  { id: 'waypoint', label: 'Add Stop (+)', desc: 'Tap map to drop waypoint', icon: PlusCircle },
-                ].map((opt) => {
-                  const Icon = opt.icon;
-                  const isSelected = mapClickAction === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        onChangeMapClickAction(opt.id as MapClickAction);
-                        setModeMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-2.5 py-2 rounded-xl transition-colors flex items-center gap-2.5 cursor-pointer ${
-                        isSelected
-                          ? 'bg-[var(--accent)] text-white font-bold shadow-sm'
-                          : 'hover:bg-purple-500/15 text-[var(--ink)]'
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-[var(--accent)]'}`} />
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold leading-none">{opt.label}</div>
-                        <div className={`text-[9.5px] mt-0.5 truncate ${isSelected ? 'text-purple-100' : 'text-[var(--ink-dim)]'}`}>
-                          {opt.desc}
+            {/* Dropdown Flyout Menu with Motion Animation */}
+            <AnimatePresence>
+              {modeMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  className={`absolute top-11 left-0 w-52 backdrop-blur-2xl border p-1.5 shadow-2xl rounded-2xl z-[450] space-y-1 ${
+                    theme === 'dark'
+                      ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
+                      : 'bg-white/95 border-purple-300/50 text-[#160a2c]'
+                  }`}
+                >
+                  <div className="px-2.5 py-1 text-[9px] mono uppercase tracking-wider text-[var(--ink-dim)] font-bold border-b border-[var(--border-subtle)]">
+                    Map Touch Mode
+                  </div>
+                  {[
+                    { id: 'none', label: 'Pan & Explore', desc: 'Drag map & view route', icon: Hand },
+                    { id: 'origin', label: 'Set Departure (A)', desc: 'Tap map to place origin', icon: MapPin },
+                    { id: 'destination', label: 'Set Arrival (B)', desc: 'Tap map to place dest', icon: Flag },
+                    { id: 'waypoint', label: 'Add Stop (+)', desc: 'Tap map to drop waypoint', icon: PlusCircle },
+                  ].map((opt) => {
+                    const Icon = opt.icon;
+                    const isSelected = mapClickAction === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          onChangeMapClickAction(opt.id as MapClickAction);
+                          setModeMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-2 rounded-xl transition-colors flex items-center gap-2.5 cursor-pointer select-none ${
+                          isSelected
+                            ? 'bg-[var(--accent)] text-white font-bold shadow-sm'
+                            : 'hover:bg-purple-500/15 text-[var(--ink)]'
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-[var(--accent)]'}`} />
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold leading-none">{opt.label}</div>
+                          <div className={`text-[9.5px] mt-0.5 truncate ${isSelected ? 'text-purple-100' : 'text-[var(--ink-dim)]'}`}>
+                            {opt.desc}
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Cartography Layers Button */}
@@ -1007,15 +1015,21 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         </div>
       )}
 
-      {/* Layers Flyout Menu */}
-      {showLayersMenu && (
-        <div
-          ref={layersMenuRef}
-          className={`absolute top-14 right-3 z-[410] w-56 backdrop-blur-2xl border p-3 shadow-2xl rounded-xl space-y-3 ${
-          theme === 'dark'
-            ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
-            : 'bg-white/95 border-purple-300/40 text-[#160a2c]'
-        }`}>
+      {/* Layers Flyout Menu with Motion Animation */}
+      <AnimatePresence>
+        {showLayersMenu && (
+          <motion.div
+            ref={layersMenuRef}
+            initial={{ opacity: 0, y: -4, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.96 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute top-14 right-3 z-[410] w-56 backdrop-blur-2xl border p-3 shadow-2xl rounded-xl space-y-3 ${
+              theme === 'dark'
+                ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
+                : 'bg-white/95 border-purple-300/40 text-[#160a2c]'
+            }`}
+          >
           <div>
             <span className={`mono text-[0.6rem] uppercase tracking-wider block mb-1.5 font-bold ${
               theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
@@ -1098,8 +1112,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               Archive Viewport Offline
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* Real-time Turn-by-Turn Mobile Driving HUD (supports live GPS & Drive Simulation) */}
       {(navigationActive || isSimulating) && activeRoute && currentStep && (
