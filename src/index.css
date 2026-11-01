@@ -18,6 +18,22 @@
     color-scheme: dark;
   }
 
+  :root.light,
+  [data-theme="light"] {
+    --bg: #f8f6fc;
+    --bg-surface: rgba(255, 255, 255, 0.85);
+    --ink: #160a2c;
+    --accent: #9333ea;
+    --accent-light: #7c3aed;
+    --accent-deep: #6b21a8;
+    --accent-glow: rgba(147, 51, 234, 0.22);
+    --surface: rgba(255, 255, 255, 0.90);
+    --border: rgba(147, 51, 234, 0.18);
+    --border-subtle: rgba(147, 51, 234, 0.08);
+    --ink-dim: rgba(76, 59, 104, 0.70);
+    color-scheme: light;
+  }
+
   * {
     margin: 0;
     padding: 0;
@@ -213,6 +229,32 @@
   background: linear-gradient(to bottom, #c084fc, #a855f7);
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
+}
+
+:root.light .route-card,
+[data-theme="light"] .route-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(147, 51, 234, 0.18);
+  box-shadow: 0 4px 16px rgba(147, 51, 234, 0.05);
+}
+
+:root.light .route-card:hover,
+[data-theme="light"] .route-card:hover {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(147, 51, 234, 0.35);
+  box-shadow: 0 6px 20px rgba(147, 51, 234, 0.1);
+}
+
+:root.light .route-card.active,
+[data-theme="light"] .route-card.active {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: #9333ea;
+  box-shadow: 0 6px 24px rgba(147, 51, 234, 0.15);
+}
+
+:root.light .route-card.active::before,
+[data-theme="light"] .route-card.active::before {
+  background: linear-gradient(to bottom, #9333ea, #7c3aed);
 }
 
 .route-card-header {
@@ -449,6 +491,36 @@
 
 .leaflet-control-attribution a {
   color: #c084fc !important;
+}
+
+:root.light .leaflet-container,
+[data-theme="light"] .leaflet-container {
+  background-color: #f4f0fa;
+}
+
+:root.light .leaflet-popup-content-wrapper,
+[data-theme="light"] .leaflet-popup-content-wrapper {
+  background: rgba(255, 255, 255, 0.95);
+  color: #160a2c;
+  box-shadow: 0 16px 36px rgba(100, 50, 150, 0.16);
+  border: 1px solid rgba(147, 51, 234, 0.25);
+}
+
+:root.light .leaflet-popup-tip,
+[data-theme="light"] .leaflet-popup-tip {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(147, 51, 234, 0.25);
+}
+
+:root.light .leaflet-control-attribution,
+[data-theme="light"] .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: rgba(76, 59, 104, 0.7) !important;
+}
+
+:root.light .leaflet-control-attribution a,
+[data-theme="light"] .leaflet-control-attribution a {
+  color: #7c3aed !important;
 }
 
 /* Smooth 60fps marker gliding & rotation transitions */

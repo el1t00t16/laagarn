@@ -59,14 +59,43 @@ import {
   ChevronUp,
   ChevronDown,
   Download,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 type ActiveTab = 'routes' | 'traffic' | 'weather' | 'offline';
 type MobileSheetState = 'peek' | 'half' | 'full';
 
 export default function App() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('laagarn_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+    }
+    return 'dark';
+  });
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('routes');
   const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>('half');
+
+  // Synchronize theme with DOM root and PWA theme-color
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', '#f8f6fc');
+    } else {
+      root.classList.add('dark');
+      root.classList.remove('light');
+      root.setAttribute('data-theme', 'dark');
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', '#090410');
+    }
+    localStorage.setItem('laagarn_theme', theme);
+  }, [theme]);
 
   // Multi-stop route planning state
   const [stops, setStops] = useState<LatLngPoint[]>([]);
@@ -105,7 +134,25 @@ export default function App() {
   const [isOfflineMode, setIsOfflineMode] = useState<boolean>(
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
-  const [mapStyle, setMapStyle] = useState<MapStyleMode>('street');
+  const [mapStyle, setMapStyle] = useState<MapStyleMode>(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('laagarn_theme');
+      return savedTheme === 'light' ? 'street' : 'dark';
+    }
+    return 'dark';
+  });
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      if (next === 'light' && mapStyle === 'dark') {
+        setMapStyle('street');
+      } else if (next === 'dark' && mapStyle === 'street') {
+        setMapStyle('dark');
+      }
+      return next;
+    });
+  };
   const [mapClickAction, setMapClickAction] = useState<MapClickAction>('none');
   const [tileStats, setTileStats] = useState<TileCacheStats>(() => getTileCacheStats());
 
@@ -505,18 +552,28 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#090410] text-[#f8f6fc] overflow-hidden select-none font-sans">
-      {/* Top Header / App Bar (Glassy Purple with mobile notch padding) */}
-      <header className="shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-purple-500/20 bg-[#0d0717]/85 backdrop-blur-xl z-50 pt-[max(env(safe-area-inset-top,0px),0.5rem)] min-h-[calc(3.75rem+env(safe-area-inset-top,0px))] pb-1 sm:pb-0 shadow-lg shadow-black/40">
+    <div className={`h-screen w-screen flex flex-col overflow-hidden select-none font-sans transition-colors duration-200 ${
+      theme === 'dark' ? 'bg-[#090410] text-[#f8f6fc]' : 'bg-[#f8f6fc] text-[#160a2c]'
+    }`}>
+      {/* Top Header / App Bar (Glassy Purple with mobile notch safe-area padding) */}
+      <header className={`shrink-0 flex items-center justify-between px-4 sm:px-6 border-b transition-colors z-50 pt-[max(env(safe-area-inset-top,0px),0.75rem)] min-h-[calc(4rem+env(safe-area-inset-top,0px))] pb-2 shadow-lg backdrop-blur-xl ${
+        theme === 'dark'
+          ? 'bg-[#0d0717]/85 border-purple-500/20 text-[#f8f6fc] shadow-black/40'
+          : 'bg-white/85 border-purple-300/40 text-[#160a2c] shadow-purple-900/5'
+      }`}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35">
             <Compass className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="logo display text-base sm:text-lg font-black tracking-tight text-white leading-none">
+            <h1 className={`logo display text-base sm:text-lg font-black tracking-tight leading-none ${
+              theme === 'dark' ? 'text-white' : 'text-[#160a2c]'
+            }`}>
               LAAGARN
             </h1>
-            <div className="mono text-[9px] uppercase tracking-wider text-purple-300/60 mt-0.5">
+            <div className={`mono text-[9px] uppercase tracking-wider mt-0.5 ${
+              theme === 'dark' ? 'text-purple-300/60' : 'text-purple-700/70'
+            }`}>
               My Way, Your Travel Buddy.
             </div>
           </div>
@@ -541,8 +598,12 @@ export default function App() {
               onClick={() => setActiveTab(item.id)}
               className={`mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                 activeTab === item.id
-                  ? 'text-[#c084fc] border-b-2 border-[#a855f7] pb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
-                  : 'text-gray-400 hover:text-white'
+                  ? theme === 'dark'
+                    ? 'text-[#c084fc] border-b-2 border-[#a855f7] pb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
+                    : 'text-[#7c3aed] border-b-2 border-[#9333ea] pb-1 drop-shadow-[0_0_8px_rgba(147,51,234,0.3)]'
+                  : theme === 'dark'
+                  ? 'text-gray-400 hover:text-white'
+                  : 'text-purple-900/60 hover:text-purple-950'
               }`}
             >
               {item.label}
@@ -550,13 +611,38 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Right Header Status Badges & PWA Button */}
+        {/* Right Header: Theme Toggle, Install PWA & Status Badges */}
         <div className="flex items-center gap-2">
+          {/* Dark / Light Mode Toggle Button */}
+          <button
+            type="button"
+            onClick={handleToggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg border transition-all flex items-center gap-1.5 mono text-[10px] font-bold uppercase cursor-pointer ${
+              theme === 'dark'
+                ? 'bg-purple-950/40 border-purple-500/30 text-purple-200 hover:text-white hover:border-[#a855f7]'
+                : 'bg-purple-100/80 border-purple-300/60 text-purple-900 hover:border-purple-500 shadow-sm'
+            }`}
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-300" />
+                <span className="hidden sm:inline">Light</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-purple-700" />
+                <span className="hidden sm:inline">Dark</span>
+              </>
+            )}
+          </button>
+
           {deferredPrompt && (
             <button
               type="button"
               onClick={handleInstallPwa}
-              className="px-2.5 py-1 bg-gradient-to-r from-[#a855f7] to-[#9333ea] hover:from-[#c084fc] hover:to-[#a855f7] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-lg shadow-purple-500/30 rounded"
+              className="px-2.5 py-1 bg-gradient-to-r from-[#a855f7] to-[#9333ea] hover:from-[#c084fc] hover:to-[#a855f7] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-lg shadow-purple-500/30 rounded cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Install App</span>
@@ -569,7 +655,11 @@ export default function App() {
               <span>Offline</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-950/40 border border-purple-500/30 text-purple-300 mono text-[10px] uppercase font-bold rounded">
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 border mono text-[10px] uppercase font-bold rounded ${
+              theme === 'dark'
+                ? 'bg-purple-950/40 border-purple-500/30 text-purple-300'
+                : 'bg-purple-100/80 border-purple-300/60 text-purple-800'
+            }`}>
               <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
               <span className="hidden sm:inline">Online</span>
             </div>
@@ -578,11 +668,15 @@ export default function App() {
       </header>
 
       {/* Main Container: Split Desktop layout & Mobile Drawer layout */}
-      <main className="flex-1 relative w-full h-[calc(100vh-3.5rem)] overflow-hidden flex flex-col lg:flex-row">
+      <main className="flex-1 relative w-full h-[calc(100vh-4rem)] overflow-hidden flex flex-col lg:flex-row">
         {/* Desktop Sidebar (Left side, Glassy Purple) */}
         <aside
           aria-label="Travel Planning Controls"
-          className="hidden lg:flex flex-col w-[390px] shrink-0 bg-[#0e0719]/80 backdrop-blur-2xl border-r border-purple-500/20 p-6 overflow-y-auto shadow-2xl"
+          className={`hidden lg:flex flex-col w-[390px] shrink-0 backdrop-blur-2xl border-r p-6 overflow-y-auto transition-colors ${
+            theme === 'dark'
+              ? 'bg-[#0e0719]/80 border-purple-500/20 shadow-2xl'
+              : 'bg-white/80 border-purple-200/60 shadow-xl shadow-purple-900/5'
+          }`}
         >
           {activeTab === 'routes' && (
             <RoutePlannerPanel
@@ -698,12 +792,17 @@ export default function App() {
             simSpeedMultiplier={simSpeedMultiplier}
             onChangeSimSpeed={setSimSpeedMultiplier}
             mobileSheetOpen={mobileSheetState !== 'peek'}
+            theme={theme}
           />
         </div>
 
         {/* Mobile Interactive Bottom Sheet Drawer (Shown on screens < 1024px) */}
         <div
-          className={`lg:hidden absolute left-0 right-0 bottom-0 z-[500] bg-[#110820]/90 backdrop-blur-2xl border-t border-purple-500/25 shadow-[0_-12px_36px_rgba(5,2,14,0.85)] transition-all duration-300 flex flex-col ${
+          className={`lg:hidden absolute left-0 right-0 bottom-0 z-[500] backdrop-blur-2xl border-t transition-all duration-300 flex flex-col ${
+            theme === 'dark'
+              ? 'bg-[#110820]/90 border-purple-500/25 shadow-[0_-12px_36px_rgba(5,2,14,0.85)]'
+              : 'bg-white/95 border-purple-200/80 shadow-[0_-12px_36px_rgba(100,50,150,0.12)]'
+          } ${
             mobileSheetState === 'peek'
               ? 'h-24'
               : mobileSheetState === 'half'
@@ -718,11 +817,17 @@ export default function App() {
                 curr === 'peek' ? 'half' : curr === 'half' ? 'full' : 'peek'
               );
             }}
-            className="w-full pt-2 pb-1.5 px-4 flex items-center justify-between cursor-pointer border-b border-purple-500/15 active:bg-white/5"
+            className={`w-full pt-2 pb-1.5 px-4 flex items-center justify-between cursor-pointer border-b active:bg-purple-500/5 ${
+              theme === 'dark' ? 'border-purple-500/15' : 'border-purple-200/60'
+            }`}
           >
             <div className="flex items-center gap-2">
-              <div className="w-8 h-1 rounded-full bg-purple-400/40 mx-auto" />
-              <span className="mono text-[10px] uppercase tracking-wider text-purple-200/70">
+              <div className={`w-8 h-1 rounded-full mx-auto ${
+                theme === 'dark' ? 'bg-purple-400/40' : 'bg-purple-400/60'
+              }`} />
+              <span className={`mono text-[10px] uppercase tracking-wider ${
+                theme === 'dark' ? 'text-purple-200/70' : 'text-purple-900/80 font-semibold'
+              }`}>
                 {activeTab === 'routes'
                   ? activeRoute
                     ? `${activeRoute.totalDurationMinutes}m · ${activeRoute.totalDistanceKm} km`
@@ -737,13 +842,13 @@ export default function App() {
 
             <button
               type="button"
-              className="p-1 text-gray-400 hover:text-white"
+              className={`p-1 hover:opacity-100 ${theme === 'dark' ? 'text-gray-400' : 'text-purple-900/60'}`}
               aria-label="Toggle Drawer Height"
             >
               {mobileSheetState === 'peek' ? (
-                <ChevronUp className="w-5 h-5 text-[#c084fc]" />
+                <ChevronUp className={`w-5 h-5 ${theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'}`} />
               ) : (
-                <ChevronDown className="w-5 h-5 text-gray-400" />
+                <ChevronDown className="w-5 h-5" />
               )}
             </button>
           </div>
@@ -833,7 +938,11 @@ export default function App() {
           </div>
 
           {/* Mobile Bottom Navigation Bar (Thumb Accessible with safe-area padding) */}
-          <div className="min-h-[3.5rem] pb-[max(env(safe-area-inset-bottom,0px),0.25rem)] shrink-0 bg-[#0a0414]/95 backdrop-blur-2xl border-t border-purple-500/20 grid grid-cols-4 items-center">
+          <div className={`min-h-[3.5rem] pb-[max(env(safe-area-inset-bottom,0px),0.25rem)] shrink-0 backdrop-blur-2xl border-t grid grid-cols-4 items-center ${
+            theme === 'dark'
+              ? 'bg-[#0a0414]/95 border-purple-500/20'
+              : 'bg-white/95 border-purple-200/80 shadow-md'
+          }`}>
             {(
               [
                 { id: 'routes', label: 'Planner', icon: Navigation },
@@ -854,8 +963,14 @@ export default function App() {
                       setMobileSheetState('half');
                     }
                   }}
-                  className={`h-full flex flex-col items-center justify-center gap-1 transition-colors ${
-                    isCurrent ? 'text-[#c084fc] drop-shadow-[0_0_8px_rgba(168,85,247,0.6)] font-bold' : 'text-gray-400 hover:text-purple-200'
+                  className={`h-full flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
+                    isCurrent
+                      ? theme === 'dark'
+                        ? 'text-[#c084fc] drop-shadow-[0_0_8px_rgba(168,85,247,0.6)] font-bold'
+                        : 'text-[#7c3aed] drop-shadow-[0_0_8px_rgba(147,51,234,0.4)] font-bold'
+                      : theme === 'dark'
+                      ? 'text-gray-400 hover:text-purple-200'
+                      : 'text-purple-900/50 hover:text-purple-950'
                   }`}
                 >
                   <Icon className="w-4 h-4" />

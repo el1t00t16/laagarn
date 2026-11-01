@@ -82,6 +82,7 @@ interface LeafletMapViewProps {
   simSpeedMultiplier?: number;
   onChangeSimSpeed?: (speed: number) => void;
   mobileSheetOpen?: boolean;
+  theme?: 'dark' | 'light';
 }
 
 function applyTileStyleFilter(
@@ -311,6 +312,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   simSpeedMultiplier = 2,
   onChangeSimSpeed,
   mobileSheetOpen = false,
+  theme = 'dark',
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -818,8 +820,14 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             type="button"
             onClick={onLocateUserGps}
             disabled={gpsLoading}
-            className={`px-3 py-2 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/25 rounded-xl text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg ${
-              gpsState ? 'text-[#c084fc] border-[#a855f7]/60 bg-[#a855f7]/15' : 'text-[#f8f6fc]'
+            className={`px-3 py-2 backdrop-blur-xl border rounded-xl text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg cursor-pointer ${
+              theme === 'dark'
+                ? gpsState
+                  ? 'bg-[#0d0717]/85 text-[#c084fc] border-[#a855f7]/60 bg-[#a855f7]/15'
+                  : 'bg-[#0d0717]/85 text-[#f8f6fc] border-purple-500/25'
+                : gpsState
+                ? 'bg-purple-100/90 text-[#7c3aed] border-purple-500/60'
+                : 'bg-white/90 text-[#160a2c] border-purple-300/40'
             }`}
           >
             <Crosshair className={`w-3.5 h-3.5 ${gpsLoading ? 'animate-spin' : ''}`} />
@@ -838,10 +846,12 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               key={item.id}
               type="button"
               onClick={() => onChangeMapClickAction(item.id)}
-              className={`px-2.5 py-2 bg-[#0d0717]/85 backdrop-blur-xl border rounded-xl text-xs mono uppercase tracking-wider shrink-0 transition-colors shadow-lg ${
+              className={`px-2.5 py-2 backdrop-blur-xl border rounded-xl text-xs mono uppercase tracking-wider shrink-0 transition-colors shadow-lg cursor-pointer ${
                 mapClickAction === item.id
-                  ? 'bg-[#a855f7] text-white border-[#a855f7] shadow-purple-500/20'
-                  : 'border-purple-500/25 text-[#f8f6fc]/70 hover:text-white hover:border-purple-500/50'
+                  ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white border-[#a855f7] shadow-purple-500/20 font-bold'
+                  : theme === 'dark'
+                  ? 'bg-[#0d0717]/85 border-purple-500/25 text-[#f8f6fc]/70 hover:text-white hover:border-purple-500/50'
+                  : 'bg-white/90 border-purple-300/40 text-[#160a2c]/75 hover:text-[#160a2c] hover:border-purple-500/50'
               }`}
             >
               {item.label}
@@ -852,7 +862,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             type="button"
             onClick={() => setShowLayersMenu((v) => !v)}
             aria-label="Toggle Cartography Layers"
-            className="p-2 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/25 text-[#f8f6fc] shrink-0 shadow-lg hover:border-[#a855f7] rounded-xl"
+            className={`p-2 backdrop-blur-xl border shrink-0 shadow-lg rounded-xl cursor-pointer ${
+              theme === 'dark'
+                ? 'bg-[#0d0717]/85 border-purple-500/25 text-[#f8f6fc] hover:border-[#a855f7]'
+                : 'bg-white/90 border-purple-300/40 text-[#160a2c] hover:border-purple-500'
+            }`}
           >
             <Layers className="w-4 h-4" />
           </button>
@@ -861,9 +875,15 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
       {/* Layers Flyout Menu */}
       {showLayersMenu && (
-        <div className="absolute top-14 right-3 z-[410] w-56 bg-[#110820]/95 backdrop-blur-2xl border border-purple-500/30 p-3 shadow-2xl rounded-xl space-y-3">
+        <div className={`absolute top-14 right-3 z-[410] w-56 backdrop-blur-2xl border p-3 shadow-2xl rounded-xl space-y-3 ${
+          theme === 'dark'
+            ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
+            : 'bg-white/95 border-purple-300/40 text-[#160a2c]'
+        }`}>
           <div>
-            <span className="mono text-[0.6rem] uppercase tracking-wider text-[#c084fc] block mb-1.5 font-bold">
+            <span className={`mono text-[0.6rem] uppercase tracking-wider block mb-1.5 font-bold ${
+              theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+            }`}>
               Base Map
             </span>
             <div className="grid grid-cols-3 gap-1">
@@ -878,10 +898,12 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   key={st.id}
                   type="button"
                   onClick={() => onChangeMapStyle(st.id)}
-                  className={`py-1.5 text-center text-xs mono uppercase rounded-lg ${
+                  className={`py-1.5 text-center text-xs mono uppercase rounded-lg transition-colors cursor-pointer ${
                     mapStyle === st.id
                       ? 'bg-[#a855f7] text-white font-bold'
-                      : 'bg-[#160b26] text-purple-200/80 border border-purple-500/20 hover:border-purple-500/40'
+                      : theme === 'dark'
+                      ? 'bg-[#160b26] text-purple-200/80 border border-purple-500/20 hover:border-purple-500/40'
+                      : 'bg-purple-50 text-purple-950 border border-purple-200 hover:border-purple-300'
                   }`}
                 >
                   {st.label}
@@ -890,15 +912,23 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             </div>
           </div>
 
-          <div className="border-t border-purple-500/20 pt-2 space-y-1.5">
-            <span className="mono text-[0.6rem] uppercase tracking-wider text-[#c084fc] block mb-1 font-bold">
+          <div className={`border-t pt-2 space-y-1.5 ${theme === 'dark' ? 'border-purple-500/20' : 'border-purple-200/60'}`}>
+            <span className={`mono text-[0.6rem] uppercase tracking-wider block mb-1 font-bold ${
+              theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+            }`}>
               Overlays
             </span>
             <button
               type="button"
               onClick={onToggleTrafficLayer}
-              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg ${
-                showTrafficLayer ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15' : 'border-purple-500/20 text-purple-200/80'
+              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg cursor-pointer ${
+                showTrafficLayer
+                  ? theme === 'dark'
+                    ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
+                    : 'border-purple-500 text-purple-800 bg-purple-100/70'
+                  : theme === 'dark'
+                  ? 'border-purple-500/20 text-purple-200/80'
+                  : 'border-purple-200 text-purple-900/70'
               }`}
             >
               <span>Traffic Incidents</span>
@@ -907,8 +937,14 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             <button
               type="button"
               onClick={onToggleWeatherLayer}
-              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg ${
-                showWeatherLayer ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15' : 'border-purple-500/20 text-purple-200/80'
+              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg cursor-pointer ${
+                showWeatherLayer
+                  ? theme === 'dark'
+                    ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
+                    : 'border-purple-500 text-purple-800 bg-purple-100/70'
+                  : theme === 'dark'
+                  ? 'border-purple-500/20 text-purple-200/80'
+                  : 'border-purple-200 text-purple-900/70'
               }`}
             >
               <span>Weather Stations</span>
@@ -917,7 +953,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             <button
               type="button"
               onClick={handleCacheCurrentView}
-              className="w-full py-1.5 px-2 text-left text-xs mono uppercase border border-purple-500/20 text-purple-200/80 hover:text-white hover:border-[#a855f7] rounded-lg"
+              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase border rounded-lg transition-colors cursor-pointer ${
+                theme === 'dark'
+                  ? 'border-purple-500/20 text-purple-200/80 hover:text-white hover:border-[#a855f7]'
+                  : 'border-purple-200 text-purple-900/70 hover:text-purple-950 hover:border-purple-500'
+              }`}
             >
               Archive Viewport Offline
             </button>
@@ -930,12 +970,20 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         <div
           role="region"
           aria-label="Real-time Driving HUD"
-          className="absolute top-16 left-3 right-3 sm:left-6 sm:right-auto sm:max-w-lg z-[420] bg-[#110820]/90 backdrop-blur-2xl border border-purple-500/25 border-l-4 border-l-[#a855f7] p-4 shadow-2xl rounded-xl"
+          className={`absolute top-16 left-3 right-3 sm:left-6 sm:right-auto sm:max-w-lg z-[420] backdrop-blur-2xl border border-l-4 p-4 shadow-2xl rounded-xl ${
+            theme === 'dark'
+              ? 'bg-[#110820]/90 border-purple-500/25 border-l-[#a855f7] text-[#f8f6fc]'
+              : 'bg-white/95 border-purple-300/40 border-l-[#9333ea] text-[#160a2c] shadow-purple-950/15'
+          }`}
         >
           {/* Top Simulation Banner if active */}
           {isSimulating && (
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-purple-500/20 text-xs mono">
-              <span className="text-[#c084fc] font-bold flex items-center gap-1">
+            <div className={`flex items-center justify-between mb-2 pb-2 border-b text-xs mono ${
+              theme === 'dark' ? 'border-purple-500/20' : 'border-purple-200/60'
+            }`}>
+              <span className={`font-bold flex items-center gap-1 ${
+                theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+              }`}>
                 <span className="w-2 h-2 rounded-full bg-[#a855f7] animate-ping" />
                 SIMULATED DRIVE ({simSpeedMultiplier}x)
               </span>
@@ -945,7 +993,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onChangeSimSpeed(simSpeedMultiplier === 1 ? 2 : simSpeedMultiplier === 2 ? 5 : 1)}
-                    className="px-2 py-0.5 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 text-[10px] font-bold uppercase rounded"
+                    className="px-2 py-0.5 bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-[10px] font-bold uppercase rounded cursor-pointer"
                   >
                     {simSpeedMultiplier}x Speed
                   </button>
@@ -954,7 +1002,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   <button
                     type="button"
                     onClick={onToggleSimulation}
-                    className="p-1 bg-[#a855f7] text-white hover:bg-[#9333ea] rounded"
+                    className="p-1 bg-[#a855f7] text-white hover:bg-[#9333ea] rounded cursor-pointer"
                     title={isSimulating ? 'Pause Drive' : 'Play Drive'}
                   >
                     {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -964,7 +1012,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   <button
                     type="button"
                     onClick={onResetSimulation}
-                    className="p-1 bg-white/10 text-gray-300 hover:text-white rounded"
+                    className="p-1 bg-white/10 text-gray-300 hover:text-white rounded cursor-pointer"
                     title="Rewind to Start"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -980,7 +1028,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                 <Navigation2 className="w-6 h-6 transform rotate-45" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 mono text-xs font-bold text-[#c084fc] uppercase">
+                <div className={`flex items-center gap-2 mono text-xs font-bold uppercase ${
+                  theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+                }`}>
                   <span>
                     Step {activeStepIndex + 1}/{activeRoute.steps.length}
                   </span>
@@ -989,11 +1039,15 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   <span>·</span>
                   <span>{currentStep.durationMinutes}m</span>
                 </div>
-                <h3 className="text-base sm:text-lg font-bold text-white mt-1 leading-tight">
+                <h3 className={`text-base sm:text-lg font-bold mt-1 leading-tight ${
+                  theme === 'dark' ? 'text-white' : 'text-[#160a2c]'
+                }`}>
                   {currentStep.instruction}
                 </h3>
                 {currentStep.roadName && (
-                  <p className="mono text-[0.7rem] uppercase tracking-wider text-purple-300/70 mt-1 truncate">
+                  <p className={`mono text-[0.7rem] uppercase tracking-wider mt-1 truncate ${
+                    theme === 'dark' ? 'text-purple-300/70' : 'text-purple-800/70'
+                  }`}>
                     {currentStep.roadName}
                   </p>
                 )}
@@ -1006,10 +1060,14 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   type="button"
                   onClick={onToggleVoiceGuidance}
                   aria-label={voiceGuidance ? 'Mute Voice' : 'Unmute Voice'}
-                  className={`p-2 border rounded-lg transition-colors ${
+                  className={`p-2 border rounded-lg transition-colors cursor-pointer ${
                     voiceGuidance
-                      ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
-                      : 'border-purple-500/20 text-gray-400'
+                      ? theme === 'dark'
+                        ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
+                        : 'border-purple-500 text-purple-800 bg-purple-100'
+                      : theme === 'dark'
+                      ? 'border-purple-500/20 text-gray-400'
+                      : 'border-purple-200 text-purple-900/50'
                   }`}
                 >
                   {voiceGuidance ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -1020,10 +1078,14 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   type="button"
                   onClick={onToggleFollowGps}
                   title={followGps ? 'Follow Mode On' : 'Follow Mode Off'}
-                  className={`p-2 border rounded-lg transition-colors ${
+                  className={`p-2 border rounded-lg transition-colors cursor-pointer ${
                     followGps
-                      ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
-                      : 'border-purple-500/20 text-gray-400'
+                      ? theme === 'dark'
+                        ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
+                        : 'border-purple-500 text-purple-800 bg-purple-100'
+                      : theme === 'dark'
+                      ? 'border-purple-500/20 text-gray-400'
+                      : 'border-purple-200 text-purple-900/50'
                   }`}
                 >
                   <Compass className={`w-4 h-4 ${followGps ? 'animate-spin' : ''}`} />
@@ -1032,7 +1094,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               <button
                 type="button"
                 onClick={onExitNavigation}
-                className="px-2.5 py-2 bg-red-600/80 hover:bg-red-600 text-white mono text-xs uppercase font-bold rounded-lg"
+                className="px-2.5 py-2 bg-red-600/80 hover:bg-red-600 text-white mono text-xs uppercase font-bold rounded-lg cursor-pointer"
               >
                 End
               </button>
@@ -1041,7 +1103,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
           {/* Progress bar along the journey */}
           {simulationProgress > 0 && (
-            <div className="w-full bg-purple-950/40 h-1 mt-3 overflow-hidden rounded-full border border-purple-500/20">
+            <div className="w-full bg-purple-950/20 h-1 mt-3 overflow-hidden rounded-full border border-purple-500/20">
               <div
                 className="bg-gradient-to-r from-[#a855f7] to-[#c084fc] h-full transition-all duration-200"
                 style={{ width: `${simulationProgress}%` }}
@@ -1050,19 +1112,23 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           )}
 
           {/* Stepper controls */}
-          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-purple-500/20 text-xs mono">
+          <div className={`flex items-center justify-between mt-3 pt-2.5 border-t text-xs mono ${
+            theme === 'dark' ? 'border-purple-500/20' : 'border-purple-200/60'
+          }`}>
             <button
               type="button"
               disabled={activeStepIndex === 0}
               onClick={() => onStepChange(Math.max(0, activeStepIndex - 1))}
-              className="flex items-center gap-1 text-purple-200/80 disabled:opacity-30 hover:text-white"
+              className="flex items-center gap-1 disabled:opacity-30 hover:opacity-100 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" /> Prev
             </button>
 
-            <span className="text-purple-300/80">
+            <span className={theme === 'dark' ? 'text-purple-300/80' : 'text-purple-800/80'}>
               {gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined ? (
-                <span className="font-bold text-[#c084fc]">{gpsState.speedKmh} KM/H</span>
+                <span className={`font-bold ${theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'}`}>
+                  {gpsState.speedKmh} KM/H
+                </span>
               ) : (
                 'ETA: ' + activeRoute.totalDurationMinutes + 'm'
               )}
@@ -1072,7 +1138,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               type="button"
               disabled={activeStepIndex >= activeRoute.steps.length - 1}
               onClick={() => onStepChange(Math.min(activeRoute.steps.length - 1, activeStepIndex + 1))}
-              className="flex items-center gap-1 text-[#c084fc] disabled:opacity-30 font-bold"
+              className={`flex items-center gap-1 disabled:opacity-30 font-bold cursor-pointer ${
+                theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+              }`}
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>
@@ -1080,31 +1148,50 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         </div>
       )}
 
-      {/* Floating Speedometer & Status Badge (Bottom-Left: Positioned cleanly above mobile drawer) */}
+      {/* Floating Speedometer & Status Badge (Positioned safely above the mobile bottom drawer: bottom-8.75rem clears the 6rem drawer + safe area) */}
       <div
-        className={`absolute bottom-[calc(7.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 left-3 z-[400] flex flex-col gap-1.5 pointer-events-none transition-all duration-300 ${
+        className={`absolute bottom-[calc(8.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 left-3 z-[450] flex flex-col sm:flex-row items-start sm:items-center gap-1.5 pointer-events-none transition-all duration-300 ${
           mobileSheetOpen ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
         }`}
       >
         {gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined && (
-          <div className="bg-[#110820]/90 backdrop-blur-2xl border border-purple-500/40 px-3.5 py-2 text-center pointer-events-auto shadow-2xl rounded-xl">
-            <div className="text-3xl font-black display text-white leading-none">
+          <div
+            className={`px-3 py-2 text-center pointer-events-auto shadow-2xl rounded-xl border backdrop-blur-2xl flex items-center gap-2 ${
+              theme === 'dark'
+                ? 'bg-[#110820]/90 border-purple-500/40 text-white'
+                : 'bg-white/95 border-purple-300/60 text-[#160a2c] shadow-purple-900/10'
+            }`}
+          >
+            <div className="text-2xl sm:text-3xl font-black display leading-none">
               {gpsState.speedKmh}
             </div>
-            <div className="text-[9px] mono uppercase text-[#c084fc] font-bold mt-1 tracking-wider">
-              KM/H SPEED
+            <div className="text-left">
+              <div className={`text-[10px] mono uppercase font-extrabold tracking-wider leading-none ${
+                theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+              }`}>
+                KM/H
+              </div>
+              <div className="text-[8px] mono uppercase text-gray-400 leading-none mt-0.5">
+                SPEED
+              </div>
             </div>
           </div>
         )}
 
-        <div className="bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/25 px-3 py-1.5 mono text-[11px] text-purple-200/80 pointer-events-auto shadow-xl rounded-xl">
-          <div className="font-bold text-white flex items-center gap-1.5">
+        <div
+          className={`px-3 py-2 mono text-[11px] pointer-events-auto shadow-xl rounded-xl border backdrop-blur-xl ${
+            theme === 'dark'
+              ? 'bg-[#0d0717]/90 border-purple-500/25 text-purple-200/90'
+              : 'bg-white/90 border-purple-200/70 text-purple-950/80 shadow-purple-900/5'
+          }`}
+        >
+          <div className="font-bold flex items-center gap-1.5">
             <span
-              className={`w-2 h-2 rounded-full ${
+              className={`w-2 h-2 rounded-full shrink-0 ${
                 gpsState ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
               }`}
             />
-            <span>
+            <span className={theme === 'dark' ? 'text-white' : 'text-[#160a2c]'}>
               {isSimulating
                 ? 'Simulated Movement (A → B)'
                 : gpsState
@@ -1112,16 +1199,18 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                 : 'Searching Satellites…'}
             </span>
           </div>
-          <div className="text-[9px] text-purple-300/60 uppercase mt-0.5 truncate max-w-[200px]">
+          <div className={`text-[9px] uppercase mt-0.5 truncate max-w-[200px] ${
+            theme === 'dark' ? 'text-purple-300/60' : 'text-purple-700/60'
+          }`}>
             {isOfflineMode ? 'OFFLINE ARCHIVE' : 'PHILIPPINES'} ·{' '}
             {cursorCoords.lat.toFixed(3)}°, {cursorCoords.lng.toFixed(3)}°
           </div>
         </div>
       </div>
 
-      {/* Bottom-Right Thumb Controls (Positioned cleanly above mobile drawer) */}
+      {/* Bottom-Right Thumb Controls (Positioned safely above mobile drawer) */}
       <div
-        className={`absolute bottom-[calc(7.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 right-3 z-[400] flex flex-col gap-2 transition-all duration-300 ${
+        className={`absolute bottom-[calc(8.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 right-3 z-[400] flex flex-col gap-2 transition-all duration-300 ${
           mobileSheetOpen ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
         }`}
       >
@@ -1130,7 +1219,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           onClick={handleFitRouteOrGps}
           aria-label="Center GPS or Route"
           title="Center GPS / Route"
-          className="w-11 h-11 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/30 text-[#c084fc] flex items-center justify-center text-lg font-bold shadow-xl active:bg-[#a855f7] active:text-white rounded-xl hover:border-[#a855f7]"
+          className={`w-11 h-11 backdrop-blur-xl border flex items-center justify-center text-lg font-bold shadow-xl rounded-xl transition-colors cursor-pointer ${
+            theme === 'dark'
+              ? 'bg-[#0d0717]/85 border-purple-500/30 text-[#c084fc] hover:border-[#a855f7] active:bg-[#a855f7] active:text-white'
+              : 'bg-white/90 border-purple-300/60 text-[#7c3aed] hover:border-purple-500 active:bg-[#7c3aed] active:text-white'
+          }`}
         >
           <Crosshair className="w-5 h-5" />
         </button>
@@ -1138,7 +1231,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           type="button"
           onClick={handleZoomIn}
           aria-label="Zoom in"
-          className="w-11 h-11 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/30 text-white flex items-center justify-center text-xl font-bold shadow-xl active:bg-[#a855f7] rounded-xl hover:border-[#a855f7]"
+          className={`w-11 h-11 backdrop-blur-xl border flex items-center justify-center text-xl font-bold shadow-xl rounded-xl transition-colors cursor-pointer ${
+            theme === 'dark'
+              ? 'bg-[#0d0717]/85 border-purple-500/30 text-white hover:border-[#a855f7] active:bg-[#a855f7]'
+              : 'bg-white/90 border-purple-300/60 text-[#160a2c] hover:border-purple-500 active:bg-purple-100'
+          }`}
         >
           ＋
         </button>
@@ -1146,7 +1243,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           type="button"
           onClick={handleZoomOut}
           aria-label="Zoom out"
-          className="w-11 h-11 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/30 text-white flex items-center justify-center text-xl font-bold shadow-xl active:bg-[#a855f7] rounded-xl hover:border-[#a855f7]"
+          className={`w-11 h-11 backdrop-blur-xl border flex items-center justify-center text-xl font-bold shadow-xl rounded-xl transition-colors cursor-pointer ${
+            theme === 'dark'
+              ? 'bg-[#0d0717]/85 border-purple-500/30 text-white hover:border-[#a855f7] active:bg-[#a855f7]'
+              : 'bg-white/90 border-purple-300/60 text-[#160a2c] hover:border-purple-500 active:bg-purple-100'
+          }`}
         >
           －
         </button>
