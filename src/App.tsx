@@ -1,0 +1,796 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  calculateMultiStopRoute,
+  ComputedRoute,
+  LatLngPoint,
+  TrafficIncident,
+  TravelMode,
+  WeatherSnapshot,
+} from './utils/routingEngine';
+import {
+  INITIAL_TRAFFIC_INCIDENTS,
+  OfflineRegionPack,
+} from './utils/travelData';
+import {
+  cacheBoundingBoxTiles,
+  clearAllCachedTiles,
+  getTileCacheStats,
+  hydrateMemoryCacheFromIndexedDB,
+  TileCacheStats,
+} from './utils/tileCacheStorage';
+import { fetchLocationWeather } from './utils/weatherService';
+import {
+  computeLiveOrOfflineRoutes,
+  reverseGeocodePhilippines,
+} from './utils/gpsAndGeocoding';
+import {
+  buildRouteIndex,
+  computeRouteProgress,
+  buildSpokenInstruction,
+} from './utils/navigation';
+import {
+  LeafletMapView,
+  MapClickAction,
+  MapStyleMode,
+} from './components/LeafletMapView';
+import { RoutePlannerPanel } from './components/RoutePlannerPanel';
+import { TrafficPanel } from './components/TrafficPanel';
+import { WeatherForecastPanel } from './components/WeatherForecastPanel';
+import { OfflineCachePanel } from './components/OfflineCachePanel';
+import { useLiveGps } from './hooks/useLiveGps';
+import { useDeviceCompass } from './hooks/useOrientation';
+import { useWakeLock } from './hooks/useWakeLock';
+import { useSpeechGuidance } from './hooks/useSpeechGuidance';
+import {
+  Compass,
+  Navigation,
+  CloudRain,
+  AlertTriangle,
+  HardDriveDownload,
+  WifiOff,
+  ChevronUp,
+  ChevronDown,
+  Download,
+} from 'lucide-react';
+
+type ActiveTab = 'routes' | 'traffic' | 'weather' | 'offline';
+type MobileSheetState = 'peek' | 'half' | 'full';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<ActiveTab>('routes');
+  const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>('half');
+
+  // Multi-stop route planning state
+  const [stops, setStops] = useState<LatLngPoint[]>([]);
+  const [travelMode, setTravelMode] = useState<TravelMode>('driving');
+  const [computedRoutes, setComputedRoutes] = useState<ComputedRoute[]>([]);
+  const [routeLoading, setRouteLoading] = useState<boolean>(false);
+  const [activeRouteIndex, setActiveRouteIndex] = useState<number>(0);
+
+  // Real-time decoupled GPS Hook (runs continuously even offline)
+  const {
+    position: gpsState,
+    status: gpsStatus,
+    error: gpsError,
+    tracking: gpsWatchActive,
+    locateOnce,
+    startTracking,
+    stopTracking,
+    setManualPosition,
+  } = useLiveGps();
+
+  // Compass heading (Device orientation sensor + movement heading fallback)
+  const compassHeading = useDeviceCompass(gpsState?.heading ?? null);
+
+  // Traffic incidents state
+  const [incidents, setIncidents] = useState<TrafficIncident[]>(INITIAL_TRAFFIC_INCIDENTS);
+  const [showTrafficLayer, setShowTrafficLayer] = useState<boolean>(true);
+  const [showWeatherLayer, setShowWeatherLayer] = useState<boolean>(true);
+
+  // Weather state
+  const [weatherSnapshots, setWeatherSnapshots] = useState<WeatherSnapshot[]>([]);
+  const [weatherLoading, setWeatherLoading] = useState<boolean>(false);
+
+  // Offline mode state & network listener
+  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  );
+  const [mapStyle, setMapStyle] = useState<MapStyleMode>('street');
+  const [mapClickAction, setMapClickAction] = useState<MapClickAction>('none');
+  const [tileStats, setTileStats] = useState<TileCacheStats>(() => getTileCacheStats());
+
+  // Focus coordinate on map
+  const [focusedCoord, setFocusedCoord] = useState<{
+    lat: number;
+    lng: number;
+    zoom?: number;
+  } | null>(null);
+
+  // Active Navigation & Voice Guidance
+  const [navigationActive, setNavigationActive] = useState<boolean>(false);
+  const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
+  const [voiceGuidance, setVoiceGuidance] = useState<boolean>(true);
+  const [followGps, setFollowGps] = useState<boolean>(true);
+
+  // PWA install prompt handler
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  // Prevent phone screen from dimming/sleeping during active navigation
+  useWakeLock(navigationActive);
+
+  // Turn-by-turn Speech Guidance
+  const { speak: speakGuidance } = useSpeechGuidance(voiceGuidance && navigationActive);
+
+  const activeRoute = computedRoutes[activeRouteIndex] || computedRoutes[0];
+
+  // Route Index for fast on-device geometry calculations
+  const routeIndex = useMemo(() => {
+    return activeRoute ? buildRouteIndex(activeRoute) : null;
+  }, [activeRoute?.id]);
+
+  // Monitor network online/offline transitions
+  useEffect(() => {
+    const handleOnline = () => setIsOfflineMode(false);
+    const handleOffline = () => setIsOfflineMode(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Listen for PWA installation prompt
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  // Hydrate IndexedDB tile cache on mount
+  useEffect(() => {
+    hydrateMemoryCacheFromIndexedDB().then((stats) => {
+      setTileStats(stats);
+    });
+  }, []);
+
+  // Compute live OSRM road route (or offline fallback) whenever stops, mode, or incidents change
+  useEffect(() => {
+    let cancelled = false;
+    if (stops.length < 2) {
+      setComputedRoutes([]);
+      return;
+    }
+
+    const immediate = [0, 1, 2].map((variantIdx) =>
+      calculateMultiStopRoute(stops, travelMode, incidents, variantIdx)
+    );
+    setComputedRoutes(immediate);
+
+    setRouteLoading(true);
+    computeLiveOrOfflineRoutes(stops, travelMode, incidents, isOfflineMode)
+      .then((liveRoutes) => {
+        if (!cancelled && liveRoutes.length > 0) {
+          setComputedRoutes(liveRoutes);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRouteLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stops, travelMode, incidents, isOfflineMode]);
+
+  // Sync weather for active stops or user's live GPS
+  const syncEnRouteWeather = useCallback(async () => {
+    const targets: LatLngPoint[] =
+      stops.length > 0
+        ? stops
+        : gpsState
+        ? [
+            {
+              name: gpsState.addressLabel,
+              region: 'Current GPS Location',
+              lat: gpsState.lat,
+              lng: gpsState.lng,
+            },
+          ]
+        : [];
+
+    if (targets.length === 0) {
+      setWeatherSnapshots([]);
+      return;
+    }
+
+    setWeatherLoading(true);
+    try {
+      const results = await Promise.all(
+        targets.map((stop) => fetchLocationWeather(stop, isOfflineMode))
+      );
+      setWeatherSnapshots(results);
+    } finally {
+      setWeatherLoading(false);
+    }
+  }, [stops, gpsState, isOfflineMode]);
+
+  useEffect(() => {
+    syncEnRouteWeather();
+  }, [syncEnRouteWeather]);
+
+  // Real-time GPS Progress Tracking along route during Navigation
+  const prevAlongKmRef = useRef<number>(0);
+  useEffect(() => {
+    if (!navigationActive || !activeRoute || !routeIndex || !gpsState) return;
+
+    const progress = computeRouteProgress(
+      activeRoute,
+      routeIndex,
+      gpsState,
+      prevAlongKmRef.current
+    );
+    prevAlongKmRef.current = progress.alongKm;
+
+    // Auto-advance step when approaching within 40m of next maneuver
+    if (progress.nextStepIndex !== activeStepIndex) {
+      setActiveStepIndex(progress.nextStepIndex);
+      const nextStep = activeRoute.steps[progress.nextStepIndex];
+      if (nextStep) {
+        speakGuidance(buildSpokenInstruction(nextStep, progress.distanceToNextStepKm));
+      }
+    }
+
+    // Voice announcement if user arrives at destination
+    if (progress.arrived) {
+      speakGuidance('You have arrived at your destination.');
+    }
+  }, [gpsState, navigationActive, activeRoute, routeIndex, activeStepIndex, speakGuidance]);
+
+  // Handle GPS Locate button
+  const handleLocateUserGps = useCallback(
+    async (setAsOrigin = true) => {
+      startTracking();
+      const pos = await locateOnce();
+      if (pos && setAsOrigin) {
+        const originPoint: LatLngPoint = {
+          name: pos.addressLabel,
+          region: 'Live GPS Position',
+          lat: pos.lat,
+          lng: pos.lng,
+        };
+        setStops((prev) =>
+          prev.length >= 2 ? [originPoint, ...prev.slice(1)] : [originPoint]
+        );
+        setFocusedCoord({ lat: pos.lat, lng: pos.lng, zoom: 15 });
+      }
+    },
+    [locateOnce, startTracking]
+  );
+
+  const handleToggleGpsWatch = useCallback(() => {
+    if (gpsWatchActive) {
+      stopTracking();
+    } else {
+      startTracking();
+    }
+  }, [gpsWatchActive, startTracking, stopTracking]);
+
+  const handleApplyStops = (newStops: LatLngPoint[]) => {
+    setStops(newStops);
+    setActiveRouteIndex(0);
+    setActiveStepIndex(0);
+    if (newStops.length > 0) {
+      setFocusedCoord({
+        lat: newStops[0].lat,
+        lng: newStops[0].lng,
+        zoom: 13,
+      });
+    }
+    // On mobile, collapse sheet to peek when a route is computed so map is clearly visible
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('peek');
+    }
+  };
+
+  const handleClearRoute = () => {
+    setStops([]);
+    setComputedRoutes([]);
+    setNavigationActive(false);
+    setActiveStepIndex(0);
+  };
+
+  const handleMapPickLocation = async (
+    lat: number,
+    lng: number,
+    action: MapClickAction
+  ) => {
+    const rev = await reverseGeocodePhilippines(lat, lng);
+    const customPoint: LatLngPoint = {
+      name: rev.name,
+      region: rev.region,
+      lat,
+      lng,
+    };
+
+    if (action === 'gps') {
+      setManualPosition(lat, lng, rev.name);
+      setStops((prev) =>
+        prev.length >= 2 ? [customPoint, ...prev.slice(1)] : [customPoint]
+      );
+      setMapClickAction('none');
+    } else if (action === 'origin') {
+      setStops((prev) =>
+        prev.length >= 2 ? [customPoint, ...prev.slice(1)] : [customPoint]
+      );
+      setMapClickAction('none');
+    } else if (action === 'destination') {
+      setStops((prev) => {
+        if (prev.length === 0 && gpsState) {
+          return [
+            {
+              name: gpsState.addressLabel,
+              region: 'Live GPS Position',
+              lat: gpsState.lat,
+              lng: gpsState.lng,
+            },
+            customPoint,
+          ];
+        }
+        if (prev.length === 0) return [customPoint];
+        if (prev.length === 1) return [prev[0], customPoint];
+        return [...prev.slice(0, -1), customPoint];
+      });
+      setMapClickAction('none');
+    } else if (action === 'waypoint') {
+      setStops((prev) => {
+        if (prev.length < 2) return [...prev, customPoint];
+        return [...prev.slice(0, -1), customPoint, prev[prev.length - 1]];
+      });
+      setMapClickAction('none');
+    } else if (action === 'weather') {
+      const snap = await fetchLocationWeather(customPoint, isOfflineMode);
+      setWeatherSnapshots((prev) => [snap, ...prev.slice(0, 4)]);
+      setActiveTab('weather');
+      setMapClickAction('none');
+      if (window.innerWidth < 1024) setMobileSheetState('half');
+    }
+  };
+
+  const handleToggleIncidentActive = (id: string) => {
+    setIncidents((prev) =>
+      prev.map((inc) => (inc.id === id ? { ...inc, active: !inc.active } : inc))
+    );
+  };
+
+  const handleAddIncident = (
+    newInc: Omit<TrafficIncident, 'id' | 'updatedMinutesAgo'>
+  ) => {
+    const created: TrafficIncident = {
+      ...newInc,
+      id: `inc-custom-${Date.now()}`,
+      updatedMinutesAgo: 1,
+    };
+    setIncidents((prev) => [created, ...prev]);
+  };
+
+  const handleDownloadRegionPack = async (
+    pack: OfflineRegionPack,
+    onProgress: (done: number, total: number) => void
+  ) => {
+    const res = await cacheBoundingBoxTiles(
+      pack.southWest,
+      pack.northEast,
+      pack.zoomLevels,
+      onProgress,
+      pack.id
+    );
+    setTileStats(res.stats);
+  };
+
+  const handleCacheActiveRouteCorridor = async (
+    onProgress: (done: number, total: number) => void
+  ) => {
+    if (!activeRoute || activeRoute.coordinates.length === 0) return;
+    const lats = activeRoute.coordinates.map((c) => c[0]);
+    const lngs = activeRoute.coordinates.map((c) => c[1]);
+    const sw = { lat: Math.min(...lats) - 0.04, lng: Math.min(...lngs) - 0.04 };
+    const ne = { lat: Math.max(...lats) + 0.04, lng: Math.max(...lngs) + 0.04 };
+    const res = await cacheBoundingBoxTiles(sw, ne, [11, 12, 13], onProgress);
+    setTileStats(res.stats);
+  };
+
+  const handleClearCache = async () => {
+    const updated = await clearAllCachedTiles();
+    setTileStats(updated);
+  };
+
+  const handleFocusCoordinate = (lat: number, lng: number, zoom = 14) => {
+    setFocusedCoord({ lat, lng, zoom });
+  };
+
+  const handleStepChange = (stepIdx: number) => {
+    setActiveStepIndex(stepIdx);
+    const step = activeRoute?.steps[stepIdx];
+    if (step) {
+      setFocusedCoord({ lat: step.lat, lng: step.lng, zoom: 16 });
+      speakGuidance(step.instruction, true);
+    }
+  };
+
+  const handleStartNavigation = () => {
+    setNavigationActive(true);
+    setActiveStepIndex(0);
+    setFollowGps(true);
+    startTracking();
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('peek');
+    }
+    if (activeRoute?.steps[0]) {
+      handleFocusCoordinate(activeRoute.steps[0].lat, activeRoute.steps[0].lng, 16);
+      speakGuidance(`Starting navigation to ${activeRoute.stops[activeRoute.stops.length - 1].name}.`);
+    }
+  };
+
+  const handleInstallPwa = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    }
+  };
+
+  return (
+    <div className="h-screen w-screen flex flex-col bg-[#111113] text-[#f2f2f2] overflow-hidden select-none font-sans">
+      {/* Top Header / App Bar */}
+      <header className="h-14 shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-[rgba(242,242,242,0.1)] bg-[#111113] z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-sm bg-[#ff4d00] flex items-center justify-center text-white shadow-md">
+            <Compass className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="logo display text-base sm:text-lg font-black tracking-tight text-white leading-none">
+              Wayfarer Atlas
+            </h1>
+            <div className="mono text-[9px] uppercase tracking-wider text-gray-400 mt-0.5 hidden xs:block">
+              {gpsState
+                ? `GPS Active (±${gpsState.accuracyMeters}m)`
+                : 'Philippine Precision Cartography'}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop View Navigation */}
+        <nav
+          aria-label="Workspace Tabs"
+          className="hidden lg:flex items-center gap-6"
+        >
+          {(
+            [
+              { id: 'routes', label: 'Planner' },
+              { id: 'traffic', label: 'Traffic' },
+              { id: 'weather', label: 'Weather' },
+              { id: 'offline', label: 'Offline Cartography' },
+            ] as { id: ActiveTab; label: string }[]
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveTab(item.id)}
+              className={`mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                activeTab === item.id
+                  ? 'text-[#ff4d00] border-b-2 border-[#ff4d00] pb-1'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Right Header Status Badges & PWA Button */}
+        <div className="flex items-center gap-2">
+          {deferredPrompt && (
+            <button
+              type="button"
+              onClick={handleInstallPwa}
+              className="px-2.5 py-1 bg-[#ff4d00] hover:bg-[#e04400] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-md"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Install App</span>
+            </button>
+          )}
+
+          {isOfflineMode ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 mono text-[10px] uppercase font-bold">
+              <WifiOff className="w-3 h-3" />
+              <span>Offline</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mono text-[10px] uppercase font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline">Online</span>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Main Container: Split Desktop layout & Mobile Drawer layout */}
+      <main className="flex-1 relative w-full h-[calc(100vh-3.5rem)] overflow-hidden flex flex-col lg:flex-row">
+        {/* Desktop Sidebar (Left side, 380px) */}
+        <aside
+          aria-label="Travel Planning Controls"
+          className="hidden lg:flex flex-col w-[390px] shrink-0 bg-[#1c1c1e] border-r border-[rgba(242,242,242,0.1)] p-6 overflow-y-auto"
+        >
+          {activeTab === 'routes' && (
+            <RoutePlannerPanel
+              stops={stops}
+              travelMode={travelMode}
+              routes={computedRoutes}
+              routeLoading={routeLoading}
+              activeRouteIndex={activeRouteIndex}
+              gpsState={gpsState}
+              gpsLoading={gpsStatus === 'locating'}
+              gpsError={gpsError}
+              gpsWatchActive={gpsWatchActive}
+              onLocateUserGps={handleLocateUserGps}
+              onToggleGpsWatch={handleToggleGpsWatch}
+              onPickOnMap={(mode) => setMapClickAction(mode)}
+              mapClickAction={mapClickAction}
+              onSelectRouteIndex={setActiveRouteIndex}
+              onChangeTravelMode={setTravelMode}
+              onApplyStops={handleApplyStops}
+              onClearRoute={handleClearRoute}
+              onFocusCoordinate={handleFocusCoordinate}
+              onStartNavigation={handleStartNavigation}
+            />
+          )}
+
+          {activeTab === 'traffic' && (
+            <TrafficPanel
+              incidents={incidents}
+              onToggleIncidentActive={handleToggleIncidentActive}
+              onAddIncident={handleAddIncident}
+              onFocusCoordinate={handleFocusCoordinate}
+              activeRouteDelayMinutes={activeRoute?.trafficDelayMinutes || 0}
+              gpsState={gpsState}
+            />
+          )}
+
+          {activeTab === 'weather' && (
+            <WeatherForecastPanel
+              snapshots={weatherSnapshots}
+              loading={weatherLoading}
+              onFocusCoordinate={handleFocusCoordinate}
+              onRefreshWeather={syncEnRouteWeather}
+              onSpotWeatherOnMap={() => setMapClickAction('weather')}
+            />
+          )}
+
+          {activeTab === 'offline' && (
+            <OfflineCachePanel
+              stats={tileStats}
+              isOfflineMode={isOfflineMode}
+              onToggleOfflineMode={() => setIsOfflineMode((v) => !v)}
+              onDownloadRegionPack={handleDownloadRegionPack}
+              onCacheActiveRouteCorridor={handleCacheActiveRouteCorridor}
+              onClearCache={handleClearCache}
+              onFocusCoordinate={handleFocusCoordinate}
+              hasActiveRoute={Boolean(activeRoute && activeRoute.coordinates.length > 0)}
+            />
+          )}
+        </aside>
+
+        {/* Map Viewport Canvas */}
+        <div className="flex-1 w-full h-full relative z-0">
+          <LeafletMapView
+            stops={stops}
+            routes={computedRoutes}
+            activeRouteIndex={activeRouteIndex}
+            onSelectRouteIndex={setActiveRouteIndex}
+            gpsState={gpsState}
+            gpsLoading={gpsStatus === 'locating'}
+            gpsCompassHeading={compassHeading}
+            onLocateUserGps={() => handleLocateUserGps(true)}
+            incidents={incidents}
+            showTrafficLayer={showTrafficLayer}
+            onToggleTrafficLayer={() => setShowTrafficLayer((v) => !v)}
+            weatherSnapshots={weatherSnapshots}
+            showWeatherLayer={showWeatherLayer}
+            onToggleWeatherLayer={() => setShowWeatherLayer((v) => !v)}
+            isOfflineMode={isOfflineMode}
+            mapStyle={mapStyle}
+            onChangeMapStyle={setMapStyle}
+            mapClickAction={mapClickAction}
+            onChangeMapClickAction={setMapClickAction}
+            onMapPickLocation={handleMapPickLocation}
+            onCacheViewport={async (sw, ne) => {
+              setActiveTab('offline');
+              if (window.innerWidth < 1024) setMobileSheetState('half');
+              const res = await cacheBoundingBoxTiles(sw, ne, [11, 12]);
+              setTileStats(res.stats);
+            }}
+            focusedCoord={focusedCoord}
+            navigationActive={navigationActive}
+            activeStepIndex={activeStepIndex}
+            onStepChange={handleStepChange}
+            onExitNavigation={() => setNavigationActive(false)}
+            voiceGuidance={voiceGuidance}
+            onToggleVoiceGuidance={() => setVoiceGuidance((v) => !v)}
+            followGps={followGps}
+            onToggleFollowGps={() => setFollowGps((v) => !v)}
+          />
+        </div>
+
+        {/* Mobile Interactive Bottom Sheet Drawer (Shown on screens < 1024px) */}
+        <div
+          className={`lg:hidden absolute left-0 right-0 bottom-0 z-[500] bg-[#1c1c1e] border-t border-[rgba(242,242,242,0.15)] shadow-2xl transition-all duration-300 flex flex-col ${
+            mobileSheetState === 'peek'
+              ? 'h-24'
+              : mobileSheetState === 'half'
+              ? 'h-[50vh]'
+              : 'h-[86vh]'
+          }`}
+        >
+          {/* Drawer Handle & Quick Route Summary Bar */}
+          <div
+            onClick={() => {
+              setMobileSheetState((curr) =>
+                curr === 'peek' ? 'half' : curr === 'half' ? 'full' : 'peek'
+              );
+            }}
+            className="w-full pt-2 pb-1.5 px-4 flex items-center justify-between cursor-pointer border-b border-white/5 active:bg-white/5"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 rounded-full bg-gray-500 mx-auto" />
+              <span className="mono text-[10px] uppercase tracking-wider text-gray-400">
+                {activeTab === 'routes'
+                  ? activeRoute
+                    ? `${activeRoute.totalDurationMinutes}m · ${activeRoute.totalDistanceKm} km`
+                    : 'Route Planner'
+                  : activeTab === 'traffic'
+                  ? `Traffic Alerts (${incidents.filter((i) => i.active).length})`
+                  : activeTab === 'weather'
+                  ? 'En-Route Weather'
+                  : 'Offline Cache'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="p-1 text-gray-400 hover:text-white"
+              aria-label="Toggle Drawer Height"
+            >
+              {mobileSheetState === 'peek' ? (
+                <ChevronUp className="w-5 h-5 text-[#ff4d00]" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+          </div>
+
+          {/* Drawer Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-4 overscroll-contain">
+            {activeTab === 'routes' && (
+              <RoutePlannerPanel
+                stops={stops}
+                travelMode={travelMode}
+                routes={computedRoutes}
+                routeLoading={routeLoading}
+                activeRouteIndex={activeRouteIndex}
+                gpsState={gpsState}
+                gpsLoading={gpsStatus === 'locating'}
+                gpsError={gpsError}
+                gpsWatchActive={gpsWatchActive}
+                onLocateUserGps={handleLocateUserGps}
+                onToggleGpsWatch={handleToggleGpsWatch}
+                onPickOnMap={(mode) => {
+                  setMapClickAction(mode);
+                  setMobileSheetState('peek');
+                }}
+                mapClickAction={mapClickAction}
+                onSelectRouteIndex={setActiveRouteIndex}
+                onChangeTravelMode={setTravelMode}
+                onApplyStops={handleApplyStops}
+                onClearRoute={handleClearRoute}
+                onFocusCoordinate={(lat, lng, zoom) => {
+                  handleFocusCoordinate(lat, lng, zoom);
+                  setMobileSheetState('peek');
+                }}
+                onStartNavigation={handleStartNavigation}
+              />
+            )}
+
+            {activeTab === 'traffic' && (
+              <TrafficPanel
+                incidents={incidents}
+                onToggleIncidentActive={handleToggleIncidentActive}
+                onAddIncident={handleAddIncident}
+                onFocusCoordinate={(lat, lng, zoom) => {
+                  handleFocusCoordinate(lat, lng, zoom);
+                  setMobileSheetState('peek');
+                }}
+                activeRouteDelayMinutes={activeRoute?.trafficDelayMinutes || 0}
+                gpsState={gpsState}
+              />
+            )}
+
+            {activeTab === 'weather' && (
+              <WeatherForecastPanel
+                snapshots={weatherSnapshots}
+                loading={weatherLoading}
+                onFocusCoordinate={(lat, lng, zoom) => {
+                  handleFocusCoordinate(lat, lng, zoom);
+                  setMobileSheetState('peek');
+                }}
+                onRefreshWeather={syncEnRouteWeather}
+                onSpotWeatherOnMap={() => {
+                  setMapClickAction('weather');
+                  setMobileSheetState('peek');
+                }}
+              />
+            )}
+
+            {activeTab === 'offline' && (
+              <OfflineCachePanel
+                stats={tileStats}
+                isOfflineMode={isOfflineMode}
+                onToggleOfflineMode={() => setIsOfflineMode((v) => !v)}
+                onDownloadRegionPack={handleDownloadRegionPack}
+                onCacheActiveRouteCorridor={handleCacheActiveRouteCorridor}
+                onClearCache={handleClearCache}
+                onFocusCoordinate={(lat, lng, zoom) => {
+                  handleFocusCoordinate(lat, lng, zoom);
+                  setMobileSheetState('peek');
+                }}
+                hasActiveRoute={Boolean(activeRoute && activeRoute.coordinates.length > 0)}
+              />
+            )}
+          </div>
+
+          {/* Mobile Bottom Navigation Bar (Thumb Accessible) */}
+          <div className="h-14 shrink-0 bg-[#111113] border-t border-[rgba(242,242,242,0.15)] grid grid-cols-4 items-center">
+            {(
+              [
+                { id: 'routes', label: 'Planner', icon: Navigation },
+                { id: 'traffic', label: 'Traffic', icon: AlertTriangle },
+                { id: 'weather', label: 'Weather', icon: CloudRain },
+                { id: 'offline', label: 'Offline', icon: HardDriveDownload },
+              ] as { id: ActiveTab; label: string; icon: any }[]
+            ).map((tab) => {
+              const isCurrent = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    if (mobileSheetState === 'peek') {
+                      setMobileSheetState('half');
+                    }
+                  }}
+                  className={`h-full flex flex-col items-center justify-center gap-1 transition-colors ${
+                    isCurrent ? 'text-[#ff4d00]' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="mono text-[10px] font-bold uppercase tracking-wider">
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

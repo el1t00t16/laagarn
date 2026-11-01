@@ -1,0 +1,419 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@layer base {
+  :root {
+    --bg: #111113;
+    --ink: #f2f2f2;
+    --accent: #ff4d00;
+    --surface: #1c1c1e;
+    --border: rgba(242, 242, 242, 0.1);
+    --ink-dim: rgba(242, 242, 242, 0.5);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color-scheme: dark;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: #ffffff;
+  }
+}
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.display {
+  font-family: 'Syne', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+}
+
+.header-meta {
+  font-size: 0.65rem;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  margin-bottom: 1rem;
+  display: block;
+  font-weight: 700;
+}
+
+.input-group {
+  margin-bottom: 1.35rem;
+  position: relative;
+}
+
+.input-group label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  margin-bottom: 0.45rem;
+  display: block;
+}
+
+.editorial-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 1.05rem;
+  padding: 0.5rem 0;
+  font-weight: 500;
+  transition: border-bottom-color 0.15s ease;
+}
+
+.editorial-input:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+.editorial-input::placeholder {
+  color: rgba(242, 242, 242, 0.3);
+  font-weight: 400;
+  font-size: 0.92rem;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  padding: 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 0.75rem;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.92;
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mode-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.mode-selector button {
+  background: var(--surface);
+  border: none;
+  color: var(--ink-dim);
+  padding: 0.75rem 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-selector button:hover {
+  color: var(--ink);
+}
+
+.mode-selector button.active {
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.route-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 1.25rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+
+.route-card:hover {
+  border-color: rgba(242, 242, 242, 0.25);
+}
+
+.route-card.active {
+  border-color: var(--accent);
+  position: relative;
+}
+
+.route-card.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background: var(--accent);
+}
+
+.route-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.route-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.route-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.route-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.step {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 1.4rem;
+}
+
+.step-num {
+  position: absolute;
+  left: 0;
+  top: 0.1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.step-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink);
+  margin-bottom: 0.25rem;
+}
+
+.step-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.map-viewport {
+  background: #161618;
+  position: relative;
+  overflow: hidden;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.floating-pane {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  z-index: 400;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.plot-toolbar {
+  top: 2rem;
+  left: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.plot-toolbar span.plot-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-right: 0.25rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.plot-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--ink-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  padding: 0.4rem 0.8rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.plot-btn:hover {
+  color: var(--ink);
+  border-color: rgba(242, 242, 242, 0.28);
+}
+
+.plot-btn.active {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+.telemetry-pane {
+  top: 2rem;
+  right: 2rem;
+  width: 220px;
+}
+
+.telemetry-pane button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: 'JetBrains Mono', monospace;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.telemetry-pane button:hover {
+  border-color: rgba(242, 242, 242, 0.3);
+}
+
+.telemetry-pane button.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+  font-weight: 700;
+}
+
+.status-bar {
+  bottom: 2rem;
+  left: 2rem;
+  padding: 0.75rem 1.25rem;
+  border-left: 3px solid var(--accent);
+}
+
+.map-controls {
+  position: absolute;
+  bottom: 2rem;
+  right: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 400;
+}
+
+.map-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
+}
+
+.map-btn:hover {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+/* Custom Leaflet dark theme refinements */
+.leaflet-container {
+  font-family: 'Inter', sans-serif;
+  background-color: #161618;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0px;
+  background: #1c1c1e;
+  color: #f2f2f2;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(242, 242, 242, 0.18);
+  padding: 2px;
+}
+
+.leaflet-popup-tip {
+  background: #1c1c1e;
+  border: 1px solid rgba(242, 242, 242, 0.18);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+  line-height: 1.45;
+}
+
+.leaflet-control-attribution {
+  background: rgba(28, 28, 30, 0.88) !important;
+  color: rgba(242, 242, 242, 0.45) !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+}
+
+.leaflet-control-attribution a {
+  color: #ff4d00 !important;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Wayfarer Atlas",
+  "description": "Precision travel navigation, real-time traffic intelligence, multi-stop route planning, en-route weather forecasting, and offline cached Leaflet cartography.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
