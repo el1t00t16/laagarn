@@ -84,7 +84,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 p-4 bg-[#111113] border border-[rgba(242,242,242,0.1)]">
+        <div className="grid grid-cols-2 gap-3 p-4 bg-[#110820]/80 backdrop-blur-md border border-purple-500/25 rounded-xl">
           <div>
             <div className="route-meta mono">Archived Tiles</div>
             <div
@@ -96,7 +96,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
           </div>
           <div>
             <div className="route-meta mono">IndexedDB Volume</div>
-            <div className="text-2xl display font-extrabold text-[#ff4d00] mt-1">
+            <div className="text-2xl display font-extrabold text-[#c084fc] mt-1">
               {formattedMb} MB
             </div>
           </div>
@@ -134,9 +134,9 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
                 {progressState.done} / {progressState.total}
               </span>
             </div>
-            <div className="w-full h-1 bg-[rgba(242,242,242,0.1)] overflow-hidden">
+            <div className="w-full h-1 bg-purple-950/40 rounded-full overflow-hidden border border-purple-500/20">
               <div
-                className="h-full bg-[#ff4d00] transition-transform duration-150 origin-left"
+                className="h-full bg-gradient-to-r from-[#a855f7] to-[#c084fc] transition-transform duration-150 origin-left"
                 style={{
                   transform: `scaleX(${
                     progressState.total > 0
@@ -152,7 +152,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
         {statusMessage && (
           <div
             role="status"
-            className="mt-4 p-3 bg-[#111113] border border-[#ff4d00] route-meta mono !text-[#f2f2f2]"
+            className="mt-4 p-3 bg-[#110820]/90 backdrop-blur-md border border-purple-500/30 rounded-xl route-meta mono !text-[#f8f6fc]"
           >
             {statusMessage}
           </div>

@@ -249,7 +249,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               type="button"
               onClick={() => onLocateUserGps(true)}
               disabled={gpsLoading}
-              className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[#ff4d00] hover:underline cursor-pointer"
+              className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[#c084fc] hover:underline cursor-pointer"
             >
               {gpsLoading ? 'Locating...' : 'Use GPS'}
             </button>
@@ -273,7 +273,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               <button
                 type="button"
                 onClick={onClearRoute}
-                className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#ff4d00] cursor-pointer"
+                className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#c084fc] cursor-pointer"
               >
                 Clear
               </button>
@@ -311,11 +311,11 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
 
         {/* Live GPS Status Pill if active or error */}
         {(gpsState || gpsError) && (
-          <div className="mb-4 p-3 bg-[#111113] border border-[rgba(242,242,242,0.1)]">
+          <div className="mb-4 p-3 bg-[#110820]/80 backdrop-blur-md border border-purple-500/25 rounded-xl">
             {gpsState && (
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="mono text-[0.55rem] uppercase tracking-[0.15em] text-[#ff4d00]">
+                  <div className="mono text-[0.55rem] uppercase tracking-[0.15em] text-[#c084fc]">
                     Where Am I · GPS Locked (±{gpsState.accuracyMeters}m)
                   </div>
                   <div className="text-xs font-medium text-[#f2f2f2] truncate mt-0.5">
@@ -325,14 +325,14 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 <button
                   type="button"
                   onClick={onToggleGpsWatch}
-                  className="mono text-[0.55rem] uppercase px-2 py-1 border border-[rgba(242,242,242,0.2)] text-[#f2f2f2] hover:border-[#ff4d00] shrink-0 cursor-pointer"
+                  className="mono text-[0.55rem] uppercase px-2 py-1 border border-purple-500/30 text-purple-200 hover:border-[#a855f7] rounded-lg shrink-0 cursor-pointer"
                 >
                   {gpsWatchActive ? 'Tracking On' : 'Track'}
                 </button>
               </div>
             )}
             {gpsError && (
-              <div className="mono text-[0.6rem] text-[#ff4d00] leading-relaxed">
+              <div className="mono text-[0.6rem] text-[#c084fc] leading-relaxed">
                 {gpsError}
               </div>
             )}
@@ -351,7 +351,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 onClick={() =>
                   onPickOnMap(mapClickAction === 'origin' ? 'none' : 'origin')
                 }
-                className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#ff4d00] cursor-pointer mb-1"
+                className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#c084fc] cursor-pointer mb-1"
               >
                 {mapClickAction === 'origin' ? 'Click Map...' : 'Set on Map'}
               </button>
@@ -373,7 +373,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               </div>
             )}
             {originSuggestions.length > 0 && (
-              <div className="mt-1 bg-[#111113] border border-[rgba(242,242,242,0.2)] divide-y divide-[rgba(242,242,242,0.08)] max-h-40 overflow-y-auto z-30">
+              <div className="mt-1 bg-[#110820]/95 backdrop-blur-md border border-purple-500/25 divide-y divide-purple-500/15 rounded-xl max-h-40 overflow-y-auto z-30">
                 {originSuggestions.map((sug, sIdx) => (
                   <button
                     key={`${sug.name}-${sIdx}`}
@@ -384,7 +384,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                       setOriginSuggestions([]);
                       onFocusCoordinate(sug.lat, sug.lng, 14);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-[rgba(255,77,0,0.15)] transition-colors block cursor-pointer"
+                    className="w-full text-left px-3 py-2 hover:bg-[rgba(168,85,247,0.18)] transition-colors block cursor-pointer"
                   >
                     <div className="text-xs font-medium text-[#f2f2f2]">
                       {sug.name}
@@ -407,7 +407,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => handleRemoveWaypointField(idx)}
-                  className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[#ff4d00] hover:underline cursor-pointer mb-1"
+                  className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[#c084fc] hover:underline cursor-pointer mb-1"
                 >
                   Remove
                 </button>
@@ -435,7 +435,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                     mapClickAction === 'destination' ? 'none' : 'destination'
                   )
                 }
-                className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#ff4d00] cursor-pointer mb-1"
+                className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#c084fc] cursor-pointer mb-1"
               >
                 {mapClickAction === 'destination' ? 'Click Map...' : 'Set on Map'}
               </button>
@@ -457,7 +457,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               </div>
             )}
             {destSuggestions.length > 0 && (
-              <div className="mt-1 bg-[#111113] border border-[rgba(242,242,242,0.2)] divide-y divide-[rgba(242,242,242,0.08)] max-h-40 overflow-y-auto z-30">
+              <div className="mt-1 bg-[#110820]/95 backdrop-blur-md border border-purple-500/25 divide-y divide-purple-500/15 rounded-xl max-h-40 overflow-y-auto z-30">
                 {destSuggestions.map((sug, sIdx) => (
                   <button
                     key={`${sug.name}-${sIdx}`}
@@ -468,7 +468,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                       setDestSuggestions([]);
                       onFocusCoordinate(sug.lat, sug.lng, 14);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-[rgba(255,77,0,0.15)] transition-colors block cursor-pointer"
+                    className="w-full text-left px-3 py-2 hover:bg-[rgba(168,85,247,0.18)] transition-colors block cursor-pointer"
                   >
                     <div className="text-xs font-medium text-[#f2f2f2]">
                       {sug.name}
@@ -484,7 +484,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
 
           {/* Quick Philippine Corridor Presets */}
           <div className="mb-4">
-            <div className="mono text-[0.6rem] text-gray-400 mb-1.5 uppercase tracking-wider">
+            <div className="mono text-[0.6rem] text-purple-300/70 mb-1.5 uppercase tracking-wider">
               Popular Routes
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -517,7 +517,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                     setValidationError(null);
                     onApplyStops([preset.origin, preset.dest]);
                   }}
-                  className="px-2 py-1 bg-[#141416] hover:bg-[#ff4d00]/15 border border-white/10 hover:border-[#ff4d00]/50 rounded text-[10px] mono text-gray-300 hover:text-white transition-colors cursor-pointer"
+                  className="px-2 py-1 bg-[#130924]/80 hover:bg-[#a855f7]/20 border border-purple-500/20 hover:border-[#a855f7]/60 rounded-lg text-[10px] mono text-purple-200/80 hover:text-white transition-colors cursor-pointer"
                 >
                   {preset.label}
                 </button>
@@ -528,7 +528,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
           {validationError && (
             <div
               role="alert"
-              className="mb-3 p-2.5 border border-[#ff4d00] bg-[rgba(255,77,0,0.08)] mono text-[0.62rem] text-[#ff4d00]"
+              className="mb-3 p-2.5 border border-[#a855f7] bg-[rgba(168,85,247,0.12)] mono text-[0.62rem] text-[#c084fc] rounded-lg"
             >
               {validationError}
             </div>
@@ -614,7 +614,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 <span className="step-num mono">
                   {String(sIdx + 1).padStart(2, '0')}
                 </span>
-                <p className="step-text group-hover:text-[#ff4d00] transition-colors">
+                <p className="step-text group-hover:text-[#c084fc] transition-colors">
                   {step.instruction}
                 </p>
                 <p
@@ -665,7 +665,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
             onClick={onStartSimulation}
             className="btn-primary display !mt-0 flex-1 transition-all"
             style={{
-              background: isSimulating ? '#dc2626' : '#ff4d00',
+              background: isSimulating ? '#dc2626' : 'linear-gradient(135deg, #a855f7, #7c3aed)',
               color: '#ffffff',
             }}
           >

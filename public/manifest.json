@@ -5,8 +5,8 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#111113",
-  "theme_color": "#111113",
+  "background_color": "#090410",
+  "theme_color": "#090410",
   "categories": ["navigation", "travel", "maps", "utilities"],
   "icons": [
     {

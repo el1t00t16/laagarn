@@ -89,13 +89,13 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
           <button
             type="button"
             onClick={() => setShowReportForm((v) => !v)}
-            className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[#ff4d00] hover:underline cursor-pointer"
+            className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[#c084fc] hover:underline cursor-pointer"
           >
             {showReportForm ? 'Close' : '+ Log Incident'}
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 p-4 bg-[#111113] border border-[rgba(242,242,242,0.1)]">
+        <div className="grid grid-cols-3 gap-3 p-4 bg-[#110820]/80 backdrop-blur-md border border-purple-500/25 rounded-xl">
           <div>
             <div className="route-meta mono">Alerts</div>
             <div className="text-xl display font-extrabold text-[#f2f2f2] mt-1">
@@ -111,7 +111,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
           </div>
           <div>
             <div className="route-meta mono">Delay</div>
-            <div className="text-xl display font-extrabold text-[#ff4d00] mt-1">
+            <div className="text-xl display font-extrabold text-[#c084fc] mt-1">
               +{activeRouteDelayMinutes}m
             </div>
           </div>
@@ -120,7 +120,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
         {showReportForm && (
           <form
             onSubmit={handleCreateReport}
-            className="mt-5 p-4 bg-[#111113] border border-[rgba(242,242,242,0.2)]"
+            className="mt-5 p-4 bg-[#110820]/90 backdrop-blur-md border border-purple-500/25 rounded-xl"
             noValidate
           >
             <div className="input-group">
@@ -208,7 +208,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
             {formError && (
               <div
                 role="alert"
-                className="mb-3 p-2.5 border border-[#ff4d00] mono text-[0.62rem] text-[#ff4d00]"
+                className="mb-3 p-2.5 border border-[#a855f7] bg-purple-500/10 mono text-[0.62rem] text-[#c084fc] rounded-lg"
               >
                 {formError}
               </div>
@@ -230,7 +230,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
               <button
                 type="button"
                 onClick={() => setShowReportForm(true)}
-                className="text-[#ff4d00] underline cursor-pointer"
+                className="text-[#c084fc] underline cursor-pointer"
               >
                 + LOG INCIDENT
               </button>{' '}
@@ -276,14 +276,14 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onFocusCoordinate(inc.lat, inc.lng, 14)}
-                      className="mono text-[0.6rem] uppercase text-[#f2f2f2] hover:text-[#ff4d00] underline cursor-pointer"
+                      className="mono text-[0.6rem] uppercase text-[#f2f2f2] hover:text-[#c084fc] underline cursor-pointer"
                     >
                       Locate on Map
                     </button>
                     <button
                       type="button"
                       onClick={() => onToggleIncidentActive(inc.id)}
-                      className="mono text-[0.6rem] uppercase text-[rgba(242,242,242,0.5)] hover:text-[#ff4d00] cursor-pointer"
+                      className="mono text-[0.6rem] uppercase text-[rgba(242,242,242,0.5)] hover:text-[#c084fc] cursor-pointer"
                     >
                       {inc.active ? 'Mark Cleared' : 'Reactivate'}
                     </button>

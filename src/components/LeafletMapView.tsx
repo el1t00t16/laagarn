@@ -217,12 +217,12 @@ function createTechnicalMarkerIcon(
   const shortName = escapeHtml(name.split('(')[0].trim().toUpperCase());
   const safeCode = escapeHtml(code);
   const fullLabel = `${safeCode}: ${shortName}`;
-  const dotBg = isEndpoint ? '#ff4d00' : '#1c1c1e';
-  const dotBorder = isEndpoint ? '2px solid #f2f2f2' : '2px solid #ff4d00';
+  const dotBg = isEndpoint ? '#a855f7' : '#140a24';
+  const dotBorder = isEndpoint ? '2px solid #ffffff' : '2px solid #c084fc';
   return L.divIcon({
     className: 'v2-technical-pin',
-    html: `<div style="position:relative;width:18px;height:18px;background:${dotBg};border:${dotBorder};box-shadow:0 2px 8px rgba(0,0,0,0.65);border-radius:2px;">
-      <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;background:#1c1c1e;color:#f2f2f2;border:1px solid rgba(242,242,242,0.22);padding:3px 8px;box-shadow:0 4px 12px rgba(0,0,0,0.45);">${fullLabel}</div>
+    html: `<div style="position:relative;width:18px;height:18px;background:${dotBg};border:${dotBorder};box-shadow:0 0 12px rgba(168,85,247,0.5);border-radius:4px;">
+      <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;background:rgba(20,10,36,0.92);backdrop-filter:blur(10px);color:#f8f6fc;border:1px solid rgba(168,85,247,0.35);padding:3px 8px;box-shadow:0 4px 16px rgba(0,0,0,0.55);border-radius:3px;">${fullLabel}</div>
     </div>`,
     iconSize: [18, 18],
     iconAnchor: [9, 9],
@@ -235,23 +235,23 @@ function createGpsVehicleIcon(heading: number | null, label: string): L.DivIcon 
   const hasHeading = heading !== null && Number.isFinite(heading);
 
   if (hasHeading) {
-    // Dynamic Navigational Chevron rotated precisely towards road direction
+    // Dynamic Navigational Chevron rotated precisely towards road direction (Glassy Purple glow)
     return L.divIcon({
       className: 'v2-gps-vehicle-chevron',
-      html: `<div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center;">
-        <div style="position:absolute;inset:2px;border-radius:9999px;background:rgba(255,77,0,0.25);box-shadow:0 0 16px rgba(255,77,0,0.6);"></div>
+      html: `<div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+        <div style="position:absolute;inset:2px;border-radius:9999px;background:rgba(168,85,247,0.25);box-shadow:0 0 20px rgba(168,85,247,0.75);"></div>
         <div style="transform:rotate(${heading}deg);transition:transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);display:flex;align-items:center;justify-content:center;">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L4 21L12 17L20 21L12 2Z" fill="#ff4d00" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L4 21L12 17L20 21L12 2Z" fill="#a855f7" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;background:#ff4d00;color:#ffffff;border:1px solid #111113;padding:2px 6px;box-shadow:0 2px 8px rgba(0,0,0,0.5);pointer-events:none;">
+        <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;background:linear-gradient(135deg, #a855f7, #7c3aed);color:#ffffff;border:1px solid rgba(255,255,255,0.25);padding:2px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.5);border-radius:3px;pointer-events:none;">
           ${safeShort}
         </div>
       </div>`,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19],
-      popupAnchor: [0, -19],
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -20],
     });
   }
 
@@ -259,9 +259,9 @@ function createGpsVehicleIcon(heading: number | null, label: string): L.DivIcon 
   return L.divIcon({
     className: 'v2-gps-beacon',
     html: `<div style="position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
-      <div style="position:absolute;inset:0;border-radius:9999px;background:rgba(255,77,0,0.35);border:1.5px solid #ff4d00;animation:ping 2s cubic-bezier(0,0,0.2,1) infinite;"></div>
-      <div style="width:12px;height:12px;border-radius:9999px;background:#ff4d00;border:2px solid #ffffff;box-shadow:0 0 10px #ff4d00;"></div>
-      <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;background:#ff4d00;color:#ffffff;border:1px solid #111113;padding:2px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.45);pointer-events:none;">
+      <div style="position:absolute;inset:0;border-radius:9999px;background:rgba(168,85,247,0.35);border:1.5px solid #a855f7;animation:ping 2s cubic-bezier(0,0,0.2,1) infinite;"></div>
+      <div style="width:12px;height:12px;border-radius:9999px;background:#a855f7;border:2px solid #ffffff;box-shadow:0 0 12px #c084fc;"></div>
+      <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;background:linear-gradient(135deg, #a855f7, #7c3aed);color:#ffffff;border:1px solid rgba(255,255,255,0.2);padding:2px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.45);border-radius:3px;pointer-events:none;">
         YOU ARE HERE · ${safeShort}
       </div>
     </div>`,
@@ -457,7 +457,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               ? '#dc2626'
               : seg.congestion === 'moderate'
               ? '#f59e0b'
-              : '#ff4d00';
+              : '#a855f7';
           L.polyline(seg.coordinates, {
             color: segColor,
             weight: 5,
@@ -468,7 +468,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         });
       } else {
         L.polyline(activeRoute.coordinates, {
-          color: '#ff4d00',
+          color: '#a855f7',
           weight: 5,
           opacity: 1,
           lineCap: 'round',
@@ -493,7 +493,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             <div style="font-size:14px;font-weight:600;color:#f2f2f2;margin-top:4px;">${escapeHtml(
               stop.name
             )}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#ff4d00;margin-top:6px;">${stop.lat.toFixed(
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c084fc;margin-top:6px;">${stop.lat.toFixed(
               4
             )}° N, ${stop.lng.toFixed(4)}° E</div>
           </div>`
@@ -505,7 +505,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       if (navigationActive && currentStep) {
         const stepRing = L.circleMarker([currentStep.lat, currentStep.lng], {
           radius: 14,
-          color: '#ff4d00',
+          color: '#a855f7',
           weight: 3,
           fillColor: '#ffffff',
           fillOpacity: 0.35,
@@ -551,7 +551,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           const marker = L.marker([inc.lat, inc.lng], { icon: incIcon });
           marker.bindPopup(
             `<div style="min-width:190px;font-family:'Inter',sans-serif;">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;color:#ff4d00;">${escapeHtml(
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;color:#c084fc;">${escapeHtml(
                 inc.corridor
               )}</div>
               <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;margin-top:3px;">${escapeHtml(
@@ -586,9 +586,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               align-items:center;
               gap:5px;
               padding:3px 8px;
-              background:#18181b;
-              color:#f2f2f2;
-              border:1px solid ${hasHazard ? statusDot : 'rgba(242,242,242,0.22)'};
+              background:rgba(20, 10, 36, 0.88);
+              backdrop-filter:blur(10px);
+              color:#f8f6fc;
+              border:1px solid ${hasHazard ? statusDot : 'rgba(168,85,247,0.35)'};
               font-family:'JetBrains Mono',monospace;
               font-size:9.5px;
               font-weight:600;
@@ -598,8 +599,8 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             ">
               <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDot};"></span>
               <span style="color:#ffffff;">${escapeHtml(cleanName)}</span>
-              <span style="color:#ff4d00;font-weight:700;">${pred.tempC}&deg;C</span>
-              <span style="color:rgba(242,242,242,0.5);font-size:8.5px;">${pred.timeLabel}</span>
+              <span style="color:#c084fc;font-weight:700;">${pred.tempC}&deg;C</span>
+              <span style="color:rgba(248,246,252,0.6);font-size:8.5px;">${pred.timeLabel}</span>
             </div>`,
             iconSize: [140, 24],
             iconAnchor: [-10, 18],
@@ -617,7 +618,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             `<div style="min-width:210px;font-family:'Inter',sans-serif;">
               <div style="font-size:13.5px;font-weight:700;color:#f2f2f2;">${escapeHtml(st.name)}</div>
               <div style="font-size:10.5px;color:rgba(242,242,242,0.65);">${escapeHtml(st.region)}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#ff4d00;margin-top:5px;font-weight:600;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c084fc;margin-top:5px;font-weight:600;">
                 ETA: ${escapeHtml(st.etaLabel)} &middot; ${st.distanceAlongKm} KM ALONG ROUTE
               </div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.85);margin-top:3px;">
@@ -639,9 +640,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               display:inline-flex;
               align-items:center;
               padding:3px 8px;
-              background:#1c1c1e;
-              color:#f2f2f2;
-              border:1px solid rgba(242,242,242,0.22);
+              background:rgba(20, 10, 36, 0.88);
+              backdrop-filter:blur(10px);
+              color:#f8f6fc;
+              border:1px solid rgba(168,85,247,0.35);
               font-family:'JetBrains Mono',monospace;
               font-size:9.5px;
               font-weight:600;
@@ -649,8 +651,8 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               letter-spacing:0.1em;
               white-space:nowrap;
               box-shadow:0 4px 12px rgba(0,0,0,0.45);
-              border-radius:2px;
-            "><span style="color:#ff4d00;margin-right:4px;">${snap.tempC}&deg;C</span> ${escapeHtml(
+              border-radius:4px;
+            "><span style="color:#c084fc;margin-right:4px;">${snap.tempC}&deg;C</span> ${escapeHtml(
               snap.condition
             )}</div>`,
             iconSize: [110, 22],
@@ -666,7 +668,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:4px;text-transform:uppercase;">
                 ${snap.tempC}&deg;C (${escapeHtml(snap.condition)}) &middot; WIND ${snap.windKmh} KM/H
               </div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#ff4d00;margin-top:4px;text-transform:uppercase;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c084fc;margin-top:4px;text-transform:uppercase;">
                 PRECIP ${snap.precipProbPct}% &middot; VIS ${snap.visibilityKm} KM
               </div>
             </div>`
@@ -709,10 +711,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       // Accuracy circle
       L.circle([gpsState.lat, gpsState.lng], {
         radius: Math.max(15, Math.min(gpsState.accuracyMeters, 400)),
-        color: '#ff4d00',
+        color: '#a855f7',
         weight: 1.5,
-        fillColor: '#ff4d00',
-        fillOpacity: 0.12,
+        fillColor: '#a855f7',
+        fillOpacity: 0.15,
       }).addTo(group);
 
       // Rotating vehicle chevron marker
@@ -727,7 +729,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
       gpsMarker.bindPopup(
         `<div style="min-width:190px;font-family:'Inter',sans-serif;padding:2px;">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;color:#ff4d00;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;color:#c084fc;">
             ${isSimulating ? 'SIMULATED DRIVE' : 'REALTIME GPS FIX'}
           </div>
           <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;margin-top:4px;">${safeLabel}</div>
@@ -816,8 +818,8 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             type="button"
             onClick={onLocateUserGps}
             disabled={gpsLoading}
-            className={`px-3 py-2 bg-[#1c1c1e]/90 backdrop-blur-md border border-[rgba(242,242,242,0.15)] text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg ${
-              gpsState ? 'text-[#ff4d00] border-[#ff4d00]/50' : 'text-[#f2f2f2]'
+            className={`px-3 py-2 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/25 rounded-xl text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg ${
+              gpsState ? 'text-[#c084fc] border-[#a855f7]/60 bg-[#a855f7]/15' : 'text-[#f8f6fc]'
             }`}
           >
             <Crosshair className={`w-3.5 h-3.5 ${gpsLoading ? 'animate-spin' : ''}`} />
@@ -836,10 +838,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               key={item.id}
               type="button"
               onClick={() => onChangeMapClickAction(item.id)}
-              className={`px-2.5 py-2 bg-[#1c1c1e]/90 backdrop-blur-md border text-xs mono uppercase tracking-wider shrink-0 transition-colors shadow-lg ${
+              className={`px-2.5 py-2 bg-[#0d0717]/85 backdrop-blur-xl border rounded-xl text-xs mono uppercase tracking-wider shrink-0 transition-colors shadow-lg ${
                 mapClickAction === item.id
-                  ? 'bg-[#ff4d00] text-white border-[#ff4d00]'
-                  : 'border-[rgba(242,242,242,0.15)] text-[rgba(242,242,242,0.7)] hover:text-white'
+                  ? 'bg-[#a855f7] text-white border-[#a855f7] shadow-purple-500/20'
+                  : 'border-purple-500/25 text-[#f8f6fc]/70 hover:text-white hover:border-purple-500/50'
               }`}
             >
               {item.label}
@@ -850,7 +852,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             type="button"
             onClick={() => setShowLayersMenu((v) => !v)}
             aria-label="Toggle Cartography Layers"
-            className="p-2 bg-[#1c1c1e]/90 backdrop-blur-md border border-[rgba(242,242,242,0.15)] text-[#f2f2f2] shrink-0 shadow-lg hover:border-[#ff4d00]"
+            className="p-2 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/25 text-[#f8f6fc] shrink-0 shadow-lg hover:border-[#a855f7] rounded-xl"
           >
             <Layers className="w-4 h-4" />
           </button>
@@ -859,9 +861,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
       {/* Layers Flyout Menu */}
       {showLayersMenu && (
-        <div className="absolute top-14 right-3 z-[410] w-56 bg-[#1c1c1e] border border-[rgba(242,242,242,0.2)] p-3 shadow-2xl space-y-3">
+        <div className="absolute top-14 right-3 z-[410] w-56 bg-[#110820]/95 backdrop-blur-2xl border border-purple-500/30 p-3 shadow-2xl rounded-xl space-y-3">
           <div>
-            <span className="mono text-[0.6rem] uppercase tracking-wider text-[#ff4d00] block mb-1.5 font-bold">
+            <span className="mono text-[0.6rem] uppercase tracking-wider text-[#c084fc] block mb-1.5 font-bold">
               Base Map
             </span>
             <div className="grid grid-cols-3 gap-1">
@@ -876,10 +878,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   key={st.id}
                   type="button"
                   onClick={() => onChangeMapStyle(st.id)}
-                  className={`py-1.5 text-center text-xs mono uppercase ${
+                  className={`py-1.5 text-center text-xs mono uppercase rounded-lg ${
                     mapStyle === st.id
-                      ? 'bg-[#ff4d00] text-white font-bold'
-                      : 'bg-[#111113] text-gray-300 border border-white/10'
+                      ? 'bg-[#a855f7] text-white font-bold'
+                      : 'bg-[#160b26] text-purple-200/80 border border-purple-500/20 hover:border-purple-500/40'
                   }`}
                 >
                   {st.label}
@@ -888,15 +890,15 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             </div>
           </div>
 
-          <div className="border-t border-white/10 pt-2 space-y-1.5">
-            <span className="mono text-[0.6rem] uppercase tracking-wider text-[#ff4d00] block mb-1 font-bold">
+          <div className="border-t border-purple-500/20 pt-2 space-y-1.5">
+            <span className="mono text-[0.6rem] uppercase tracking-wider text-[#c084fc] block mb-1 font-bold">
               Overlays
             </span>
             <button
               type="button"
               onClick={onToggleTrafficLayer}
-              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border ${
-                showTrafficLayer ? 'border-[#ff4d00] text-[#ff4d00] bg-[#ff4d00]/10' : 'border-white/10 text-gray-300'
+              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg ${
+                showTrafficLayer ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15' : 'border-purple-500/20 text-purple-200/80'
               }`}
             >
               <span>Traffic Incidents</span>
@@ -905,8 +907,8 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             <button
               type="button"
               onClick={onToggleWeatherLayer}
-              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border ${
-                showWeatherLayer ? 'border-[#ff4d00] text-[#ff4d00] bg-[#ff4d00]/10' : 'border-white/10 text-gray-300'
+              className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg ${
+                showWeatherLayer ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15' : 'border-purple-500/20 text-purple-200/80'
               }`}
             >
               <span>Weather Stations</span>
@@ -915,7 +917,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             <button
               type="button"
               onClick={handleCacheCurrentView}
-              className="w-full py-1.5 px-2 text-left text-xs mono uppercase border border-white/10 text-gray-300 hover:text-white hover:border-[#ff4d00]"
+              className="w-full py-1.5 px-2 text-left text-xs mono uppercase border border-purple-500/20 text-purple-200/80 hover:text-white hover:border-[#a855f7] rounded-lg"
             >
               Archive Viewport Offline
             </button>
@@ -928,13 +930,13 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         <div
           role="region"
           aria-label="Real-time Driving HUD"
-          className="absolute top-16 left-3 right-3 sm:left-6 sm:right-auto sm:max-w-lg z-[420] bg-[#18181b]/95 backdrop-blur-md border border-[rgba(242,242,242,0.2)] border-l-4 border-l-[#ff4d00] p-4 shadow-2xl rounded-sm"
+          className="absolute top-16 left-3 right-3 sm:left-6 sm:right-auto sm:max-w-lg z-[420] bg-[#110820]/90 backdrop-blur-2xl border border-purple-500/25 border-l-4 border-l-[#a855f7] p-4 shadow-2xl rounded-xl"
         >
           {/* Top Simulation Banner if active */}
           {isSimulating && (
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/10 text-xs mono">
-              <span className="text-amber-400 font-bold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-purple-500/20 text-xs mono">
+              <span className="text-[#c084fc] font-bold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#a855f7] animate-ping" />
                 SIMULATED DRIVE ({simSpeedMultiplier}x)
               </span>
 
@@ -943,7 +945,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onChangeSimSpeed(simSpeedMultiplier === 1 ? 2 : simSpeedMultiplier === 2 ? 5 : 1)}
-                    className="px-2 py-0.5 bg-white/10 text-white hover:bg-white/20 text-[10px] font-bold uppercase rounded"
+                    className="px-2 py-0.5 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30 text-[10px] font-bold uppercase rounded"
                   >
                     {simSpeedMultiplier}x Speed
                   </button>
@@ -952,7 +954,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   <button
                     type="button"
                     onClick={onToggleSimulation}
-                    className="p-1 bg-[#ff4d00] text-white hover:bg-[#e04400] rounded"
+                    className="p-1 bg-[#a855f7] text-white hover:bg-[#9333ea] rounded"
                     title={isSimulating ? 'Pause Drive' : 'Play Drive'}
                   >
                     {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -974,11 +976,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded bg-[#ff4d00] text-white flex items-center justify-center shrink-0 shadow-md">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/30">
                 <Navigation2 className="w-6 h-6 transform rotate-45" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 mono text-xs font-bold text-[#ff4d00] uppercase">
+                <div className="flex items-center gap-2 mono text-xs font-bold text-[#c084fc] uppercase">
                   <span>
                     Step {activeStepIndex + 1}/{activeRoute.steps.length}
                   </span>
@@ -991,7 +993,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   {currentStep.instruction}
                 </h3>
                 {currentStep.roadName && (
-                  <p className="mono text-[0.7rem] uppercase tracking-wider text-gray-400 mt-1 truncate">
+                  <p className="mono text-[0.7rem] uppercase tracking-wider text-purple-300/70 mt-1 truncate">
                     {currentStep.roadName}
                   </p>
                 )}
@@ -1004,10 +1006,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   type="button"
                   onClick={onToggleVoiceGuidance}
                   aria-label={voiceGuidance ? 'Mute Voice' : 'Unmute Voice'}
-                  className={`p-2 border transition-colors ${
+                  className={`p-2 border rounded-lg transition-colors ${
                     voiceGuidance
-                      ? 'border-[#ff4d00] text-[#ff4d00] bg-[#ff4d00]/10'
-                      : 'border-white/15 text-gray-400'
+                      ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
+                      : 'border-purple-500/20 text-gray-400'
                   }`}
                 >
                   {voiceGuidance ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -1018,10 +1020,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   type="button"
                   onClick={onToggleFollowGps}
                   title={followGps ? 'Follow Mode On' : 'Follow Mode Off'}
-                  className={`p-2 border transition-colors ${
+                  className={`p-2 border rounded-lg transition-colors ${
                     followGps
-                      ? 'border-[#ff4d00] text-[#ff4d00] bg-[#ff4d00]/10'
-                      : 'border-white/15 text-gray-400'
+                      ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
+                      : 'border-purple-500/20 text-gray-400'
                   }`}
                 >
                   <Compass className={`w-4 h-4 ${followGps ? 'animate-spin' : ''}`} />
@@ -1030,7 +1032,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               <button
                 type="button"
                 onClick={onExitNavigation}
-                className="px-2.5 py-2 bg-red-600/80 hover:bg-red-600 text-white mono text-xs uppercase font-bold"
+                className="px-2.5 py-2 bg-red-600/80 hover:bg-red-600 text-white mono text-xs uppercase font-bold rounded-lg"
               >
                 End
               </button>
@@ -1039,28 +1041,28 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
           {/* Progress bar along the journey */}
           {simulationProgress > 0 && (
-            <div className="w-full bg-white/10 h-1 mt-3 overflow-hidden rounded-full">
+            <div className="w-full bg-purple-950/40 h-1 mt-3 overflow-hidden rounded-full border border-purple-500/20">
               <div
-                className="bg-[#ff4d00] h-full transition-all duration-200"
+                className="bg-gradient-to-r from-[#a855f7] to-[#c084fc] h-full transition-all duration-200"
                 style={{ width: `${simulationProgress}%` }}
               />
             </div>
           )}
 
           {/* Stepper controls */}
-          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/10 text-xs mono">
+          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-purple-500/20 text-xs mono">
             <button
               type="button"
               disabled={activeStepIndex === 0}
               onClick={() => onStepChange(Math.max(0, activeStepIndex - 1))}
-              className="flex items-center gap-1 text-gray-300 disabled:opacity-30 hover:text-white"
+              className="flex items-center gap-1 text-purple-200/80 disabled:opacity-30 hover:text-white"
             >
               <ChevronLeft className="w-4 h-4" /> Prev
             </button>
 
-            <span className="text-gray-400">
+            <span className="text-purple-300/80">
               {gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined ? (
-                <span className="font-bold text-[#ff4d00]">{gpsState.speedKmh} KM/H</span>
+                <span className="font-bold text-[#c084fc]">{gpsState.speedKmh} KM/H</span>
               ) : (
                 'ETA: ' + activeRoute.totalDurationMinutes + 'm'
               )}
@@ -1070,7 +1072,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               type="button"
               disabled={activeStepIndex >= activeRoute.steps.length - 1}
               onClick={() => onStepChange(Math.min(activeRoute.steps.length - 1, activeStepIndex + 1))}
-              className="flex items-center gap-1 text-[#ff4d00] disabled:opacity-30 font-bold"
+              className="flex items-center gap-1 text-[#c084fc] disabled:opacity-30 font-bold"
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>
@@ -1085,17 +1087,17 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         }`}
       >
         {gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined && (
-          <div className="bg-[#111113]/95 backdrop-blur-md border border-[#ff4d00] px-3.5 py-2 text-center pointer-events-auto shadow-2xl rounded-sm">
+          <div className="bg-[#110820]/90 backdrop-blur-2xl border border-purple-500/40 px-3.5 py-2 text-center pointer-events-auto shadow-2xl rounded-xl">
             <div className="text-3xl font-black display text-white leading-none">
               {gpsState.speedKmh}
             </div>
-            <div className="text-[9px] mono uppercase text-[#ff4d00] font-bold mt-1 tracking-wider">
+            <div className="text-[9px] mono uppercase text-[#c084fc] font-bold mt-1 tracking-wider">
               KM/H SPEED
             </div>
           </div>
         )}
 
-        <div className="bg-[#1c1c1e]/95 backdrop-blur-md border border-white/15 px-3 py-1.5 mono text-[11px] text-gray-300 pointer-events-auto shadow-md rounded-sm">
+        <div className="bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/25 px-3 py-1.5 mono text-[11px] text-purple-200/80 pointer-events-auto shadow-xl rounded-xl">
           <div className="font-bold text-white flex items-center gap-1.5">
             <span
               className={`w-2 h-2 rounded-full ${
@@ -1110,7 +1112,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                 : 'Searching Satellites…'}
             </span>
           </div>
-          <div className="text-[9px] text-gray-400 uppercase mt-0.5 truncate max-w-[200px]">
+          <div className="text-[9px] text-purple-300/60 uppercase mt-0.5 truncate max-w-[200px]">
             {isOfflineMode ? 'OFFLINE ARCHIVE' : 'PHILIPPINES'} ·{' '}
             {cursorCoords.lat.toFixed(3)}°, {cursorCoords.lng.toFixed(3)}°
           </div>
@@ -1128,7 +1130,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           onClick={handleFitRouteOrGps}
           aria-label="Center GPS or Route"
           title="Center GPS / Route"
-          className="w-11 h-11 bg-[#1c1c1e]/95 backdrop-blur-md border border-white/20 text-[#ff4d00] flex items-center justify-center text-lg font-bold shadow-xl active:bg-[#ff4d00] active:text-white"
+          className="w-11 h-11 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/30 text-[#c084fc] flex items-center justify-center text-lg font-bold shadow-xl active:bg-[#a855f7] active:text-white rounded-xl hover:border-[#a855f7]"
         >
           <Crosshair className="w-5 h-5" />
         </button>
@@ -1136,7 +1138,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           type="button"
           onClick={handleZoomIn}
           aria-label="Zoom in"
-          className="w-11 h-11 bg-[#1c1c1e]/95 backdrop-blur-md border border-white/20 text-white flex items-center justify-center text-xl font-bold shadow-xl active:bg-[#ff4d00]"
+          className="w-11 h-11 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/30 text-white flex items-center justify-center text-xl font-bold shadow-xl active:bg-[#a855f7] rounded-xl hover:border-[#a855f7]"
         >
           ＋
         </button>
@@ -1144,7 +1146,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           type="button"
           onClick={handleZoomOut}
           aria-label="Zoom out"
-          className="w-11 h-11 bg-[#1c1c1e]/95 backdrop-blur-md border border-white/20 text-white flex items-center justify-center text-xl font-bold shadow-xl active:bg-[#ff4d00]"
+          className="w-11 h-11 bg-[#0d0717]/85 backdrop-blur-xl border border-purple-500/30 text-white flex items-center justify-center text-xl font-bold shadow-xl active:bg-[#a855f7] rounded-xl hover:border-[#a855f7]"
         >
           －
         </button>

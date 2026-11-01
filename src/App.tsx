@@ -505,18 +505,18 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#111113] text-[#f2f2f2] overflow-hidden select-none font-sans">
-      {/* Top Header / App Bar (Padded for mobile notches & safe areas) */}
-      <header className="shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-[rgba(242,242,242,0.1)] bg-[#111113] z-50 pt-[max(env(safe-area-inset-top,0px),0.5rem)] min-h-[calc(3.75rem+env(safe-area-inset-top,0px))] pb-1 sm:pb-0">
+    <div className="h-screen w-screen flex flex-col bg-[#090410] text-[#f8f6fc] overflow-hidden select-none font-sans">
+      {/* Top Header / App Bar (Glassy Purple with mobile notch padding) */}
+      <header className="shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-purple-500/20 bg-[#0d0717]/85 backdrop-blur-xl z-50 pt-[max(env(safe-area-inset-top,0px),0.5rem)] min-h-[calc(3.75rem+env(safe-area-inset-top,0px))] pb-1 sm:pb-0 shadow-lg shadow-black/40">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-[#ff4d00] flex items-center justify-center text-white shadow-md">
+          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35">
             <Compass className="w-5 h-5" />
           </div>
           <div>
             <h1 className="logo display text-base sm:text-lg font-black tracking-tight text-white leading-none">
               LAAGARN
             </h1>
-            <div className="mono text-[9px] uppercase tracking-wider text-gray-400 mt-0.5">
+            <div className="mono text-[9px] uppercase tracking-wider text-purple-300/60 mt-0.5">
               My Way, Your Travel Buddy.
             </div>
           </div>
@@ -541,7 +541,7 @@ export default function App() {
               onClick={() => setActiveTab(item.id)}
               className={`mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                 activeTab === item.id
-                  ? 'text-[#ff4d00] border-b-2 border-[#ff4d00] pb-1'
+                  ? 'text-[#c084fc] border-b-2 border-[#a855f7] pb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -556,7 +556,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleInstallPwa}
-              className="px-2.5 py-1 bg-[#ff4d00] hover:bg-[#e04400] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-md"
+              className="px-2.5 py-1 bg-gradient-to-r from-[#a855f7] to-[#9333ea] hover:from-[#c084fc] hover:to-[#a855f7] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-lg shadow-purple-500/30 rounded"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Install App</span>
@@ -564,13 +564,13 @@ export default function App() {
           )}
 
           {isOfflineMode ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 mono text-[10px] uppercase font-bold">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 mono text-[10px] uppercase font-bold rounded">
               <WifiOff className="w-3 h-3" />
               <span>Offline</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mono text-[10px] uppercase font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-950/40 border border-purple-500/30 text-purple-300 mono text-[10px] uppercase font-bold rounded">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
               <span className="hidden sm:inline">Online</span>
             </div>
           )}
@@ -579,10 +579,10 @@ export default function App() {
 
       {/* Main Container: Split Desktop layout & Mobile Drawer layout */}
       <main className="flex-1 relative w-full h-[calc(100vh-3.5rem)] overflow-hidden flex flex-col lg:flex-row">
-        {/* Desktop Sidebar (Left side, 380px) */}
+        {/* Desktop Sidebar (Left side, Glassy Purple) */}
         <aside
           aria-label="Travel Planning Controls"
-          className="hidden lg:flex flex-col w-[390px] shrink-0 bg-[#1c1c1e] border-r border-[rgba(242,242,242,0.1)] p-6 overflow-y-auto"
+          className="hidden lg:flex flex-col w-[390px] shrink-0 bg-[#0e0719]/80 backdrop-blur-2xl border-r border-purple-500/20 p-6 overflow-y-auto shadow-2xl"
         >
           {activeTab === 'routes' && (
             <RoutePlannerPanel
@@ -703,7 +703,7 @@ export default function App() {
 
         {/* Mobile Interactive Bottom Sheet Drawer (Shown on screens < 1024px) */}
         <div
-          className={`lg:hidden absolute left-0 right-0 bottom-0 z-[500] bg-[#1c1c1e] border-t border-[rgba(242,242,242,0.15)] shadow-2xl transition-all duration-300 flex flex-col ${
+          className={`lg:hidden absolute left-0 right-0 bottom-0 z-[500] bg-[#110820]/90 backdrop-blur-2xl border-t border-purple-500/25 shadow-[0_-12px_36px_rgba(5,2,14,0.85)] transition-all duration-300 flex flex-col ${
             mobileSheetState === 'peek'
               ? 'h-24'
               : mobileSheetState === 'half'
@@ -718,11 +718,11 @@ export default function App() {
                 curr === 'peek' ? 'half' : curr === 'half' ? 'full' : 'peek'
               );
             }}
-            className="w-full pt-2 pb-1.5 px-4 flex items-center justify-between cursor-pointer border-b border-white/5 active:bg-white/5"
+            className="w-full pt-2 pb-1.5 px-4 flex items-center justify-between cursor-pointer border-b border-purple-500/15 active:bg-white/5"
           >
             <div className="flex items-center gap-2">
-              <div className="w-8 h-1 rounded-full bg-gray-500 mx-auto" />
-              <span className="mono text-[10px] uppercase tracking-wider text-gray-400">
+              <div className="w-8 h-1 rounded-full bg-purple-400/40 mx-auto" />
+              <span className="mono text-[10px] uppercase tracking-wider text-purple-200/70">
                 {activeTab === 'routes'
                   ? activeRoute
                     ? `${activeRoute.totalDurationMinutes}m · ${activeRoute.totalDistanceKm} km`
@@ -741,7 +741,7 @@ export default function App() {
               aria-label="Toggle Drawer Height"
             >
               {mobileSheetState === 'peek' ? (
-                <ChevronUp className="w-5 h-5 text-[#ff4d00]" />
+                <ChevronUp className="w-5 h-5 text-[#c084fc]" />
               ) : (
                 <ChevronDown className="w-5 h-5 text-gray-400" />
               )}
@@ -833,7 +833,7 @@ export default function App() {
           </div>
 
           {/* Mobile Bottom Navigation Bar (Thumb Accessible with safe-area padding) */}
-          <div className="min-h-[3.5rem] pb-[max(env(safe-area-inset-bottom,0px),0.25rem)] shrink-0 bg-[#111113] border-t border-[rgba(242,242,242,0.15)] grid grid-cols-4 items-center">
+          <div className="min-h-[3.5rem] pb-[max(env(safe-area-inset-bottom,0px),0.25rem)] shrink-0 bg-[#0a0414]/95 backdrop-blur-2xl border-t border-purple-500/20 grid grid-cols-4 items-center">
             {(
               [
                 { id: 'routes', label: 'Planner', icon: Navigation },
@@ -855,7 +855,7 @@ export default function App() {
                     }
                   }}
                   className={`h-full flex flex-col items-center justify-center gap-1 transition-colors ${
-                    isCurrent ? 'text-[#ff4d00]' : 'text-gray-400 hover:text-white'
+                    isCurrent ? 'text-[#c084fc] drop-shadow-[0_0_8px_rgba(168,85,247,0.6)] font-bold' : 'text-gray-400 hover:text-purple-200'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
