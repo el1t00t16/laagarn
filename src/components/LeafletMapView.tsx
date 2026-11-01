@@ -8,8 +8,11 @@ import {
   Navigation2,
   Crosshair,
   Layers,
-  MapPin,
   Compass,
+  Play,
+  Pause,
+  RotateCcw,
+  FastForward,
 } from 'lucide-react';
 import {
   ComputedRoute,
@@ -68,6 +71,13 @@ interface LeafletMapViewProps {
   onToggleVoiceGuidance?: () => void;
   followGps?: boolean;
   onToggleFollowGps?: () => void;
+  // Simulation Controls
+  isSimulating?: boolean;
+  onToggleSimulation?: () => void;
+  onResetSimulation?: () => void;
+  simulationProgress?: number;
+  simSpeedMultiplier?: number;
+  onChangeSimSpeed?: (speed: number) => void;
 }
 
 function applyTileStyleFilter(
@@ -91,9 +101,6 @@ function applyTileStyleFilter(
 
 /**
  * High-performance offline-aware Leaflet TileLayer.
- * - Reads stored binary tile Blobs from IndexedDB.
- * - Auto-revokes object URLs to protect mobile RAM.
- * - When offline & uncached, displays structured placeholder grid instead of broken tiles.
  */
 function createOfflineAwareTileLayer(
   style: MapStyleMode,
@@ -117,7 +124,6 @@ function createOfflineAwareTileLayer(
         }
       };
 
-      // In offline mode, immediately query IndexedDB
       if (isOffline) {
         getCachedTileObjectUrl(z, x, y).then((url) => {
           if (url) {
@@ -225,23 +231,23 @@ function createGpsVehicleIcon(heading: number | null, label: string): L.DivIcon 
   const hasHeading = heading !== null && Number.isFinite(heading);
 
   if (hasHeading) {
-    // Navigational Arrow/Puck rotated according to vehicle or compass heading
+    // Dynamic Navigational Chevron rotated precisely towards road direction
     return L.divIcon({
       className: 'v2-gps-vehicle-chevron',
-      html: `<div style="position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
-        <div style="position:absolute;inset:2px;border-radius:9999px;background:rgba(255,77,0,0.2);box-shadow:0 0 16px rgba(255,77,0,0.5);"></div>
-        <div style="transform:rotate(${heading}deg);transition:transform 0.25s ease-out;display:flex;align-items:center;justify-content:center;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L4 21L12 17L20 21L12 2Z" fill="#ff4d00" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+      html: `<div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center;">
+        <div style="position:absolute;inset:2px;border-radius:9999px;background:rgba(255,77,0,0.25);box-shadow:0 0 16px rgba(255,77,0,0.6);"></div>
+        <div style="transform:rotate(${heading}deg);transition:transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);display:flex;align-items:center;justify-content:center;">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L4 21L12 17L20 21L12 2Z" fill="#ff4d00" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;background:#ff4d00;color:#ffffff;border:1px solid #111113;padding:2px 6px;box-shadow:0 2px 8px rgba(0,0,0,0.45);pointer-events:none;">
+        <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;background:#ff4d00;color:#ffffff;border:1px solid #111113;padding:2px 6px;box-shadow:0 2px 8px rgba(0,0,0,0.5);pointer-events:none;">
           ${safeShort}
         </div>
       </div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
-      popupAnchor: [0, -18],
+      iconSize: [38, 38],
+      iconAnchor: [19, 19],
+      popupAnchor: [0, -19],
     });
   }
 
@@ -292,11 +298,21 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   onToggleVoiceGuidance,
   followGps = false,
   onToggleFollowGps,
+  isSimulating = false,
+  onToggleSimulation,
+  onResetSimulation,
+  simulationProgress = 0,
+  simSpeedMultiplier = 2,
+  onChangeSimSpeed,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const overlayGroupRef = useRef<L.LayerGroup | null>(null);
+  
+  // Decoupled layer groups for 60fps performance
+  const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const gpsLayerGroupRef = useRef<L.LayerGroup | null>(null);
+
   const [showLayersMenu, setShowLayersMenu] = useState(false);
 
   const [cursorCoords, setCursorCoords] = useState<{ lat: number; lng: number }>({
@@ -336,8 +352,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       fadeAnimation: false,
     });
 
-    const overlayGroup = L.layerGroup().addTo(map);
-    overlayGroupRef.current = overlayGroup;
+    const routeGroup = L.layerGroup().addTo(map);
+    const gpsGroup = L.layerGroup().addTo(map);
+    routeLayerGroupRef.current = routeGroup;
+    gpsLayerGroupRef.current = gpsGroup;
     mapInstanceRef.current = map;
 
     const timer = setTimeout(() => {
@@ -382,57 +400,13 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     tileLayerRef.current = nextTileLayer;
   }, [mapStyle, isOfflineMode]);
 
-  // 3. Render Layers & GPS markers
+  // 3. Render Route Polylines, Stops, Traffic & Weather (Static Group - only redrawn when routes/stops change)
   useEffect(() => {
     const map = mapInstanceRef.current;
-    const group = overlayGroupRef.current;
+    const group = routeLayerGroupRef.current;
     if (!map || !group) return;
 
     group.clearLayers();
-
-    // Live GPS Beacon / Arrow
-    if (gpsState) {
-      const effectiveHeading =
-        gpsCompassHeading !== undefined && gpsCompassHeading !== null
-          ? gpsCompassHeading
-          : gpsState.heading;
-
-      L.circle([gpsState.lat, gpsState.lng], {
-        radius: Math.max(20, Math.min(gpsState.accuracyMeters, 500)),
-        color: '#ff4d00',
-        weight: 1.5,
-        fillColor: '#ff4d00',
-        fillOpacity: 0.12,
-      }).addTo(group);
-
-      const gpsMarker = L.marker([gpsState.lat, gpsState.lng], {
-        icon: createGpsVehicleIcon(effectiveHeading, gpsState.addressLabel),
-        zIndexOffset: 1000,
-      });
-
-      const safeLabel = escapeHtml(gpsState.addressLabel);
-      const safeSpeed = gpsState.speedKmh !== null ? `${gpsState.speedKmh} km/h` : 'Stationary';
-      const safeHeading = effectiveHeading !== null ? `${Math.round(effectiveHeading)}°` : 'N/A';
-
-      gpsMarker.bindPopup(
-        `<div style="min-width:190px;font-family:'Inter',sans-serif;padding:2px;">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;color:#ff4d00;">REALTIME GPS FIX</div>
-          <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;margin-top:4px;">${safeLabel}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-            <span>ACC: ±${gpsState.accuracyMeters}m</span>
-            <span>SPEED: ${safeSpeed}</span>
-            <span>HDG: ${safeHeading}</span>
-            <span>LAT: ${gpsState.lat.toFixed(4)}°</span>
-          </div>
-        </div>`
-      );
-      gpsMarker.addTo(group);
-
-      // Follow GPS automatically during active navigation if followGps enabled
-      if (followGps && navigationActive) {
-        map.panTo([gpsState.lat, gpsState.lng], { animate: true, duration: 0.8 });
-      }
-    }
 
     if (stops.length === 1 && !activeRoute) {
       const single = stops[0];
@@ -637,8 +611,6 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     routes,
     activeRouteIndex,
     activeRoute,
-    gpsState,
-    gpsCompassHeading,
     incidents,
     showTrafficLayer,
     weatherSnapshots,
@@ -646,11 +618,66 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     navigationActive,
     currentStep,
     mapStyle,
-    followGps,
     onSelectRouteIndex,
   ]);
 
-  // 4. Viewport movement handlers
+  // 4. Dedicated 60fps GPS Vehicle Layer (Smooth Glide & Rotation)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const group = gpsLayerGroupRef.current;
+    if (!map || !group) return;
+
+    group.clearLayers();
+
+    if (gpsState) {
+      const effectiveHeading =
+        gpsCompassHeading !== undefined && gpsCompassHeading !== null
+          ? gpsCompassHeading
+          : gpsState.heading;
+
+      // Accuracy circle
+      L.circle([gpsState.lat, gpsState.lng], {
+        radius: Math.max(15, Math.min(gpsState.accuracyMeters, 400)),
+        color: '#ff4d00',
+        weight: 1.5,
+        fillColor: '#ff4d00',
+        fillOpacity: 0.12,
+      }).addTo(group);
+
+      // Rotating vehicle chevron marker
+      const gpsMarker = L.marker([gpsState.lat, gpsState.lng], {
+        icon: createGpsVehicleIcon(effectiveHeading, gpsState.addressLabel),
+        zIndexOffset: 1000,
+      });
+
+      const safeLabel = escapeHtml(gpsState.addressLabel);
+      const safeSpeed = gpsState.speedKmh !== null ? `${gpsState.speedKmh} km/h` : 'Stationary';
+      const safeHeading = effectiveHeading !== null ? `${Math.round(effectiveHeading)}°` : 'N/A';
+
+      gpsMarker.bindPopup(
+        `<div style="min-width:190px;font-family:'Inter',sans-serif;padding:2px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;color:#ff4d00;">
+            ${isSimulating ? 'SIMULATED DRIVE' : 'REALTIME GPS FIX'}
+          </div>
+          <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;margin-top:4px;">${safeLabel}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            <span>ACC: ±${gpsState.accuracyMeters}m</span>
+            <span>SPEED: ${safeSpeed}</span>
+            <span>HDG: ${safeHeading}</span>
+            <span>LAT: ${gpsState.lat.toFixed(4)}°</span>
+          </div>
+        </div>`
+      );
+      gpsMarker.addTo(group);
+
+      // Auto-follow vehicle during navigation
+      if (followGps && (navigationActive || isSimulating)) {
+        map.panTo([gpsState.lat, gpsState.lng], { animate: true, duration: 0.25 });
+      }
+    }
+  }, [gpsState, gpsCompassHeading, followGps, navigationActive, isSimulating]);
+
+  // 5. Viewport movement handlers
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !focusedCoord) return;
@@ -711,7 +738,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         className="w-full h-full z-0"
       />
 
-      {/* Top Floating Quick-Action Bar (responsive for mobile) */}
+      {/* Top Floating Quick-Action Bar */}
       <div className="absolute top-3 left-3 right-3 sm:right-auto sm:max-w-xl z-[400] flex items-center gap-1.5 overflow-x-auto no-scrollbar pointer-events-auto">
         <button
           type="button"
@@ -826,13 +853,55 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         </div>
       )}
 
-      {/* Real-time Turn-by-Turn Mobile Driving HUD */}
-      {navigationActive && activeRoute && currentStep && (
+      {/* Real-time Turn-by-Turn Mobile Driving HUD (supports live GPS & Drive Simulation) */}
+      {(navigationActive || isSimulating) && activeRoute && currentStep && (
         <div
           role="region"
           aria-label="Real-time Driving HUD"
           className="absolute top-16 left-3 right-3 sm:left-6 sm:right-auto sm:max-w-lg z-[420] bg-[#18181b]/95 backdrop-blur-md border border-[rgba(242,242,242,0.2)] border-l-4 border-l-[#ff4d00] p-4 shadow-2xl rounded-sm"
         >
+          {/* Top Simulation Banner if active */}
+          {isSimulating && (
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/10 text-xs mono">
+              <span className="text-amber-400 font-bold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                SIMULATED DRIVE ({simSpeedMultiplier}x)
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                {onChangeSimSpeed && (
+                  <button
+                    type="button"
+                    onClick={() => onChangeSimSpeed(simSpeedMultiplier === 1 ? 2 : simSpeedMultiplier === 2 ? 5 : 1)}
+                    className="px-2 py-0.5 bg-white/10 text-white hover:bg-white/20 text-[10px] font-bold uppercase rounded"
+                  >
+                    {simSpeedMultiplier}x Speed
+                  </button>
+                )}
+                {onToggleSimulation && (
+                  <button
+                    type="button"
+                    onClick={onToggleSimulation}
+                    className="p-1 bg-[#ff4d00] text-white hover:bg-[#e04400] rounded"
+                    title={isSimulating ? 'Pause Drive' : 'Play Drive'}
+                  >
+                    {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                  </button>
+                )}
+                {onResetSimulation && (
+                  <button
+                    type="button"
+                    onClick={onResetSimulation}
+                    className="p-1 bg-white/10 text-gray-300 hover:text-white rounded"
+                    title="Rewind to Start"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded bg-[#ff4d00] text-white flex items-center justify-center shrink-0 shadow-md">
@@ -898,6 +967,16 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             </div>
           </div>
 
+          {/* Progress bar along the journey */}
+          {simulationProgress > 0 && (
+            <div className="w-full bg-white/10 h-1 mt-3 overflow-hidden rounded-full">
+              <div
+                className="bg-[#ff4d00] h-full transition-all duration-200"
+                style={{ width: `${simulationProgress}%` }}
+              />
+            </div>
+          )}
+
           {/* Stepper controls */}
           <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/10 text-xs mono">
             <button
@@ -929,7 +1008,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         </div>
       )}
 
-      {/* Floating Speedometer & Offline Status Badge (Bottom-Left) */}
+      {/* Floating Speedometer & Status Badge (Bottom-Left) */}
       <div className="absolute bottom-4 left-3 z-[400] flex flex-col gap-1.5 pointer-events-none">
         {gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined && gpsState.speedKmh > 0 && (
           <div className="bg-[#111113]/90 backdrop-blur-md border border-[#ff4d00] px-3 py-1.5 text-center pointer-events-auto shadow-xl">
@@ -947,7 +1026,13 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                 gpsState ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
               }`}
             />
-            <span>{gpsState ? `GPS: ±${gpsState.accuracyMeters}m` : 'GPS Searching…'}</span>
+            <span>
+              {isSimulating
+                ? 'Simulated Movement (Moving A → B)'
+                : gpsState
+                ? `GPS Active: ±${gpsState.accuracyMeters}m`
+                : 'Searching Satellites…'}
+            </span>
           </div>
           <div className="text-[9px] text-gray-400 uppercase mt-0.5 truncate max-w-[200px]">
             {isOfflineMode ? 'OFFLINE ARCHIVE' : 'PHILIPPINES'} ·{' '}

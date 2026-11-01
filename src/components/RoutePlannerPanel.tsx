@@ -33,6 +33,8 @@ interface RoutePlannerPanelProps {
   onClearRoute: () => void;
   onFocusCoordinate: (lat: number, lng: number, zoom?: number) => void;
   onStartNavigation: () => void;
+  onStartSimulation?: () => void;
+  isSimulating?: boolean;
 }
 
 export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
@@ -55,6 +57,8 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
   onClearRoute,
   onFocusCoordinate,
   onStartNavigation,
+  onStartSimulation,
+  isSimulating = false,
 }) => {
   const [originInput, setOriginInput] = useState<string>(stops[0]?.name || '');
   const [destInput, setDestInput] = useState<string>(
@@ -600,16 +604,32 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
         )}
       </div>
 
-      {/* Bottom Launch Navigation HUD Action */}
-      <button
-        type="button"
-        disabled={!activeRoute}
-        onClick={onStartNavigation}
-        className="btn-primary display"
-        style={{ background: 'var(--ink)', color: 'var(--bg)' }}
-      >
-        Launch Navigation HUD
-      </button>
+      {/* Bottom Launch Navigation HUD & Drive Simulator Actions */}
+      <div className="flex flex-col sm:flex-row gap-2 mt-2">
+        <button
+          type="button"
+          disabled={!activeRoute}
+          onClick={onStartNavigation}
+          className="btn-primary display !mt-0 flex-1"
+          style={{ background: 'var(--ink)', color: 'var(--bg)' }}
+        >
+          Launch Nav HUD
+        </button>
+        {onStartSimulation && (
+          <button
+            type="button"
+            disabled={!activeRoute}
+            onClick={onStartSimulation}
+            className="btn-primary display !mt-0 flex-1 transition-all"
+            style={{
+              background: isSimulating ? '#dc2626' : '#ff4d00',
+              color: '#ffffff',
+            }}
+          >
+            {isSimulating ? '⏸ Pause Sim' : '▶ Simulate Drive'}
+          </button>
+        )}
+      </div>
     </div>
   );
 };

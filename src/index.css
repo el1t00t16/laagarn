@@ -417,3 +417,22 @@
 .leaflet-control-attribution a {
   color: #ff4d00 !important;
 }
+
+/* Smooth 60fps marker gliding & rotation transitions */
+.leaflet-marker-icon.v2-gps-vehicle-chevron {
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+.leaflet-marker-icon.v2-gps-beacon {
+  transition: transform 0.3s ease-out;
+  will-change: transform;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

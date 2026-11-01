@@ -41,6 +41,7 @@ import { useLiveGps } from './hooks/useLiveGps';
 import { useDeviceCompass } from './hooks/useOrientation';
 import { useWakeLock } from './hooks/useWakeLock';
 import { useSpeechGuidance } from './hooks/useSpeechGuidance';
+import { useRouteSimulation } from './hooks/useRouteSimulation';
 import {
   Compass,
   Navigation,
@@ -122,6 +123,21 @@ export default function App() {
   const { speak: speakGuidance } = useSpeechGuidance(voiceGuidance && navigationActive);
 
   const activeRoute = computedRoutes[activeRouteIndex] || computedRoutes[0];
+
+  // Route Simulation Hook (allows previewing animated drive from A to B)
+  const {
+    isSimulating,
+    simulatedGps,
+    speedMultiplier: simSpeedMultiplier,
+    progressPercent: simProgressPercent,
+    startSimulation,
+    pauseSimulation,
+    resetSimulation,
+    setSpeedMultiplier: setSimSpeedMultiplier,
+  } = useRouteSimulation(activeRoute);
+
+  // During simulation, the active displayed GPS is the simulated position; otherwise real satellite GPS
+  const effectiveGps = isSimulating && simulatedGps ? simulatedGps : gpsState;
 
   // Route Index for fast on-device geometry calculations
   const routeIndex = useMemo(() => {
@@ -227,12 +243,12 @@ export default function App() {
   // Real-time GPS Progress Tracking along route during Navigation
   const prevAlongKmRef = useRef<number>(0);
   useEffect(() => {
-    if (!navigationActive || !activeRoute || !routeIndex || !gpsState) return;
+    if ((!navigationActive && !isSimulating) || !activeRoute || !routeIndex || !effectiveGps) return;
 
     const progress = computeRouteProgress(
       activeRoute,
       routeIndex,
-      gpsState,
+      effectiveGps,
       prevAlongKmRef.current
     );
     prevAlongKmRef.current = progress.alongKm;
@@ -250,7 +266,7 @@ export default function App() {
     if (progress.arrived) {
       speakGuidance('You have arrived at your destination.');
     }
-  }, [gpsState, navigationActive, activeRoute, routeIndex, activeStepIndex, speakGuidance]);
+  }, [effectiveGps, navigationActive, isSimulating, activeRoute, routeIndex, activeStepIndex, speakGuidance]);
 
   // Handle GPS Locate button
   const handleLocateUserGps = useCallback(
@@ -299,10 +315,23 @@ export default function App() {
   };
 
   const handleClearRoute = () => {
+    resetSimulation();
     setStops([]);
     setComputedRoutes([]);
     setNavigationActive(false);
     setActiveStepIndex(0);
+  };
+
+  const handleToggleSimulation = () => {
+    if (isSimulating) {
+      pauseSimulation();
+    } else {
+      startSimulation();
+      setFollowGps(true);
+      if (window.innerWidth < 1024) {
+        setMobileSheetState('peek');
+      }
+    }
   };
 
   const handleMapPickLocation = async (
@@ -550,6 +579,8 @@ export default function App() {
               onClearRoute={handleClearRoute}
               onFocusCoordinate={handleFocusCoordinate}
               onStartNavigation={handleStartNavigation}
+              onStartSimulation={handleToggleSimulation}
+              isSimulating={isSimulating}
             />
           )}
 
@@ -560,7 +591,7 @@ export default function App() {
               onAddIncident={handleAddIncident}
               onFocusCoordinate={handleFocusCoordinate}
               activeRouteDelayMinutes={activeRoute?.trafficDelayMinutes || 0}
-              gpsState={gpsState}
+              gpsState={effectiveGps}
             />
           )}
 
@@ -595,7 +626,7 @@ export default function App() {
             routes={computedRoutes}
             activeRouteIndex={activeRouteIndex}
             onSelectRouteIndex={setActiveRouteIndex}
-            gpsState={gpsState}
+            gpsState={effectiveGps}
             gpsLoading={gpsStatus === 'locating'}
             gpsCompassHeading={compassHeading}
             onLocateUserGps={() => handleLocateUserGps(true)}
@@ -621,11 +652,20 @@ export default function App() {
             navigationActive={navigationActive}
             activeStepIndex={activeStepIndex}
             onStepChange={handleStepChange}
-            onExitNavigation={() => setNavigationActive(false)}
+            onExitNavigation={() => {
+              setNavigationActive(false);
+              pauseSimulation();
+            }}
             voiceGuidance={voiceGuidance}
             onToggleVoiceGuidance={() => setVoiceGuidance((v) => !v)}
             followGps={followGps}
             onToggleFollowGps={() => setFollowGps((v) => !v)}
+            isSimulating={isSimulating}
+            onToggleSimulation={handleToggleSimulation}
+            onResetSimulation={resetSimulation}
+            simulationProgress={simProgressPercent}
+            simSpeedMultiplier={simSpeedMultiplier}
+            onChangeSimSpeed={setSimSpeedMultiplier}
           />
         </div>
 
@@ -705,6 +745,8 @@ export default function App() {
                   setMobileSheetState('peek');
                 }}
                 onStartNavigation={handleStartNavigation}
+                onStartSimulation={handleToggleSimulation}
+                isSimulating={isSimulating}
               />
             )}
 
@@ -718,7 +760,7 @@ export default function App() {
                   setMobileSheetState('peek');
                 }}
                 activeRouteDelayMinutes={activeRoute?.trafficDelayMinutes || 0}
-                gpsState={gpsState}
+                gpsState={effectiveGps}
               />
             )}
 
