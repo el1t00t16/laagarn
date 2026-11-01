@@ -84,19 +84,19 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 p-4 bg-[#110820]/80 backdrop-blur-md border border-purple-500/25 rounded-xl">
+        <div className="grid grid-cols-2 gap-3 p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm">
           <div>
             <div className="route-meta mono">Archived Tiles</div>
             <div
               data-testid="cached-tile-count"
-              className="text-2xl display font-extrabold text-[#f2f2f2] mt-1"
+              className="text-2xl display font-extrabold text-[var(--ink)] mt-1"
             >
               {stats.tileCount}
             </div>
           </div>
           <div>
             <div className="route-meta mono">IndexedDB Volume</div>
-            <div className="text-2xl display font-extrabold text-[#c084fc] mt-1">
+            <div className="text-2xl display font-extrabold text-[var(--accent)] mt-1">
               {formattedMb} MB
             </div>
           </div>
@@ -181,13 +181,13 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
                 </div>
                 <div className="route-meta mono">{pack.subtitle}</div>
 
-                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[rgba(242,242,242,0.08)]">
+                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--border-subtle)]">
                   <button
                     type="button"
                     onClick={() =>
                       onFocusCoordinate(pack.center.lat, pack.center.lng, 11)
                     }
-                    className="mono text-[0.6rem] uppercase text-[rgba(242,242,242,0.5)] hover:text-[#f2f2f2] underline cursor-pointer"
+                    className="mono text-[0.62rem] uppercase text-[var(--ink-dim)] hover:text-[var(--accent)] underline cursor-pointer font-bold"
                   >
                     Preview Region
                   </button>

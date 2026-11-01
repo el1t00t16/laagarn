@@ -95,23 +95,23 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 p-4 bg-[#110820]/80 backdrop-blur-md border border-purple-500/25 rounded-xl">
+        <div className="grid grid-cols-3 gap-3 p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm">
           <div>
             <div className="route-meta mono">Alerts</div>
-            <div className="text-xl display font-extrabold text-[#f2f2f2] mt-1">
+            <div className="text-xl display font-extrabold text-[var(--ink)] mt-1">
               {activeCount}
             </div>
           </div>
           <div>
             <div className="route-meta mono">Velocity</div>
-            <div className="text-xl display font-extrabold text-[#f2f2f2] mt-1">
+            <div className="text-xl display font-extrabold text-[var(--ink)] mt-1">
               {averageCorridorSpeed}
               <span className="text-[0.6rem] ml-1 mono">KM/H</span>
             </div>
           </div>
           <div>
             <div className="route-meta mono">Delay</div>
-            <div className="text-xl display font-extrabold text-[#c084fc] mt-1">
+            <div className="text-xl display font-extrabold text-[var(--accent)] mt-1">
               +{activeRouteDelayMinutes}m
             </div>
           </div>
@@ -120,7 +120,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
         {showReportForm && (
           <form
             onSubmit={handleCreateReport}
-            className="mt-5 p-4 bg-[#110820]/90 backdrop-blur-md border border-purple-500/25 rounded-xl"
+            className="mt-5 p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm"
             noValidate
           >
             <div className="input-group">
@@ -178,7 +178,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                   onChange={(e) =>
                     setNewType(e.target.value as TrafficIncident['type'])
                   }
-                  className="editorial-input bg-[#111113]"
+                  className="editorial-input bg-[var(--surface)] text-[var(--ink)]"
                 >
                   <option value="congestion">Congestion</option>
                   <option value="roadwork">Roadwork</option>
@@ -196,7 +196,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                   onChange={(e) =>
                     setNewSeverity(e.target.value as TrafficSeverity)
                   }
-                  className="editorial-input bg-[#111113]"
+                  className="editorial-input bg-[var(--surface)] text-[var(--ink)]"
                 >
                   <option value="moderate">Moderate Slowing</option>
                   <option value="heavy">Heavy Delay</option>
@@ -272,18 +272,18 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                   <div className="route-meta mono">
                     {inc.corridor} · {inc.speedKmh} KM/H
                   </div>
-                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[rgba(242,242,242,0.08)]">
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--border-subtle)]">
                     <button
                       type="button"
                       onClick={() => onFocusCoordinate(inc.lat, inc.lng, 14)}
-                      className="mono text-[0.6rem] uppercase text-[#f2f2f2] hover:text-[#c084fc] underline cursor-pointer"
+                      className="mono text-[0.62rem] uppercase text-[var(--ink)] hover:text-[var(--accent)] underline cursor-pointer font-bold"
                     >
                       Locate on Map
                     </button>
                     <button
                       type="button"
                       onClick={() => onToggleIncidentActive(inc.id)}
-                      className="mono text-[0.6rem] uppercase text-[rgba(242,242,242,0.5)] hover:text-[#c084fc] cursor-pointer"
+                      className="mono text-[0.62rem] uppercase text-[var(--ink-dim)] hover:text-[var(--accent)] cursor-pointer font-bold"
                     >
                       {inc.active ? 'Mark Cleared' : 'Reactivate'}
                     </button>

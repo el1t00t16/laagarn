@@ -556,114 +556,116 @@ export default function App() {
       theme === 'dark' ? 'bg-[#090410] text-[#f8f6fc]' : 'bg-[#f8f6fc] text-[#160a2c]'
     }`}>
       {/* Top Header / App Bar (Glassy Purple with mobile notch safe-area padding) */}
-      <header className={`shrink-0 flex items-center justify-between px-4 sm:px-6 border-b transition-colors z-50 pt-[max(env(safe-area-inset-top,0px),0.75rem)] min-h-[calc(4rem+env(safe-area-inset-top,0px))] pb-2 shadow-lg backdrop-blur-xl ${
+      <header className={`app-header shrink-0 flex items-center px-4 sm:px-6 border-b transition-colors z-50 shadow-lg backdrop-blur-xl ${
         theme === 'dark'
           ? 'bg-[#0d0717]/85 border-purple-500/20 text-[#f8f6fc] shadow-black/40'
           : 'bg-white/85 border-purple-300/40 text-[#160a2c] shadow-purple-900/5'
       }`}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35">
-            <Compass className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className={`logo display text-base sm:text-lg font-black tracking-tight leading-none ${
-              theme === 'dark' ? 'text-white' : 'text-[#160a2c]'
-            }`}>
-              LAAGARN
-            </h1>
-            <div className={`mono text-[9px] uppercase tracking-wider mt-0.5 ${
-              theme === 'dark' ? 'text-purple-300/60' : 'text-purple-700/70'
-            }`}>
-              My Way, Your Travel Buddy.
+        <div className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35">
+              <Compass className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className={`logo display text-base sm:text-lg font-black tracking-tight leading-none ${
+                theme === 'dark' ? 'text-white' : 'text-[#160a2c]'
+              }`}>
+                LAAGARN
+              </h1>
+              <div className={`mono text-[9px] uppercase tracking-wider mt-0.5 ${
+                theme === 'dark' ? 'text-purple-300/60' : 'text-purple-700/70'
+              }`}>
+                My Way, Your Travel Buddy.
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Desktop View Navigation */}
-        <nav
-          aria-label="Workspace Tabs"
-          className="hidden lg:flex items-center gap-6"
-        >
-          {(
-            [
-              { id: 'routes', label: 'Planner' },
-              { id: 'traffic', label: 'Traffic' },
-              { id: 'weather', label: 'Weather' },
-              { id: 'offline', label: 'Offline Cartography' },
-            ] as { id: ActiveTab; label: string }[]
-          ).map((item) => (
+          {/* Desktop View Navigation */}
+          <nav
+            aria-label="Workspace Tabs"
+            className="hidden lg:flex items-center gap-6"
+          >
+            {(
+              [
+                { id: 'routes', label: 'Planner' },
+                { id: 'traffic', label: 'Traffic' },
+                { id: 'weather', label: 'Weather' },
+                { id: 'offline', label: 'Offline Cartography' },
+              ] as { id: ActiveTab; label: string }[]
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={`mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  activeTab === item.id
+                    ? theme === 'dark'
+                      ? 'text-[#c084fc] border-b-2 border-[#a855f7] pb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
+                      : 'text-[#7c3aed] border-b-2 border-[#9333ea] pb-1 drop-shadow-[0_0_8px_rgba(147,51,234,0.3)]'
+                    : theme === 'dark'
+                    ? 'text-gray-400 hover:text-white'
+                    : 'text-purple-900/60 hover:text-purple-950'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Right Header: Theme Toggle, Install PWA & Status Badges */}
+          <div className="flex items-center gap-2">
+            {/* Dark / Light Mode Toggle Button */}
             <button
-              key={item.id}
               type="button"
-              onClick={() => setActiveTab(item.id)}
-              className={`mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                activeTab === item.id
-                  ? theme === 'dark'
-                    ? 'text-[#c084fc] border-b-2 border-[#a855f7] pb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
-                    : 'text-[#7c3aed] border-b-2 border-[#9333ea] pb-1 drop-shadow-[0_0_8px_rgba(147,51,234,0.3)]'
-                  : theme === 'dark'
-                  ? 'text-gray-400 hover:text-white'
-                  : 'text-purple-900/60 hover:text-purple-950'
+              onClick={handleToggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg border transition-all flex items-center gap-1.5 mono text-[10px] font-bold uppercase cursor-pointer ${
+                theme === 'dark'
+                  ? 'bg-purple-950/40 border-purple-500/30 text-purple-200 hover:text-white hover:border-[#a855f7]'
+                  : 'bg-purple-100/80 border-purple-300/60 text-purple-900 hover:border-purple-500 shadow-sm'
               }`}
             >
-              {item.label}
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-300" />
+                  <span className="hidden sm:inline">Light</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-purple-700" />
+                  <span className="hidden sm:inline">Dark</span>
+                </>
+              )}
             </button>
-          ))}
-        </nav>
 
-        {/* Right Header: Theme Toggle, Install PWA & Status Badges */}
-        <div className="flex items-center gap-2">
-          {/* Dark / Light Mode Toggle Button */}
-          <button
-            type="button"
-            onClick={handleToggleTheme}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg border transition-all flex items-center gap-1.5 mono text-[10px] font-bold uppercase cursor-pointer ${
-              theme === 'dark'
-                ? 'bg-purple-950/40 border-purple-500/30 text-purple-200 hover:text-white hover:border-[#a855f7]'
-                : 'bg-purple-100/80 border-purple-300/60 text-purple-900 hover:border-purple-500 shadow-sm'
-            }`}
-          >
-            {theme === 'dark' ? (
-              <>
-                <Sun className="w-3.5 h-3.5 text-amber-300" />
-                <span className="hidden sm:inline">Light</span>
-              </>
-            ) : (
-              <>
-                <Moon className="w-3.5 h-3.5 text-purple-700" />
-                <span className="hidden sm:inline">Dark</span>
-              </>
+            {deferredPrompt && (
+              <button
+                type="button"
+                onClick={handleInstallPwa}
+                className="px-2.5 py-1 bg-gradient-to-r from-[#a855f7] to-[#9333ea] hover:from-[#c084fc] hover:to-[#a855f7] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-lg shadow-purple-500/30 rounded cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Install App</span>
+              </button>
             )}
-          </button>
 
-          {deferredPrompt && (
-            <button
-              type="button"
-              onClick={handleInstallPwa}
-              className="px-2.5 py-1 bg-gradient-to-r from-[#a855f7] to-[#9333ea] hover:from-[#c084fc] hover:to-[#a855f7] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-lg shadow-purple-500/30 rounded cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Install App</span>
-            </button>
-          )}
-
-          {isOfflineMode ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 mono text-[10px] uppercase font-bold rounded">
-              <WifiOff className="w-3 h-3" />
-              <span>Offline</span>
-            </div>
-          ) : (
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 border mono text-[10px] uppercase font-bold rounded ${
-              theme === 'dark'
-                ? 'bg-purple-950/40 border-purple-500/30 text-purple-300'
-                : 'bg-purple-100/80 border-purple-300/60 text-purple-800'
-            }`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-              <span className="hidden sm:inline">Online</span>
-            </div>
-          )}
+            {isOfflineMode ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 mono text-[10px] uppercase font-bold rounded">
+                <WifiOff className="w-3 h-3" />
+                <span>Offline</span>
+              </div>
+            ) : (
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 border mono text-[10px] uppercase font-bold rounded ${
+                theme === 'dark'
+                  ? 'bg-purple-950/40 border-purple-500/30 text-purple-300'
+                  : 'bg-purple-100/80 border-purple-300/60 text-purple-800'
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                <span className="hidden sm:inline">Online</span>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -804,7 +806,7 @@ export default function App() {
               : 'bg-white/95 border-purple-200/80 shadow-[0_-12px_36px_rgba(100,50,150,0.12)]'
           } ${
             mobileSheetState === 'peek'
-              ? 'h-24'
+              ? 'h-auto'
               : mobileSheetState === 'half'
               ? 'h-[50vh]'
               : 'h-[86vh]'
@@ -853,8 +855,8 @@ export default function App() {
             </button>
           </div>
 
-          {/* Drawer Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-4 overscroll-contain">
+          {/* Drawer Scrollable Content (Hidden when drawer is in peek mode to prevent squashed content) */}
+          <div className={`${mobileSheetState === 'peek' ? 'hidden' : 'flex-1 overflow-y-auto p-4 overscroll-contain'}`}>
             {activeTab === 'routes' && (
               <RoutePlannerPanel
                 stops={stops}
@@ -938,7 +940,7 @@ export default function App() {
           </div>
 
           {/* Mobile Bottom Navigation Bar (Thumb Accessible with safe-area padding) */}
-          <div className={`min-h-[3.5rem] pb-[max(env(safe-area-inset-bottom,0px),0.25rem)] shrink-0 backdrop-blur-2xl border-t grid grid-cols-4 items-center ${
+          <div className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t grid grid-cols-4 items-center ${
             theme === 'dark'
               ? 'bg-[#0a0414]/95 border-purple-500/20'
               : 'bg-white/95 border-purple-200/80 shadow-md'

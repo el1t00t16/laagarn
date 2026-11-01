@@ -249,14 +249,14 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               type="button"
               onClick={() => onLocateUserGps(true)}
               disabled={gpsLoading}
-              className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[#c084fc] hover:underline cursor-pointer"
+              className="mono text-[0.62rem] uppercase tracking-[0.1em] text-[var(--accent)] font-bold hover:underline cursor-pointer"
             >
               {gpsLoading ? 'Locating...' : 'Use GPS'}
             </button>
             <button
               type="button"
               onClick={handleSwapEndpoints}
-              className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#f2f2f2] cursor-pointer"
+              className="mono text-[0.62rem] uppercase tracking-[0.1em] text-[var(--ink-dim)] font-bold hover:text-[var(--ink)] cursor-pointer"
             >
               Swap
             </button>
@@ -264,7 +264,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               <button
                 type="button"
                 onClick={handleAddWaypointField}
-                className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#f2f2f2] cursor-pointer"
+                className="mono text-[0.62rem] uppercase tracking-[0.1em] text-[var(--ink-dim)] font-bold hover:text-[var(--ink)] cursor-pointer"
               >
                 + Stop
               </button>
@@ -273,7 +273,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               <button
                 type="button"
                 onClick={onClearRoute}
-                className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#c084fc] cursor-pointer"
+                className="mono text-[0.62rem] uppercase tracking-[0.1em] text-[var(--ink-dim)] font-bold hover:text-[var(--accent)] cursor-pointer"
               >
                 Clear
               </button>
@@ -311,28 +311,28 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
 
         {/* Live GPS Status Pill if active or error */}
         {(gpsState || gpsError) && (
-          <div className="mb-4 p-3 bg-[#110820]/80 backdrop-blur-md border border-purple-500/25 rounded-xl">
+          <div className="mb-4 p-3 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm">
             {gpsState && (
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="mono text-[0.55rem] uppercase tracking-[0.15em] text-[#c084fc]">
+                  <div className="mono text-[0.6rem] uppercase tracking-[0.15em] text-[var(--accent)] font-bold">
                     Where Am I · GPS Locked (±{gpsState.accuracyMeters}m)
                   </div>
-                  <div className="text-xs font-medium text-[#f2f2f2] truncate mt-0.5">
+                  <div className="text-xs font-semibold text-[var(--ink)] truncate mt-0.5">
                     {gpsState.addressLabel}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={onToggleGpsWatch}
-                  className="mono text-[0.55rem] uppercase px-2 py-1 border border-purple-500/30 text-purple-200 hover:border-[#a855f7] rounded-lg shrink-0 cursor-pointer"
+                  className="mono text-[0.55rem] uppercase px-2.5 py-1 border border-[var(--border)] text-[var(--ink)] hover:border-[var(--accent)] font-bold rounded-lg shrink-0 cursor-pointer bg-[var(--surface)]"
                 >
                   {gpsWatchActive ? 'Tracking On' : 'Track'}
                 </button>
               </div>
             )}
             {gpsError && (
-              <div className="mono text-[0.6rem] text-[#c084fc] leading-relaxed">
+              <div className="mono text-[0.6rem] text-red-500 font-medium leading-relaxed">
                 {gpsError}
               </div>
             )}
@@ -351,7 +351,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 onClick={() =>
                   onPickOnMap(mapClickAction === 'origin' ? 'none' : 'origin')
                 }
-                className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#c084fc] cursor-pointer mb-1"
+                className="mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--ink-dim)] font-bold hover:text-[var(--accent)] cursor-pointer mb-1"
               >
                 {mapClickAction === 'origin' ? 'Click Map...' : 'Set on Map'}
               </button>
@@ -368,12 +368,12 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               className="editorial-input"
             />
             {searchingOrigin && (
-              <div className="mono text-[0.55rem] text-[rgba(242,242,242,0.45)] mt-1">
+              <div className="mono text-[0.55rem] text-[var(--ink-dim)] mt-1 font-medium">
                 Searching Philippines...
               </div>
             )}
             {originSuggestions.length > 0 && (
-              <div className="mt-1 bg-[#110820]/95 backdrop-blur-md border border-purple-500/25 divide-y divide-purple-500/15 rounded-xl max-h-40 overflow-y-auto z-30">
+              <div className="mt-1 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] divide-y divide-[var(--border-subtle)] rounded-xl max-h-40 overflow-y-auto z-30 shadow-lg">
                 {originSuggestions.map((sug, sIdx) => (
                   <button
                     key={`${sug.name}-${sIdx}`}
@@ -384,12 +384,12 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                       setOriginSuggestions([]);
                       onFocusCoordinate(sug.lat, sug.lng, 14);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-[rgba(168,85,247,0.18)] transition-colors block cursor-pointer"
+                    className="w-full text-left px-3 py-2 hover:bg-[var(--accent)]/15 transition-colors block cursor-pointer"
                   >
-                    <div className="text-xs font-medium text-[#f2f2f2]">
+                    <div className="text-xs font-semibold text-[var(--ink)]">
                       {sug.name}
                     </div>
-                    <div className="mono text-[0.55rem] text-[rgba(242,242,242,0.5)]">
+                    <div className="mono text-[0.55rem] text-[var(--ink-dim)]">
                       {sug.region}
                     </div>
                   </button>
@@ -407,7 +407,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => handleRemoveWaypointField(idx)}
-                  className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[#c084fc] hover:underline cursor-pointer mb-1"
+                  className="mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--accent)] font-bold hover:underline cursor-pointer mb-1"
                 >
                   Remove
                 </button>
@@ -435,7 +435,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                     mapClickAction === 'destination' ? 'none' : 'destination'
                   )
                 }
-                className="mono text-[0.55rem] uppercase tracking-[0.1em] text-[rgba(242,242,242,0.5)] hover:text-[#c084fc] cursor-pointer mb-1"
+                className="mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--ink-dim)] font-bold hover:text-[var(--accent)] cursor-pointer mb-1"
               >
                 {mapClickAction === 'destination' ? 'Click Map...' : 'Set on Map'}
               </button>
@@ -452,12 +452,12 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
               className="editorial-input"
             />
             {searchingDest && (
-              <div className="mono text-[0.55rem] text-[rgba(242,242,242,0.45)] mt-1">
+              <div className="mono text-[0.55rem] text-[var(--ink-dim)] mt-1 font-medium">
                 Searching Philippines...
               </div>
             )}
             {destSuggestions.length > 0 && (
-              <div className="mt-1 bg-[#110820]/95 backdrop-blur-md border border-purple-500/25 divide-y divide-purple-500/15 rounded-xl max-h-40 overflow-y-auto z-30">
+              <div className="mt-1 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] divide-y divide-[var(--border-subtle)] rounded-xl max-h-40 overflow-y-auto z-30 shadow-lg">
                 {destSuggestions.map((sug, sIdx) => (
                   <button
                     key={`${sug.name}-${sIdx}`}
@@ -468,12 +468,12 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                       setDestSuggestions([]);
                       onFocusCoordinate(sug.lat, sug.lng, 14);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-[rgba(168,85,247,0.18)] transition-colors block cursor-pointer"
+                    className="w-full text-left px-3 py-2 hover:bg-[var(--accent)]/15 transition-colors block cursor-pointer"
                   >
-                    <div className="text-xs font-medium text-[#f2f2f2]">
+                    <div className="text-xs font-semibold text-[var(--ink)]">
                       {sug.name}
                     </div>
-                    <div className="mono text-[0.55rem] text-[rgba(242,242,242,0.5)]">
+                    <div className="mono text-[0.55rem] text-[var(--ink-dim)]">
                       {sug.region}
                     </div>
                   </button>
@@ -484,7 +484,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
 
           {/* Quick Philippine Corridor Presets */}
           <div className="mb-4">
-            <div className="mono text-[0.6rem] text-purple-300/70 mb-1.5 uppercase tracking-wider">
+            <div className="mono text-[0.65rem] font-bold text-[var(--ink-dim)] mb-2 uppercase tracking-wider">
               Popular Routes
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -517,7 +517,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                     setValidationError(null);
                     onApplyStops([preset.origin, preset.dest]);
                   }}
-                  className="px-2 py-1 bg-[#130924]/80 hover:bg-[#a855f7]/20 border border-purple-500/20 hover:border-[#a855f7]/60 rounded-lg text-[10px] mono text-purple-200/80 hover:text-white transition-colors cursor-pointer"
+                  className="px-2.5 py-1.5 bg-[var(--surface)] hover:bg-[var(--accent)]/15 border border-[var(--border)] hover:border-[var(--accent)] rounded-lg text-[11px] mono font-bold text-[var(--ink)] transition-colors cursor-pointer shadow-sm"
                 >
                   {preset.label}
                 </button>
@@ -639,7 +639,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
         ) : (
           <div className="step">
             <span className="step-num mono">01</span>
-            <p className="step-text text-[rgba(242,242,242,0.55)]">
+            <p className="step-text text-[var(--ink-dim)]">
               Turn-by-turn street maneuvers will appear here once a route is
               calculated.
             </p>

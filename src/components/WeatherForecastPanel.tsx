@@ -146,10 +146,10 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
       {/* 1. Header with Sync Button */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="section-label mono !mb-0 text-[#c084fc]">
+          <span className="section-label mono !mb-0 text-[var(--accent)] font-bold">
             Weather & Road Hazards
           </span>
-          <div className="text-xs text-[rgba(242,242,242,0.6)] mono mt-0.5">
+          <div className="text-xs text-[var(--ink-dim)] mono mt-0.5 font-medium">
             Real-time Philippine corridor forecasts & safety precautions
           </div>
         </div>
@@ -157,7 +157,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
           type="button"
           onClick={onRefreshWeather}
           disabled={loading}
-          className="flex items-center gap-1.5 mono text-[0.65rem] uppercase tracking-[0.1em] text-[#c084fc] hover:text-[#a855f7] transition-colors cursor-pointer py-1 px-2 border border-purple-500/30 hover:border-[#a855f7] rounded-lg"
+          className="flex items-center gap-1.5 mono text-[0.65rem] uppercase tracking-[0.1em] text-[var(--accent)] hover:underline transition-colors cursor-pointer py-1 px-2.5 border border-[var(--border)] bg-[var(--surface)] rounded-lg font-bold"
         >
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Syncing...' : 'Sync Now'}
@@ -166,65 +166,65 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
 
       {/* 2. Destination Arrival Weather Forecast Banner (if route active) */}
       {destinationStation && (
-        <div className="p-4 bg-gradient-to-r from-[#160b26]/90 to-[#10071c]/90 backdrop-blur-xl border border-purple-500/30 rounded-xl shadow-md relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-bl-full pointer-events-none" />
+        <div className="p-4 bg-[var(--surface)] backdrop-blur-xl border border-[var(--border)] rounded-xl shadow-md relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--accent)]/10 rounded-bl-full pointer-events-none" />
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-[#c084fc]" />
-              <span className="mono text-[0.7rem] uppercase tracking-wider text-purple-300/70">
+              <Navigation className="w-4 h-4 text-[var(--accent)]" />
+              <span className="mono text-[0.7rem] uppercase tracking-wider text-[var(--ink-dim)] font-bold">
                 Destination Arrival Weather
               </span>
             </div>
-            <span className="mono text-[0.65rem] text-[#c084fc] bg-purple-500/15 px-2 py-0.5 rounded-lg border border-purple-500/30 font-bold">
+            <span className="mono text-[0.65rem] text-[var(--accent)] bg-[var(--accent)]/15 px-2 py-0.5 rounded-lg border border-[var(--border)] font-bold">
               ETA: {destinationStation.predictedAtEta.timeLabel}
             </span>
           </div>
 
           <div className="flex items-baseline justify-between mt-1">
             <div>
-              <div className="text-xl display font-extrabold text-white">
+              <div className="text-xl display font-extrabold text-[var(--ink)]">
                 {destinationName || destinationStation.name}
               </div>
-              <div className="text-xs text-gray-400 mt-0.5">
-                Arrival condition: <span className="text-gray-200 font-semibold">{destinationStation.predictedAtEta.condition}</span>
+              <div className="text-xs text-[var(--ink-dim)] mt-0.5 font-medium">
+                Arrival condition: <span className="text-[var(--ink)] font-semibold">{destinationStation.predictedAtEta.condition}</span>
               </div>
             </div>
             <div className="text-right">
-              <span className="text-3xl display font-black text-white">
+              <span className="text-3xl display font-black text-[var(--ink)]">
                 {destinationStation.predictedAtEta.tempC}°C
               </span>
-              <div className="mono text-[0.65rem] text-gray-400">
-                Rain: <span className="text-[#c084fc] font-bold">{destinationStation.predictedAtEta.precipProbPct}%</span>
+              <div className="mono text-[0.65rem] text-[var(--ink-dim)]">
+                Rain: <span className="text-[var(--accent)] font-bold">{destinationStation.predictedAtEta.precipProbPct}%</span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-purple-500/20 text-center mono text-[0.65rem]">
-            <div className="bg-purple-950/30 border border-purple-500/15 p-1.5 rounded-lg">
-              <div className="text-purple-300/60">WIND</div>
-              <div className="text-gray-200 font-bold mt-0.5">{destinationStation.predictedAtEta.windKmh} KM/H</div>
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-[var(--border)] text-center mono text-[0.65rem]">
+            <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
+              <div className="text-[var(--ink-dim)] font-bold">WIND</div>
+              <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.windKmh} KM/H</div>
             </div>
-            <div className="bg-purple-950/30 border border-purple-500/15 p-1.5 rounded-lg">
-              <div className="text-purple-300/60">VISIBILITY</div>
-              <div className="text-gray-200 font-bold mt-0.5">{destinationStation.predictedAtEta.visibilityKm} KM</div>
+            <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
+              <div className="text-[var(--ink-dim)] font-bold">VISIBILITY</div>
+              <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.visibilityKm} KM</div>
             </div>
-            <div className="bg-purple-950/30 border border-purple-500/15 p-1.5 rounded-lg">
-              <div className="text-purple-300/60">FEELS LIKE</div>
-              <div className="text-gray-200 font-bold mt-0.5">{destinationStation.predictedAtEta.feelsLikeC}°C</div>
+            <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
+              <div className="text-[var(--ink-dim)] font-bold">FEELS LIKE</div>
+              <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.feelsLikeC}°C</div>
             </div>
           </div>
         </div>
       )}
 
       {/* 3. Navigation View Switcher Tabs */}
-      <div className="flex border-b border-purple-500/20 gap-2">
+      <div className="flex border-b border-[var(--border)] gap-2">
         <button
           type="button"
           onClick={() => setActiveTab('corridor')}
-          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-semibold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'corridor'
-              ? 'border-[#a855f7] text-[#c084fc]'
-              : 'border-transparent text-gray-400 hover:text-gray-200'
+              ? 'border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]'
           }`}
         >
           <MapPin className="w-3.5 h-3.5" />
@@ -234,16 +234,16 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('hazards')}
-          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-semibold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer relative ${
+          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer relative ${
             activeTab === 'hazards'
-              ? 'border-[#a855f7] text-[#c084fc]'
-              : 'border-transparent text-gray-400 hover:text-gray-200'
+              ? 'border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]'
           }`}
         >
           {hazardReport && hazardReport.overallLevel !== 'nominal' ? (
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
           ) : (
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
           )}
           Hazards & Precautions
           {hazardReport && hazardReport.hazards.length > 0 && (
@@ -254,10 +254,10 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('outlook')}
-          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-semibold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'outlook'
-              ? 'border-[#a855f7] text-[#c084fc]'
-              : 'border-transparent text-gray-400 hover:text-gray-200'
+              ? 'border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]'
           }`}
         >
           <Sun className="w-3.5 h-3.5" />
@@ -268,11 +268,11 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
       {/* 4. TAB CONTENT: Corridor Waypoints */}
       {activeTab === 'corridor' && (
         <div className="space-y-4">
-          <div className="text-xs text-purple-300/70 mono">
+          <div className="text-xs text-[var(--ink-dim)] mono font-medium">
             Sequential weather timeline for each municipality along the travel path:
           </div>
 
-          <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-purple-500/20">
+          <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[var(--border)]">
             {activeStations.map((station, idx) => {
               const isSelected = idx === selectedStationIndex;
               const hasHazards = station.hazards.length > 0;
@@ -287,71 +287,71 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
                   }}
                   className={`relative p-3 rounded-xl border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-[#180d2b]/90 border-[#a855f7] shadow-lg shadow-purple-500/15'
-                      : 'bg-[#110820]/70 border-purple-500/20 hover:border-purple-500/40'
+                      ? 'bg-[var(--surface)] border-[var(--accent)] shadow-lg shadow-purple-500/15'
+                      : 'bg-[var(--surface)] border-[var(--border)] hover:border-[var(--accent)]'
                   }`}
                 >
                   {/* Timeline dot */}
                   <div
                     className={`absolute -left-[1.85rem] top-4 w-3.5 h-3.5 rounded-full border-2 transition-colors ${
                       hasHazards
-                        ? 'bg-amber-500 border-[#110820]'
+                        ? 'bg-amber-500 border-[var(--bg)]'
                         : isSelected
-                        ? 'bg-[#a855f7] border-[#110820]'
-                        : 'bg-purple-900 border-[#110820]'
+                        ? 'bg-[var(--accent)] border-[var(--bg)]'
+                        : 'bg-purple-700 border-[var(--bg)]'
                     }`}
                   />
 
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white">
+                        <span className="font-bold text-sm text-[var(--ink)]">
                           {station.name}
                         </span>
                         {idx === 0 && (
-                          <span className="text-[9px] mono px-1.5 py-0.2 bg-purple-500/20 text-purple-200 rounded">
+                          <span className="text-[9px] mono px-1.5 py-0.2 bg-[var(--accent)]/15 text-[var(--accent)] rounded font-bold">
                             START
                           </span>
                         )}
                         {idx === activeStations.length - 1 && (
-                          <span className="text-[9px] mono px-1.5 py-0.2 bg-purple-500/25 text-[#c084fc] border border-purple-500/30 rounded font-bold">
+                          <span className="text-[9px] mono px-1.5 py-0.2 bg-[var(--accent)]/20 text-[var(--accent)] border border-[var(--border)] rounded font-bold">
                             DESTINATION
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-purple-300/70 mt-0.5">
+                      <div className="text-xs text-[var(--ink-dim)] mt-0.5 font-medium">
                         {station.region} · {station.distanceAlongKm > 0 ? `${station.distanceAlongKm} km from origin` : 'Departure Point'}
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-lg font-black text-white">
+                      <span className="text-lg font-black text-[var(--ink)]">
                         {pred.tempC}°C
                       </span>
-                      <div className="text-[0.65rem] mono text-[#c084fc]">
+                      <div className="text-[0.65rem] mono text-[var(--accent)] font-bold">
                         {pred.precipProbPct}% rain
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-purple-500/15 text-[0.7rem] mono text-purple-300/70">
-                    <span className="text-purple-200 font-medium">
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--border)] text-[0.7rem] mono text-[var(--ink-dim)]">
+                    <span className="text-[var(--ink)] font-semibold">
                       {pred.condition} · Wind {pred.windKmh} km/h
                     </span>
-                    <span className="text-[#c084fc] font-semibold">
+                    <span className="text-[var(--accent)] font-bold">
                       {station.etaLabel}
                     </span>
                   </div>
 
                   {/* Active hazard notice if any */}
                   {station.hazards.length > 0 && (
-                    <div className="mt-2.5 p-2 bg-amber-950/40 border border-amber-600/40 rounded text-xs flex items-start gap-2">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="mt-2.5 p-2 bg-amber-500/10 border border-amber-600/30 rounded text-xs flex items-start gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                       <div>
-                        <span className="text-amber-300 font-bold text-[0.7rem] uppercase tracking-wide">
+                        <span className="text-amber-600 dark:text-amber-400 font-bold text-[0.7rem] uppercase tracking-wide">
                           {station.hazards[0].title}:
                         </span>
-                        <p className="text-[0.75rem] text-amber-200/90 mt-0.5 leading-snug">
+                        <p className="text-[0.75rem] text-[var(--ink)] mt-0.5 leading-snug">
                           {station.hazards[0].precaution}
                         </p>
                       </div>
@@ -369,9 +369,9 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
         <div className="space-y-5">
           {/* Overall Route Safety Score Card */}
           {hazardReport ? (
-            <div className="p-4 bg-[#110820]/80 backdrop-blur-md border border-purple-500/25 rounded-xl">
+            <div className="p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <span className="section-label mono !mb-0 text-[#c084fc]">
+                <span className="section-label mono !mb-0 text-[var(--accent)] font-bold">
                   Route Safety Assessment
                 </span>
                 <span
@@ -386,12 +386,12 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
               </div>
 
               <div className="flex items-center gap-4 mb-3">
-                <div className="text-3xl font-black display text-white">
+                <div className="text-3xl font-black display text-[var(--ink)]">
                   {hazardReport.safetyScore}
-                  <span className="text-xs text-gray-500 mono font-normal">/100</span>
+                  <span className="text-xs text-[var(--ink-dim)] mono font-normal">/100</span>
                 </div>
                 <div className="flex-1">
-                  <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-[var(--border)] rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-500 ${
                         hazardReport.safetyScore >= 80
@@ -403,7 +403,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
                       style={{ width: `${hazardReport.safetyScore}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-[0.65rem] mono text-gray-500 mt-1">
+                  <div className="flex justify-between text-[0.65rem] mono text-[var(--ink-dim)] mt-1 font-bold">
                     <span>Critical Risk</span>
                     <span>Caution</span>
                     <span>Optimal</span>
@@ -411,15 +411,15 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
                 </div>
               </div>
 
-              <p className="text-xs text-gray-300 leading-relaxed">
+              <p className="text-xs text-[var(--ink)] leading-relaxed">
                 {hazardReport.summary}
               </p>
-              <div className="text-xs text-[#c084fc] mono mt-2 pt-2 border-t border-purple-500/20">
+              <div className="text-xs text-[var(--accent)] mono mt-2 pt-2 border-t border-[var(--border)] font-semibold">
                 {hazardReport.destinationEtaSummary}
               </div>
             </div>
           ) : (
-            <div className="p-4 bg-[#110820]/80 border border-purple-500/20 rounded-xl text-xs text-purple-300/70 mono">
+            <div className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-xs text-[var(--ink-dim)] mono">
               Plot a route between two Philippine points (e.g. Malungon to Digos) to view corridor hazard analysis.
             </div>
           )}
@@ -434,30 +434,30 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
                 {hazardReport.hazards.map((hazard) => (
                   <div
                     key={hazard.id}
-                    className="p-3 bg-gradient-to-r from-[#201018] to-[#140b22] border border-amber-600/30 rounded-xl"
+                    className="p-3 bg-[var(--surface)] border border-amber-500/40 rounded-xl shadow-sm"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5 font-bold text-xs text-amber-300">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-amber-600 dark:text-amber-400">
                         {hazard.kind === 'rain' ? (
-                          <CloudRain className="w-3.5 h-3.5 text-blue-400" />
+                          <CloudRain className="w-3.5 h-3.5 text-blue-500" />
                         ) : hazard.kind === 'thunderstorm' ? (
-                          <CloudLightning className="w-3.5 h-3.5 text-amber-400" />
+                          <CloudLightning className="w-3.5 h-3.5 text-amber-500" />
                         ) : (
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                         )}
                         <span>{hazard.title}</span>
                       </div>
-                      <span className="mono text-[0.65rem] text-gray-400">
+                      <span className="mono text-[0.65rem] text-[var(--ink-dim)] font-bold">
                         {hazard.stationName}
                       </span>
                     </div>
 
-                    <p className="text-xs text-gray-300 leading-relaxed mb-2">
+                    <p className="text-xs text-[var(--ink)] leading-relaxed mb-2">
                       {hazard.description}
                     </p>
 
-                    <div className="p-2 bg-black/40 rounded-lg border border-purple-500/20 text-[0.72rem] text-amber-100 flex items-start gap-2">
-                      <span className="text-[#c084fc] font-bold mono shrink-0">ACTION:</span>
+                    <div className="p-2 bg-[var(--surface)] rounded-lg border border-[var(--border)] text-[0.72rem] text-[var(--ink)] flex items-start gap-2">
+                      <span className="text-[var(--accent)] font-bold mono shrink-0">ACTION:</span>
                       <span>{hazard.precaution}</span>
                     </div>
                   </div>
@@ -472,10 +472,10 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
               <span className="section-label mono">
                 Driver & Rider Precautions Checklist
               </span>
-              <div className="p-4 bg-[#110820]/80 backdrop-blur-md border border-purple-500/25 rounded-xl space-y-2.5">
+              <div className="p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl space-y-2.5 shadow-sm">
                 {hazardReport.precautionChecklist.map((precaution, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5 text-xs text-gray-200">
-                    <CheckCircle2 className="w-4 h-4 text-[#a855f7] shrink-0 mt-0.5" />
+                  <div key={idx} className="flex items-start gap-2.5 text-xs text-[var(--ink)] font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-[var(--accent)] shrink-0 mt-0.5" />
                     <span className="leading-relaxed">{precaution}</span>
                   </div>
                 ))}
@@ -494,17 +494,17 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
                   <a
                     key={idx}
                     href={`tel:${hotline.number.replace(/[^0-9+]/g, '')}`}
-                    className="p-3 bg-[#110820]/80 border border-purple-500/20 hover:border-[#a855f7]/60 rounded-xl flex items-center justify-between group transition-colors"
+                    className="p-3 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-xl flex items-center justify-between group transition-colors shadow-sm"
                   >
                     <div>
-                      <div className="text-xs font-bold text-white group-hover:text-[#c084fc] transition-colors">
+                      <div className="text-xs font-bold text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors">
                         {hotline.name}
                       </div>
-                      <div className="text-[0.65rem] text-gray-400">
+                      <div className="text-[0.65rem] text-[var(--ink-dim)] font-medium">
                         {hotline.description}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 mono text-xs font-bold text-[#c084fc] bg-purple-500/15 border border-purple-500/20 px-2 py-1 rounded-lg">
+                    <div className="flex items-center gap-1.5 mono text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/15 border border-[var(--border)] px-2 py-1 rounded-lg">
                       <Phone className="w-3 h-3" />
                       {hotline.number}
                     </div>
@@ -522,13 +522,13 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
           {/* Station Selector Pill Carousel */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="mono text-[0.65rem] uppercase text-gray-400">
+              <span className="mono text-[0.65rem] uppercase text-[var(--ink-dim)] font-bold">
                 Selected Meteorological Station
               </span>
               <button
                 type="button"
                 onClick={onSpotWeatherOnMap}
-                className="mono text-[0.65rem] text-[#c084fc] hover:underline flex items-center gap-1"
+                className="mono text-[0.65rem] text-[var(--accent)] hover:underline flex items-center gap-1 font-bold"
               >
                 <Search className="w-3 h-3" /> Spot Other Location
               </button>
@@ -546,7 +546,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
                   className={`px-3 py-1.5 rounded-lg text-xs mono whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
                     idx === selectedStationIndex
                       ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white font-bold shadow-md shadow-purple-500/20'
-                      : 'bg-[#110820] text-purple-200/80 border border-purple-500/20 hover:border-purple-500/40'
+                      : 'bg-[var(--surface)] text-[var(--ink)] border border-[var(--border)] hover:border-[var(--accent)] font-semibold'
                   }`}
                 >
                   <span>{station.name}</span>
@@ -560,7 +560,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
           <div className="route-card cursor-default">
             <div className="route-card-header">
               <div>
-                <span className="text-4xl display font-black text-white">
+                <span className="text-4xl display font-black text-[var(--ink)]">
                   {currentSnapshot.tempC}°C
                 </span>
                 <div className="route-meta mono text-xs mt-1">
@@ -568,58 +568,58 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
                 </div>
               </div>
               <div className="text-right">
-                <div className="mono text-xs font-bold text-[#c084fc]">
+                <div className="mono text-xs font-bold text-[var(--accent)]">
                   {currentStation.name}
                 </div>
-                <div className="text-[10px] text-gray-400 mono">
+                <div className="text-[10px] text-[var(--ink-dim)] mono font-medium">
                   {currentStation.region}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-purple-500/20 text-center">
-              <div className="bg-purple-950/30 border border-purple-500/15 p-2 rounded-lg">
-                <div className="text-[0.65rem] text-purple-300/60 mono flex items-center justify-center gap-1">
+            <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-[var(--border)] text-center">
+              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded-lg shadow-sm">
+                <div className="text-[0.65rem] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
                   <Wind className="w-3 h-3" /> Wind
                 </div>
-                <div className="mono text-xs text-white font-bold mt-1">
+                <div className="mono text-xs text-[var(--ink)] font-bold mt-1">
                   {currentSnapshot.windKmh} KM/H
                 </div>
               </div>
-              <div className="bg-purple-950/30 border border-purple-500/15 p-2 rounded-lg">
-                <div className="text-[0.65rem] text-purple-300/60 mono flex items-center justify-center gap-1">
+              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded-lg shadow-sm">
+                <div className="text-[0.65rem] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
                   <Droplets className="w-3 h-3" /> Rain
                 </div>
-                <div className="mono text-xs text-[#c084fc] font-bold mt-1">
+                <div className="mono text-xs text-[var(--accent)] font-bold mt-1">
                   {currentSnapshot.precipProbPct}%
                 </div>
               </div>
-              <div className="bg-purple-950/30 border border-purple-500/15 p-2 rounded-lg">
-                <div className="text-[0.65rem] text-purple-300/60 mono flex items-center justify-center gap-1">
+              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded-lg shadow-sm">
+                <div className="text-[0.65rem] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
                   <Eye className="w-3 h-3" /> Vis
                 </div>
-                <div className="mono text-xs text-white font-bold mt-1">
+                <div className="mono text-xs text-[var(--ink)] font-bold mt-1">
                   {currentSnapshot.visibilityKm} KM
                 </div>
               </div>
-              <div className="bg-purple-950/30 border border-purple-500/15 p-2 rounded-lg">
-                <div className="text-[0.65rem] text-purple-300/60 mono flex items-center justify-center gap-1">
+              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded-lg shadow-sm">
+                <div className="text-[0.65rem] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
                   <Sun className="w-3 h-3" /> UV
                 </div>
-                <div className="mono text-xs text-white font-bold mt-1">
+                <div className="mono text-xs text-[var(--ink)] font-bold mt-1">
                   {currentSnapshot.uvIndex}
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-purple-500/20">
+            <div className="mt-4 pt-3 border-t border-[var(--border)]">
               <div className="route-meta mono text-xs">
-                <span className="text-[#c084fc] font-bold">
+                <span className="text-[var(--accent)] font-bold">
                   ADVISORY: {advisory.level.toUpperCase()}
                 </span>{' '}
                 · SURFACE: {advisory.roadSurface.toUpperCase()}
               </div>
-              <p className="step-text mt-1.5 !text-xs text-[rgba(242,242,242,0.7)] leading-relaxed">
+              <p className="step-text mt-1.5 !text-xs text-[var(--ink-dim)] leading-relaxed">
                 {advisory.summary}
               </p>
             </div>
@@ -632,13 +632,13 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
               {currentSnapshot.hourly.map((hr) => (
                 <div
                   key={hr.timeLabel}
-                  className="p-2 bg-[#110820]/80 border border-purple-500/20 text-center rounded-lg"
+                  className="p-2 bg-[var(--surface)] border border-[var(--border)] text-center rounded-lg shadow-sm"
                 >
                   <div className="route-meta mono text-[0.65rem]">{hr.timeLabel}</div>
-                  <div className="mono text-xs font-bold text-white mt-1">
+                  <div className="mono text-xs font-bold text-[var(--ink)] mt-1">
                     {hr.tempC}°
                   </div>
-                  <div className="mono text-[0.55rem] text-[#c084fc] mt-0.5 font-semibold">
+                  <div className="mono text-[0.55rem] text-[var(--accent)] mt-0.5 font-bold">
                     {hr.precipProbPct}%
                   </div>
                 </div>
@@ -646,22 +646,22 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
             </div>
 
             {/* 5-Day Daily Forecast */}
-            <div className="divide-y divide-purple-500/15 border-t border-b border-purple-500/20">
+            <div className="divide-y divide-[var(--border-subtle)] border-t border-b border-[var(--border)]">
               {currentSnapshot.daily.map((day) => (
                 <div
                   key={day.dayLabel}
                   className="py-2.5 flex items-center justify-between text-xs"
                 >
-                  <span className="route-meta mono !text-white w-16 font-semibold">
+                  <span className="route-meta mono !text-[var(--ink)] w-16 font-semibold">
                     {day.dayLabel}
                   </span>
-                  <span className="text-gray-400 flex-1">
+                  <span className="text-[var(--ink-dim)] font-medium flex-1">
                     {day.condition}
                   </span>
-                  <span className="route-meta mono !text-[#c084fc] w-12 text-right font-bold">
+                  <span className="route-meta mono !text-[var(--accent)] w-12 text-right font-bold">
                     {day.precipProbPct}%
                   </span>
-                  <span className="route-meta mono !text-white w-20 text-right">
+                  <span className="route-meta mono !text-[var(--ink)] w-20 text-right font-bold">
                     {day.highC}° / {day.lowC}°C
                   </span>
                 </div>

@@ -489,13 +489,13 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         });
         marker.bindPopup(
           `<div style="min-width:170px;font-family:'Inter',sans-serif;">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:0.15em;color:rgba(242,242,242,0.5);">${
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:0.15em;color:var(--ink-dim);">${
               isOrigin ? 'Departure Point' : isDest ? 'Arrival Port' : `Stop ${idx}`
             }</div>
-            <div style="font-size:14px;font-weight:600;color:#f2f2f2;margin-top:4px;">${escapeHtml(
+            <div style="font-size:14px;font-weight:600;color:var(--ink);margin-top:4px;">${escapeHtml(
               stop.name
             )}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c084fc;margin-top:6px;">${stop.lat.toFixed(
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-top:6px;font-weight:600;">${stop.lat.toFixed(
               4
             )}° N, ${stop.lng.toFixed(4)}° E</div>
           </div>`
@@ -553,16 +553,16 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           const marker = L.marker([inc.lat, inc.lng], { icon: incIcon });
           marker.bindPopup(
             `<div style="min-width:190px;font-family:'Inter',sans-serif;">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;color:#c084fc;">${escapeHtml(
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;color:var(--accent);font-weight:700;">${escapeHtml(
                 inc.corridor
               )}</div>
-              <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;margin-top:3px;">${escapeHtml(
+              <div style="font-size:13.5px;font-weight:600;color:var(--ink);margin-top:3px;">${escapeHtml(
                 inc.title
               )}</div>
-              <div style="font-size:12px;color:rgba(242,242,242,0.65);margin-top:4px;">${escapeHtml(
+              <div style="font-size:12px;color:var(--ink-dim);margin-top:4px;">${escapeHtml(
                 inc.description
               )}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#f2f2f2;margin-top:6px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink);margin-top:6px;font-weight:600;">
                 +${inc.delayMinutes}M DELAY &middot; ${inc.speedKmh} KM/H
               </div>
             </div>`
@@ -618,15 +618,15 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
           wMarker.bindPopup(
             `<div style="min-width:210px;font-family:'Inter',sans-serif;">
-              <div style="font-size:13.5px;font-weight:700;color:#f2f2f2;">${escapeHtml(st.name)}</div>
-              <div style="font-size:10.5px;color:rgba(242,242,242,0.65);">${escapeHtml(st.region)}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c084fc;margin-top:5px;font-weight:600;">
+              <div style="font-size:13.5px;font-weight:700;color:var(--ink);">${escapeHtml(st.name)}</div>
+              <div style="font-size:10.5px;color:var(--ink-dim);">${escapeHtml(st.region)}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-top:5px;font-weight:700;">
                 ETA: ${escapeHtml(st.etaLabel)} &middot; ${st.distanceAlongKm} KM ALONG ROUTE
               </div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.85);margin-top:3px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink);margin-top:3px;font-weight:600;">
                 ${pred.tempC}&deg;C (${escapeHtml(pred.condition)}) &middot; PRECIP ${pred.precipProbPct}%
               </div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:2px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-dim);margin-top:2px;">
                 WIND ${pred.windKmh} KM/H &middot; VISIBILITY ${pred.visibilityKm} KM
               </div>
               ${hazardHtml}
@@ -664,13 +664,13 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           const wMarker = L.marker([snap.lat, snap.lng], { icon: weatherIcon });
           wMarker.bindPopup(
             `<div style="min-width:180px;font-family:'Inter',sans-serif;">
-              <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;">${escapeHtml(
+              <div style="font-size:13.5px;font-weight:600;color:var(--ink);">${escapeHtml(
                 snap.locationName
               )}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:4px;text-transform:uppercase;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-dim);margin-top:4px;text-transform:uppercase;">
                 ${snap.tempC}&deg;C (${escapeHtml(snap.condition)}) &middot; WIND ${snap.windKmh} KM/H
               </div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c084fc;margin-top:4px;text-transform:uppercase;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-top:4px;text-transform:uppercase;font-weight:700;">
                 PRECIP ${snap.precipProbPct}% &middot; VIS ${snap.visibilityKm} KM
               </div>
             </div>`
@@ -731,11 +731,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
       gpsMarker.bindPopup(
         `<div style="min-width:190px;font-family:'Inter',sans-serif;padding:2px;">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;color:#c084fc;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--accent);">
             ${isSimulating ? 'SIMULATED DRIVE' : 'REALTIME GPS FIX'}
           </div>
-          <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;margin-top:4px;">${safeLabel}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          <div style="font-size:13.5px;font-weight:600;color:var(--ink);margin-top:4px;">${safeLabel}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-dim);margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
             <span>ACC: ±${gpsState.accuracyMeters}m</span>
             <span>SPEED: ${safeSpeed}</span>
             <span>HDG: ${safeHeading}</span>
