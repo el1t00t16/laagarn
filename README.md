@@ -1,11 +1,11 @@
-# Wayfarer Atlas — Realtime Philippine GPS & Cartography
+# LAAGARN — My Way, Your Travel Buddy.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![PWA Ready](https://img.shields.io/badge/PWA-Installable-purple.svg)](https://web.dev/progressive-web-apps/)
 [![Offline First](https://img.shields.io/badge/Offline-100%25%20Functional-brightgreen.svg)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 
-An offline-first, mobile-optimized real-time GPS navigation and editorial cartography application for the Philippine Archipelago.
+**LAAGARN** (*My Way, Your Travel Buddy.*) is an offline-first, mobile-optimized real-time GPS navigation and cartography application for the Philippine Archipelago.
 
 ---
 
@@ -110,10 +110,10 @@ The project is pre-configured and ready to deploy to any major cloud provider:
 ### Option C: Docker Container
 ```bash
 # Build Docker image
-docker build -t wayfarer-gps .
+docker build -t laagarn .
 
 # Run container on port 8080
-docker run -p 8080:80 wayfarer-gps
+docker run -p 8080:80 laagarn
 ```
 
 ---

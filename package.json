@@ -1,8 +1,8 @@
 {
-  "name": "wayfarer-atlas",
+  "name": "laagarn",
   "private": true,
   "version": "2.0.0",
-  "description": "Offline-first, mobile-ready real-time GPS navigation for the Philippines (installable PWA).",
+  "description": "LAAGARN: My Way, Your Travel Buddy. Offline-first, mobile-ready real-time GPS navigation for the Philippines.",
   "type": "module",
   "engines": {
     "node": ">=20"

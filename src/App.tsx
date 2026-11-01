@@ -486,12 +486,10 @@ export default function App() {
           </div>
           <div>
             <h1 className="logo display text-base sm:text-lg font-black tracking-tight text-white leading-none">
-              Wayfarer Atlas
+              LAAGARN
             </h1>
-            <div className="mono text-[9px] uppercase tracking-wider text-gray-400 mt-0.5 hidden xs:block">
-              {gpsState
-                ? `GPS Active (±${gpsState.accuracyMeters}m)`
-                : 'Philippine Precision Cartography'}
+            <div className="mono text-[9px] uppercase tracking-wider text-gray-400 mt-0.5">
+              My Way, Your Travel Buddy.
             </div>
           </div>
         </div>

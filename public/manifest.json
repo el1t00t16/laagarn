@@ -1,7 +1,7 @@
 {
-  "name": "Wayfarer Atlas — Philippine Realtime GPS",
-  "short_name": "Wayfarer GPS",
-  "description": "Precision real-time GPS navigation, offline cached cartography, traffic intelligence, and weather forecasting for the Philippines.",
+  "name": "LAAGARN — My Way, Your Travel Buddy.",
+  "short_name": "LAAGARN",
+  "description": "LAAGARN: My Way, Your Travel Buddy. Precision real-time GPS navigation, offline cached cartography, traffic intelligence, and weather forecasting for the Philippines.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
