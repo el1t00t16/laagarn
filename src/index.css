@@ -91,21 +91,23 @@
 
 /* Safe-area mobile header & bottom navigation layout classes */
 .app-header {
-  padding-top: max(env(safe-area-inset-top, 0px), 12px);
-  min-height: calc(3.5rem + max(env(safe-area-inset-top, 0px), 12px));
+  padding-top: max(env(safe-area-inset-top, 0px), 8px);
+  min-height: calc(3.5rem + max(env(safe-area-inset-top, 0px), 8px));
+  padding-bottom: 0.5rem;
 }
 
 @media (max-width: 1023px) {
   .app-header {
-    padding-top: max(env(safe-area-inset-top, 0px), 48px);
-    min-height: calc(3.5rem + max(env(safe-area-inset-top, 0px), 48px));
-    padding-bottom: 0.65rem;
+    padding-top: max(env(safe-area-inset-top, 0px), 42px);
+    min-height: calc(3.25rem + max(env(safe-area-inset-top, 0px), 42px));
+    padding-bottom: 0.45rem;
   }
 }
 
 .mobile-bottom-bar {
-  min-height: calc(3.5rem + max(env(safe-area-inset-bottom, 0px), 16px));
+  min-height: calc(3.75rem + max(env(safe-area-inset-bottom, 0px), 16px));
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+  padding-top: 0.35rem;
 }
 
 .input-group {

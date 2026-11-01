@@ -192,6 +192,9 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
 
   const handleSubmitRoute = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     const prelimCheck = validateRouteInputs(originInput, destInput);
     if (!prelimCheck.valid) {
       setValidationError(
@@ -364,6 +367,14 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 setOriginInput(e.target.value);
                 setOriginPoint(null);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLElement).blur();
+                }
+              }}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="Search street, city, or click Use GPS..."
               className="editorial-input"
             />
@@ -379,6 +390,9 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                     key={`${sug.name}-${sIdx}`}
                     type="button"
                     onClick={() => {
+                      if (document.activeElement instanceof HTMLElement) {
+                        document.activeElement.blur();
+                      }
                       setOriginInput(sug.name);
                       setOriginPoint(sug);
                       setOriginSuggestions([]);
@@ -417,6 +431,14 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 type="text"
                 value={wp}
                 onChange={(e) => handleWaypointChange(idx, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    (e.target as HTMLElement).blur();
+                  }
+                }}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="Intermediate Philippine stop..."
                 className="editorial-input"
               />
@@ -448,6 +470,14 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                 setDestInput(e.target.value);
                 setDestPoint(null);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLElement).blur();
+                }
+              }}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="Search destination in the Philippines..."
               className="editorial-input"
             />
@@ -463,6 +493,9 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
                     key={`${sug.name}-${sIdx}`}
                     type="button"
                     onClick={() => {
+                      if (document.activeElement instanceof HTMLElement) {
+                        document.activeElement.blur();
+                      }
                       setDestInput(sug.name);
                       setDestPoint(sug);
                       setDestSuggestions([]);

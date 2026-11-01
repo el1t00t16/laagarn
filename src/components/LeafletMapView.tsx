@@ -13,6 +13,11 @@ import {
   Pause,
   RotateCcw,
   FastForward,
+  Hand,
+  MapPin,
+  Flag,
+  PlusCircle,
+  ChevronDown,
 } from 'lucide-react';
 import {
   ComputedRoute,
@@ -323,6 +328,28 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   const gpsLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
   const [showLayersMenu, setShowLayersMenu] = useState(false);
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const modeMenuRef = useRef<HTMLDivElement | null>(null);
+  const layersMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (modeMenuRef.current && !modeMenuRef.current.contains(target)) {
+        setModeMenuOpen(false);
+      }
+      if (
+        layersMenuRef.current &&
+        !layersMenuRef.current.contains(target) &&
+        !target?.closest('[data-layers-trigger]')
+      ) {
+        setShowLayersMenu(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => document.removeEventListener('pointerdown', handleOutsideClick);
+  }, []);
 
   const [cursorCoords, setCursorCoords] = useState<{ lat: number; lng: number }>({
     lat: 14.5826,
@@ -379,12 +406,33 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     });
 
     map.on('click', (e: L.LeafletMouseEvent) => {
+      setShowLayersMenu(false);
+      setModeMenuOpen(false);
+      if (
+        document.activeElement instanceof HTMLElement &&
+        (document.activeElement.tagName === 'INPUT' ||
+          document.activeElement.tagName === 'TEXTAREA')
+      ) {
+        document.activeElement.blur();
+      }
       if (clickActionRef.current !== 'none') {
         pickCallbackRef.current(
           Number(e.latlng.lat.toFixed(4)),
           Number(e.latlng.lng.toFixed(4)),
           clickActionRef.current
         );
+      }
+    });
+
+    map.on('dragstart mousedown touchstart', () => {
+      setShowLayersMenu(false);
+      setModeMenuOpen(false);
+      if (
+        document.activeElement instanceof HTMLElement &&
+        (document.activeElement.tagName === 'INPUT' ||
+          document.activeElement.tagName === 'TEXTAREA')
+      ) {
+        document.activeElement.blur();
       }
     });
 
@@ -813,60 +861,146 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         className="w-full h-full z-0"
       />
 
-      {/* Top Floating Quick-Action Bar (Hidden during active driving to prevent any overlap with Driving HUD) */}
+      {/* Top Floating Quick-Action Bar: 100% 1-line on all screens (No horizontal sliding!) */}
       {!(navigationActive || isSimulating) && (
-        <div className="absolute top-3 left-3 right-3 sm:right-auto sm:max-w-xl z-[400] flex items-center gap-1.5 overflow-x-auto no-scrollbar pointer-events-auto">
+        <div className="absolute top-3 left-3 right-3 sm:right-auto z-[400] flex items-center gap-2 pointer-events-auto">
+          {/* GPS Quick Re-center Button */}
           <button
             type="button"
             onClick={onLocateUserGps}
             disabled={gpsLoading}
-            className={`px-3 py-2 backdrop-blur-xl border rounded-xl text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg cursor-pointer ${
+            className={`h-9 px-3 backdrop-blur-xl border rounded-xl text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg cursor-pointer transition-all ${
               theme === 'dark'
                 ? gpsState
-                  ? 'bg-[#0d0717]/85 text-[#c084fc] border-[#a855f7]/60 bg-[#a855f7]/15'
-                  : 'bg-[#0d0717]/85 text-[#f8f6fc] border-purple-500/25'
+                  ? 'bg-[#110820]/90 text-[#c084fc] border-[#a855f7]/60 shadow-purple-500/20'
+                  : 'bg-[#0d0717]/90 text-[#f8f6fc] border-purple-500/25'
                 : gpsState
                 ? 'bg-purple-100/90 text-[#7c3aed] border-purple-500/60'
                 : 'bg-white/90 text-[#160a2c] border-purple-300/40'
             }`}
+            title={gpsState ? 'GPS Locked · Click to Center Map' : 'Acquire GPS Fix'}
           >
-            <Crosshair className={`w-3.5 h-3.5 ${gpsLoading ? 'animate-spin' : ''}`} />
-            <span>{gpsLoading ? 'Locating…' : gpsState ? 'GPS Locked' : 'Locate Me'}</span>
+            <Crosshair className={`w-3.5 h-3.5 ${gpsLoading ? 'animate-spin text-purple-400' : gpsState ? 'text-emerald-400' : ''}`} />
+            <span>{gpsLoading ? 'Locating' : gpsState ? 'GPS Locked' : 'Locate'}</span>
           </button>
 
-          {(
-            [
-              { id: 'none', label: 'Pan' },
-              { id: 'origin', label: 'Origin' },
-              { id: 'destination', label: 'Dest' },
-              { id: 'waypoint', label: '+Stop' },
-            ] as { id: MapClickAction; label: string }[]
-          ).map((item) => (
+          {/* Map Touch Mode Dropdown (Hover on Desktop / Tap on Mobile) */}
+          <div
+            ref={modeMenuRef}
+            className="relative shrink-0"
+            onMouseEnter={() => setModeMenuOpen(true)}
+            onMouseLeave={() => setModeMenuOpen(false)}
+          >
             <button
-              key={item.id}
               type="button"
-              onClick={() => onChangeMapClickAction(item.id)}
-              className={`px-2.5 py-2 backdrop-blur-xl border rounded-xl text-xs mono uppercase tracking-wider shrink-0 transition-colors shadow-lg cursor-pointer ${
-                mapClickAction === item.id
-                  ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white border-[#a855f7] shadow-purple-500/20 font-bold'
+              onClick={() => setModeMenuOpen((v) => !v)}
+              className={`h-9 px-3 backdrop-blur-xl border rounded-xl text-xs mono uppercase tracking-wider flex items-center gap-1.5 shadow-lg transition-all cursor-pointer font-bold ${
+                mapClickAction !== 'none'
+                  ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white border-[#c084fc] shadow-purple-500/30'
                   : theme === 'dark'
-                  ? 'bg-[#0d0717]/85 border-purple-500/25 text-[#f8f6fc]/70 hover:text-white hover:border-purple-500/50'
-                  : 'bg-white/90 border-purple-300/40 text-[#160a2c]/75 hover:text-[#160a2c] hover:border-purple-500/50'
+                  ? 'bg-[#0d0717]/90 border-purple-500/25 text-[#f8f6fc] hover:border-purple-500/50'
+                  : 'bg-white/90 border-purple-300/40 text-[#160a2c] hover:border-purple-500/50'
               }`}
+              title="Change Map Touch Mode (Pan, Set Origin, Set Dest, Add Stop)"
             >
-              {item.label}
+              {mapClickAction === 'none' && (
+                <>
+                  <Hand className="w-3.5 h-3.5 text-[#c084fc]" />
+                  <span>Pan</span>
+                </>
+              )}
+              {mapClickAction === 'origin' && (
+                <>
+                  <MapPin className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Origin</span>
+                </>
+              )}
+              {mapClickAction === 'destination' && (
+                <>
+                  <Flag className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Dest</span>
+                </>
+              )}
+              {mapClickAction === 'waypoint' && (
+                <>
+                  <PlusCircle className="w-3.5 h-3.5 text-purple-200" />
+                  <span>+Stop</span>
+                </>
+              )}
+              {mapClickAction === 'weather' && (
+                <>
+                  <MapPin className="w-3.5 h-3.5 text-blue-300" />
+                  <span>Weather</span>
+                </>
+              )}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${modeMenuOpen ? 'rotate-180' : ''}`} />
             </button>
-          ))}
 
+            {/* Dropdown Flyout Menu */}
+            {modeMenuOpen && (
+              <div
+                className={`absolute top-11 left-0 w-52 backdrop-blur-2xl border p-1.5 shadow-2xl rounded-2xl z-[450] space-y-1 ${
+                  theme === 'dark'
+                    ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
+                    : 'bg-white/95 border-purple-300/50 text-[#160a2c]'
+                }`}
+              >
+                <div className="px-2.5 py-1 text-[9px] mono uppercase tracking-wider text-[var(--ink-dim)] font-bold border-b border-[var(--border-subtle)]">
+                  Map Touch Mode
+                </div>
+                {[
+                  { id: 'none', label: 'Pan & Explore', desc: 'Drag map & view route', icon: Hand },
+                  { id: 'origin', label: 'Set Departure (A)', desc: 'Tap map to place origin', icon: MapPin },
+                  { id: 'destination', label: 'Set Arrival (B)', desc: 'Tap map to place dest', icon: Flag },
+                  { id: 'waypoint', label: 'Add Stop (+)', desc: 'Tap map to drop waypoint', icon: PlusCircle },
+                ].map((opt) => {
+                  const Icon = opt.icon;
+                  const isSelected = mapClickAction === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        onChangeMapClickAction(opt.id as MapClickAction);
+                        setModeMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-2 rounded-xl transition-colors flex items-center gap-2.5 cursor-pointer ${
+                        isSelected
+                          ? 'bg-[var(--accent)] text-white font-bold shadow-sm'
+                          : 'hover:bg-purple-500/15 text-[var(--ink)]'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-[var(--accent)]'}`} />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold leading-none">{opt.label}</div>
+                        <div className={`text-[9.5px] mt-0.5 truncate ${isSelected ? 'text-purple-100' : 'text-[var(--ink-dim)]'}`}>
+                          {opt.desc}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Cartography Layers Button */}
           <button
             type="button"
-            onClick={() => setShowLayersMenu((v) => !v)}
+            data-layers-trigger
+            onClick={() => {
+              setShowLayersMenu((v) => !v);
+              setModeMenuOpen(false);
+            }}
             aria-label="Toggle Cartography Layers"
-            className={`p-2 backdrop-blur-xl border shrink-0 shadow-lg rounded-xl cursor-pointer ${
-              theme === 'dark'
-                ? 'bg-[#0d0717]/85 border-purple-500/25 text-[#f8f6fc] hover:border-[#a855f7]'
+            className={`h-9 w-9 backdrop-blur-xl border shrink-0 shadow-lg rounded-xl flex items-center justify-center cursor-pointer transition-colors ${
+              showLayersMenu
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                : theme === 'dark'
+                ? 'bg-[#0d0717]/90 border-purple-500/25 text-[#f8f6fc] hover:border-[#a855f7]'
                 : 'bg-white/90 border-purple-300/40 text-[#160a2c] hover:border-purple-500'
             }`}
+            title="Map Layers (Satellite, Street, Dark, Traffic, Weather)"
           >
             <Layers className="w-4 h-4" />
           </button>
@@ -875,7 +1009,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
       {/* Layers Flyout Menu */}
       {showLayersMenu && (
-        <div className={`absolute top-14 right-3 z-[410] w-56 backdrop-blur-2xl border p-3 shadow-2xl rounded-xl space-y-3 ${
+        <div
+          ref={layersMenuRef}
+          className={`absolute top-14 right-3 z-[410] w-56 backdrop-blur-2xl border p-3 shadow-2xl rounded-xl space-y-3 ${
           theme === 'dark'
             ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
             : 'bg-white/95 border-purple-300/40 text-[#160a2c]'

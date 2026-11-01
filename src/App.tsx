@@ -49,6 +49,7 @@ import { useDeviceCompass } from './hooks/useOrientation';
 import { useWakeLock } from './hooks/useWakeLock';
 import { useSpeechGuidance } from './hooks/useSpeechGuidance';
 import { useRouteSimulation } from './hooks/useRouteSimulation';
+import { motion } from 'motion/react';
 import {
   Compass,
   Navigation,
@@ -209,6 +210,55 @@ export default function App() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // 🏍️ Anti-Vibration & Touch-Outside Blur (Suppresses iOS WebKit "Undo Typing" dialog)
+  // Motorcycle engine vibration and road bumps cause iPhone 13 accelerometer oscillations.
+  // In iOS Safari, if an input field is active when the phone shakes, iOS triggers native "Undo Typing".
+  // Auto-blurring inputs on touch-outside and dampening on vehicle motion completely eliminates this modal.
+  useEffect(() => {
+    const blurActiveInput = () => {
+      if (
+        document.activeElement instanceof HTMLElement &&
+        (document.activeElement.tagName === 'INPUT' ||
+          document.activeElement.tagName === 'TEXTAREA' ||
+          document.activeElement.getAttribute('contenteditable') === 'true')
+      ) {
+        document.activeElement.blur();
+      }
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && !target.closest('input, textarea, [contenteditable="true"]')) {
+        blurActiveInput();
+      }
+    };
+
+    const handleDeviceMotion = (e: DeviceMotionEvent) => {
+      const acc = e.accelerationIncludingGravity || e.acceleration;
+      if (!acc) return;
+      const x = acc.x ?? 0;
+      const y = acc.y ?? 0;
+      const z = acc.z ?? 0;
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+      // Motorcycle vibration spikes or bumps
+      if (magnitude > 13.5 || magnitude < 6.0) {
+        blurActiveInput();
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown, { passive: true });
+    if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+      window.addEventListener('devicemotion', handleDeviceMotion, { passive: true });
+    }
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+        window.removeEventListener('devicemotion', handleDeviceMotion);
+      }
     };
   }, []);
 
@@ -561,18 +611,28 @@ export default function App() {
           ? 'bg-[#0d0717]/85 border-purple-500/20 text-[#f8f6fc] shadow-black/40'
           : 'bg-white/85 border-purple-300/40 text-[#160a2c] shadow-purple-900/5'
       }`}>
-        <div className="w-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35">
-              <Compass className="w-5 h-5" />
+        <div className="w-full flex items-center justify-between gap-3">
+          {/* Left: Brand Identity with Glowing Compass & Subtitle */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35 shrink-0">
+              <Compass className="w-5 h-5 animate-[spin_12s_linear_infinite]" />
             </div>
-            <div>
-              <h1 className={`logo display text-base sm:text-lg font-black tracking-tight leading-none ${
-                theme === 'dark' ? 'text-white' : 'text-[#160a2c]'
-              }`}>
-                LAAGARN
-              </h1>
-              <div className={`mono text-[9px] uppercase tracking-wider mt-0.5 ${
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h1 className={`logo display text-base sm:text-lg font-black tracking-wider leading-none ${
+                  theme === 'dark' ? 'text-white' : 'text-[#160a2c]'
+                }`}>
+                  LAAGARN
+                </h1>
+                <span className={`px-1.5 py-0.5 text-[8px] font-extrabold mono uppercase tracking-wider rounded-md shrink-0 ${
+                  theme === 'dark'
+                    ? 'bg-purple-500/20 text-[#c084fc] border border-purple-500/30'
+                    : 'bg-purple-100 text-[#7c3aed] border border-purple-200'
+                }`}>
+                  GPS
+                </span>
+              </div>
+              <div className={`mono text-[8.5px] sm:text-[9.5px] uppercase tracking-wider mt-0.5 truncate max-w-[170px] xs:max-w-[210px] sm:max-w-none ${
                 theme === 'dark' ? 'text-purple-300/60' : 'text-purple-700/70'
               }`}>
                 My Way, Your Travel Buddy.
@@ -613,14 +673,14 @@ export default function App() {
           </nav>
 
           {/* Right Header: Theme Toggle, Install PWA & Status Badges */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Dark / Light Mode Toggle Button */}
             <button
               type="button"
               onClick={handleToggleTheme}
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg border transition-all flex items-center gap-1.5 mono text-[10px] font-bold uppercase cursor-pointer ${
+              className={`h-8 px-2 sm:px-2.5 rounded-xl border transition-all flex items-center gap-1.5 mono text-[10px] font-bold uppercase cursor-pointer ${
                 theme === 'dark'
                   ? 'bg-purple-950/40 border-purple-500/30 text-purple-200 hover:text-white hover:border-[#a855f7]'
                   : 'bg-purple-100/80 border-purple-300/60 text-purple-900 hover:border-purple-500 shadow-sm'
@@ -643,26 +703,27 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleInstallPwa}
-                className="px-2.5 py-1 bg-gradient-to-r from-[#a855f7] to-[#9333ea] hover:from-[#c084fc] hover:to-[#a855f7] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-lg shadow-purple-500/30 rounded cursor-pointer"
+                className="h-8 px-2.5 bg-gradient-to-r from-[#a855f7] to-[#9333ea] hover:from-[#c084fc] hover:to-[#a855f7] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-lg shadow-purple-500/30 rounded-xl cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Install App</span>
+                <span className="hidden sm:inline">Install</span>
               </button>
             )}
 
+            {/* Online / Offline Status Badge (Always shows legible text, never truncated to an empty dot) */}
             {isOfflineMode ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 mono text-[10px] uppercase font-bold rounded">
-                <WifiOff className="w-3 h-3" />
+              <div className="h-8 px-2 sm:px-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 mono text-[10px] uppercase font-bold rounded-xl flex items-center gap-1.5">
+                <WifiOff className="w-3 h-3 text-amber-400" />
                 <span>Offline</span>
               </div>
             ) : (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 border mono text-[10px] uppercase font-bold rounded ${
+              <div className={`h-8 px-2 sm:px-2.5 border mono text-[10px] uppercase font-bold rounded-xl flex items-center gap-1.5 ${
                 theme === 'dark'
-                  ? 'bg-purple-950/40 border-purple-500/30 text-purple-300'
-                  : 'bg-purple-100/80 border-purple-300/60 text-purple-800'
+                  ? 'bg-purple-950/40 border-purple-500/30 text-purple-200'
+                  : 'bg-purple-100/80 border-purple-300/60 text-purple-900'
               }`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                <span className="hidden sm:inline">Online</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span>Live</span>
               </div>
             )}
           </div>
@@ -856,7 +917,7 @@ export default function App() {
           </div>
 
           {/* Drawer Scrollable Content (Hidden when drawer is in peek mode to prevent squashed content) */}
-          <div className={`${mobileSheetState === 'peek' ? 'hidden' : 'flex-1 overflow-y-auto p-4 overscroll-contain'}`}>
+          <div className={`${mobileSheetState === 'peek' ? 'hidden' : 'flex-1 overflow-y-auto px-4 pt-3 pb-32 overscroll-contain'}`}>
             {activeTab === 'routes' && (
               <RoutePlannerPanel
                 stops={stops}
@@ -939,19 +1000,43 @@ export default function App() {
             )}
           </div>
 
-          {/* Mobile Bottom Navigation Bar (Thumb Accessible with safe-area padding) */}
-          <div className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t grid grid-cols-4 items-center ${
-            theme === 'dark'
-              ? 'bg-[#0a0414]/95 border-purple-500/20'
-              : 'bg-white/95 border-purple-200/80 shadow-md'
-          }`}>
+          {/* Mobile Bottom Navigation Dock (Thumb Accessible with safe-area padding & Tactile Framer Motion Active Indicator) */}
+          <nav
+            aria-label="Mobile Navigation Dock"
+            className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t px-3 flex items-center justify-around gap-1.5 ${
+              theme === 'dark'
+                ? 'bg-[#0a0414]/95 border-purple-500/25 shadow-[0_-10px_30px_rgba(5,2,14,0.7)]'
+                : 'bg-white/95 border-purple-200/80 shadow-[0_-10px_30px_rgba(100,50,150,0.08)]'
+            }`}
+          >
             {(
               [
                 { id: 'routes', label: 'Planner', icon: Navigation },
-                { id: 'traffic', label: 'Traffic', icon: AlertTriangle },
-                { id: 'weather', label: 'Weather', icon: CloudRain },
-                { id: 'offline', label: 'Offline', icon: HardDriveDownload },
-              ] as { id: ActiveTab; label: string; icon: any }[]
+                {
+                  id: 'traffic',
+                  label: 'Traffic',
+                  icon: AlertTriangle,
+                  badge: incidents.filter((i) => i.active).length,
+                },
+                {
+                  id: 'weather',
+                  label: 'Weather',
+                  icon: CloudRain,
+                  alertDot: Boolean(hazardReport && hazardReport.overallLevel !== 'nominal'),
+                },
+                {
+                  id: 'offline',
+                  label: 'Offline',
+                  icon: HardDriveDownload,
+                  alertDot: isOfflineMode,
+                },
+              ] as {
+                id: ActiveTab;
+                label: string;
+                icon: any;
+                badge?: number;
+                alertDot?: boolean;
+              }[]
             ).map((tab) => {
               const isCurrent = activeTab === tab.id;
               const Icon = tab.icon;
@@ -965,24 +1050,65 @@ export default function App() {
                       setMobileSheetState('half');
                     }
                   }}
-                  className={`h-full flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
-                    isCurrent
-                      ? theme === 'dark'
-                        ? 'text-[#c084fc] drop-shadow-[0_0_8px_rgba(168,85,247,0.6)] font-bold'
-                        : 'text-[#7c3aed] drop-shadow-[0_0_8px_rgba(147,51,234,0.4)] font-bold'
-                      : theme === 'dark'
-                      ? 'text-gray-400 hover:text-purple-200'
-                      : 'text-purple-900/50 hover:text-purple-950'
-                  }`}
+                  className="relative flex-1 py-1.5 flex flex-col items-center justify-center rounded-2xl transition-all cursor-pointer select-none"
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="mono text-[10px] font-bold uppercase tracking-wider">
-                    {tab.label}
-                  </span>
+                  {isCurrent && (
+                    <motion.div
+                      layoutId="activeMobileTabPill"
+                      className={`absolute inset-0 rounded-2xl border ${
+                        theme === 'dark'
+                          ? 'bg-gradient-to-b from-[#a855f7]/25 to-[#7c3aed]/15 border-purple-400/40 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
+                          : 'bg-purple-100 border-purple-300 shadow-sm'
+                      }`}
+                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    />
+                  )}
+
+                  <div className="relative z-10 flex flex-col items-center gap-1">
+                    <div className="relative">
+                      <Icon
+                        className={`w-5 h-5 transition-transform duration-200 ${
+                          isCurrent
+                            ? theme === 'dark'
+                              ? 'text-[#c084fc] scale-110 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]'
+                              : 'text-[#7c3aed] scale-110'
+                            : theme === 'dark'
+                            ? 'text-zinc-400'
+                            : 'text-zinc-500'
+                        }`}
+                      />
+                      {/* Badge count for Traffic */}
+                      {typeof tab.badge === 'number' && tab.badge > 0 && (
+                        <span className="absolute -top-1 -right-2.5 px-1 min-w-[15px] h-[15px] bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md">
+                          {tab.badge}
+                        </span>
+                      )}
+                      {/* Alert dot for Weather Hazards / Offline */}
+                      {tab.alertDot && (
+                        <span className="absolute -top-0.5 -right-1.5 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                      )}
+                      {tab.alertDot && (
+                        <span className="absolute -top-0.5 -right-1.5 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-[#0a0414]" />
+                      )}
+                    </div>
+                    <span
+                      className={`mono text-[10px] uppercase tracking-wider font-extrabold transition-colors ${
+                        isCurrent
+                          ? theme === 'dark'
+                            ? 'text-[#f8f6fc]'
+                            : 'text-[#160a2c]'
+                          : theme === 'dark'
+                          ? 'text-zinc-400'
+                          : 'text-zinc-500'
+                      }`}
+                    >
+                      {tab.label}
+                    </span>
+                  </div>
                 </button>
               );
             })}
-          </div>
+          </nav>
         </div>
       </main>
     </div>
