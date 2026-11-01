@@ -482,6 +482,49 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
             )}
           </div>
 
+          {/* Quick Philippine Corridor Presets */}
+          <div className="mb-4">
+            <div className="mono text-[0.6rem] text-gray-400 mb-1.5 uppercase tracking-wider">
+              Popular Routes
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                {
+                  label: 'Malungon ➔ Digos',
+                  origin: { name: 'Malungon Municipal Hall', region: 'Malungon, Sarangani', lat: 6.2575, lng: 125.2633 },
+                  dest: { name: 'Digos City Rizal Park', region: 'Digos City, Davao del Sur', lat: 6.7570, lng: 125.3564 },
+                },
+                {
+                  label: 'Davao ➔ GenSan',
+                  origin: { name: 'Davao People’s Park', region: 'Davao City, Davao del Sur', lat: 7.0707, lng: 125.6114 },
+                  dest: { name: 'General Santos Oval Plaza', region: 'General Santos, South Cotabato', lat: 6.1128, lng: 125.1717 },
+                },
+                {
+                  label: 'Manila ➔ Baguio',
+                  origin: { name: 'Manila Rizal Park (Luneta)', region: 'City of Manila, NCR', lat: 14.5826, lng: 120.9787 },
+                  dest: { name: 'Baguio Burnham Park', region: 'Baguio City, Benguet', lat: 16.4124, lng: 120.5929 },
+                },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setOriginInput(preset.origin.name);
+                    setDestInput(preset.dest.name);
+                    setOriginPoint(preset.origin);
+                    setDestPoint(preset.dest);
+                    setWaypointInputs([]);
+                    setValidationError(null);
+                    onApplyStops([preset.origin, preset.dest]);
+                  }}
+                  className="px-2 py-1 bg-[#141416] hover:bg-[#ff4d00]/15 border border-white/10 hover:border-[#ff4d00]/50 rounded text-[10px] mono text-gray-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {validationError && (
             <div
               role="alert"

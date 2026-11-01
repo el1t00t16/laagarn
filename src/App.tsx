@@ -9,8 +9,15 @@ import {
 } from './utils/routingEngine';
 import {
   INITIAL_TRAFFIC_INCIDENTS,
+  KNOWN_LOCATIONS,
   OfflineRegionPack,
 } from './utils/travelData';
+import {
+  CorridorStation,
+  evaluateRouteCorridorHazards,
+  extractRouteCorridorStations,
+  RouteCorridorHazardReport,
+} from './utils/corridorWeather';
 import {
   cacheBoundingBoxTiles,
   clearAllCachedTiles,
@@ -88,8 +95,10 @@ export default function App() {
   const [showTrafficLayer, setShowTrafficLayer] = useState<boolean>(true);
   const [showWeatherLayer, setShowWeatherLayer] = useState<boolean>(true);
 
-  // Weather state
+  // Weather state & en-route corridor hazards
   const [weatherSnapshots, setWeatherSnapshots] = useState<WeatherSnapshot[]>([]);
+  const [corridorStations, setCorridorStations] = useState<CorridorStation[]>([]);
+  const [hazardReport, setHazardReport] = useState<RouteCorridorHazardReport | null>(null);
   const [weatherLoading, setWeatherLoading] = useState<boolean>(false);
 
   // Offline mode state & network listener
@@ -204,7 +213,7 @@ export default function App() {
     };
   }, [stops, travelMode, incidents, isOfflineMode]);
 
-  // Sync weather for active stops or user's live GPS
+  // Sync weather for en-route corridor municipalities, destination arrival, and hazards
   const syncEnRouteWeather = useCallback(async () => {
     const targets: LatLngPoint[] =
       stops.length > 0
@@ -222,19 +231,38 @@ export default function App() {
 
     if (targets.length === 0) {
       setWeatherSnapshots([]);
+      setCorridorStations([]);
+      setHazardReport(null);
       return;
     }
 
     setWeatherLoading(true);
     try {
-      const results = await Promise.all(
-        targets.map((stop) => fetchLocationWeather(stop, isOfflineMode))
-      );
-      setWeatherSnapshots(results);
+      if (activeRoute && activeRoute.stops.length >= 2 && activeRoute.coordinates.length >= 2) {
+        const stations = await extractRouteCorridorStations(
+          activeRoute,
+          KNOWN_LOCATIONS,
+          isOfflineMode
+        );
+        const report = evaluateRouteCorridorHazards(
+          stations,
+          activeRoute.stops[activeRoute.stops.length - 1].name
+        );
+        setCorridorStations(stations);
+        setHazardReport(report);
+        setWeatherSnapshots(stations.map((s) => s.weather));
+      } else {
+        setCorridorStations([]);
+        setHazardReport(null);
+        const results = await Promise.all(
+          targets.map((stop) => fetchLocationWeather(stop, isOfflineMode))
+        );
+        setWeatherSnapshots(results);
+      }
     } finally {
       setWeatherLoading(false);
     }
-  }, [stops, gpsState, isOfflineMode]);
+  }, [stops, gpsState, activeRoute, isOfflineMode]);
 
   useEffect(() => {
     syncEnRouteWeather();
@@ -596,6 +624,9 @@ export default function App() {
           {activeTab === 'weather' && (
             <WeatherForecastPanel
               snapshots={weatherSnapshots}
+              corridorStations={corridorStations}
+              hazardReport={hazardReport}
+              destinationName={activeRoute?.stops[activeRoute.stops.length - 1]?.name}
               loading={weatherLoading}
               onFocusCoordinate={handleFocusCoordinate}
               onRefreshWeather={syncEnRouteWeather}
@@ -632,6 +663,8 @@ export default function App() {
             showTrafficLayer={showTrafficLayer}
             onToggleTrafficLayer={() => setShowTrafficLayer((v) => !v)}
             weatherSnapshots={weatherSnapshots}
+            corridorStations={corridorStations}
+            hazardReport={hazardReport}
             showWeatherLayer={showWeatherLayer}
             onToggleWeatherLayer={() => setShowWeatherLayer((v) => !v)}
             isOfflineMode={isOfflineMode}
@@ -765,6 +798,9 @@ export default function App() {
             {activeTab === 'weather' && (
               <WeatherForecastPanel
                 snapshots={weatherSnapshots}
+                corridorStations={corridorStations}
+                hazardReport={hazardReport}
+                destinationName={activeRoute?.stops[activeRoute.stops.length - 1]?.name}
                 loading={weatherLoading}
                 onFocusCoordinate={(lat, lng, zoom) => {
                   handleFocusCoordinate(lat, lng, zoom);

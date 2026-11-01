@@ -21,6 +21,7 @@ import {
   WeatherSnapshot,
   formatDistance,
 } from '../utils/routingEngine';
+import { CorridorStation, RouteCorridorHazardReport } from '../utils/corridorWeather';
 import { GpsPositionState } from '../utils/gpsAndGeocoding';
 import {
   getCachedTileObjectUrl,
@@ -50,6 +51,8 @@ interface LeafletMapViewProps {
   showTrafficLayer: boolean;
   onToggleTrafficLayer: () => void;
   weatherSnapshots: WeatherSnapshot[];
+  corridorStations?: CorridorStation[];
+  hazardReport?: RouteCorridorHazardReport | null;
   showWeatherLayer: boolean;
   onToggleWeatherLayer: () => void;
   isOfflineMode: boolean;
@@ -280,6 +283,8 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   showTrafficLayer,
   onToggleTrafficLayer,
   weatherSnapshots,
+  corridorStations = [],
+  hazardReport = null,
   showWeatherLayer,
   onToggleWeatherLayer,
   isOfflineMode,
@@ -562,49 +567,111 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         });
     }
 
-    // Weather Stations
+    // Weather Stations & En-Route Corridor Waypoints
     if (showWeatherLayer) {
-      weatherSnapshots.forEach((snap) => {
-        const weatherIcon = L.divIcon({
-          className: 'v2-weather-marker',
-          html: `<div style="
-            display:inline-flex;
-            align-items:center;
-            padding:3px 8px;
-            background:#1c1c1e;
-            color:#f2f2f2;
-            border:1px solid rgba(242,242,242,0.22);
-            font-family:'JetBrains Mono',monospace;
-            font-size:9.5px;
-            font-weight:600;
-            text-transform:uppercase;
-            letter-spacing:0.1em;
-            white-space:nowrap;
-            box-shadow:0 4px 12px rgba(0,0,0,0.45);
-            border-radius:2px;
-          "><span style="color:#ff4d00;margin-right:4px;">${snap.tempC}&deg;C</span> ${escapeHtml(
-            snap.condition
-          )}</div>`,
-          iconSize: [110, 22],
-          iconAnchor: [-16, 20],
-        });
+      if (corridorStations && corridorStations.length > 0) {
+        corridorStations.forEach((st) => {
+          const hasHazard = st.hazards.length > 0;
+          const isSevere = st.hazards.some((h) => h.severity === 'severe' || h.severity === 'warning');
+          const statusDot = isSevere ? '#ef4444' : hasHazard ? '#f59e0b' : '#10b981';
+          const cleanName = st.name.replace(/ Municipal.*| Town.*| Poblacion.*/i, '');
+          const pred = st.predictedAtEta;
 
-        const wMarker = L.marker([snap.lat, snap.lng], { icon: weatherIcon });
-        wMarker.bindPopup(
-          `<div style="min-width:180px;font-family:'Inter',sans-serif;">
-            <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;">${escapeHtml(
-              snap.locationName
-            )}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:4px;text-transform:uppercase;">
-              ${snap.tempC}&deg;C (${escapeHtml(snap.condition)}) &middot; WIND ${snap.windKmh} KM/H
-            </div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#ff4d00;margin-top:4px;text-transform:uppercase;">
-              PRECIP ${snap.precipProbPct}% &middot; VIS ${snap.visibilityKm} KM
-            </div>
-          </div>`
-        );
-        wMarker.addTo(group);
-      });
+          const weatherIcon = L.divIcon({
+            className: 'v2-weather-corridor-marker',
+            html: `<div style="
+              display:inline-flex;
+              align-items:center;
+              gap:5px;
+              padding:3px 8px;
+              background:#18181b;
+              color:#f2f2f2;
+              border:1px solid ${hasHazard ? statusDot : 'rgba(242,242,242,0.22)'};
+              font-family:'JetBrains Mono',monospace;
+              font-size:9.5px;
+              font-weight:600;
+              white-space:nowrap;
+              box-shadow:0 4px 12px rgba(0,0,0,0.55);
+              border-radius:4px;
+            ">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDot};"></span>
+              <span style="color:#ffffff;">${escapeHtml(cleanName)}</span>
+              <span style="color:#ff4d00;font-weight:700;">${pred.tempC}&deg;C</span>
+              <span style="color:rgba(242,242,242,0.5);font-size:8.5px;">${pred.timeLabel}</span>
+            </div>`,
+            iconSize: [140, 24],
+            iconAnchor: [-10, 18],
+          });
+
+          const wMarker = L.marker([st.lat, st.lng], { icon: weatherIcon });
+          const hazardHtml = hasHazard
+            ? `<div style="margin-top:6px;padding:6px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:4px;">
+                <div style="font-size:10px;font-weight:700;color:#f59e0b;text-transform:uppercase;">${escapeHtml(st.hazards[0].title)}</div>
+                <div style="font-size:10px;color:#fef3c7;margin-top:2px;">${escapeHtml(st.hazards[0].precaution)}</div>
+              </div>`
+            : '';
+
+          wMarker.bindPopup(
+            `<div style="min-width:210px;font-family:'Inter',sans-serif;">
+              <div style="font-size:13.5px;font-weight:700;color:#f2f2f2;">${escapeHtml(st.name)}</div>
+              <div style="font-size:10.5px;color:rgba(242,242,242,0.65);">${escapeHtml(st.region)}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#ff4d00;margin-top:5px;font-weight:600;">
+                ETA: ${escapeHtml(st.etaLabel)} &middot; ${st.distanceAlongKm} KM ALONG ROUTE
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.85);margin-top:3px;">
+                ${pred.tempC}&deg;C (${escapeHtml(pred.condition)}) &middot; PRECIP ${pred.precipProbPct}%
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:2px;">
+                WIND ${pred.windKmh} KM/H &middot; VISIBILITY ${pred.visibilityKm} KM
+              </div>
+              ${hazardHtml}
+            </div>`
+          );
+          wMarker.addTo(group);
+        });
+      } else {
+        weatherSnapshots.forEach((snap) => {
+          const weatherIcon = L.divIcon({
+            className: 'v2-weather-marker',
+            html: `<div style="
+              display:inline-flex;
+              align-items:center;
+              padding:3px 8px;
+              background:#1c1c1e;
+              color:#f2f2f2;
+              border:1px solid rgba(242,242,242,0.22);
+              font-family:'JetBrains Mono',monospace;
+              font-size:9.5px;
+              font-weight:600;
+              text-transform:uppercase;
+              letter-spacing:0.1em;
+              white-space:nowrap;
+              box-shadow:0 4px 12px rgba(0,0,0,0.45);
+              border-radius:2px;
+            "><span style="color:#ff4d00;margin-right:4px;">${snap.tempC}&deg;C</span> ${escapeHtml(
+              snap.condition
+            )}</div>`,
+            iconSize: [110, 22],
+            iconAnchor: [-16, 20],
+          });
+
+          const wMarker = L.marker([snap.lat, snap.lng], { icon: weatherIcon });
+          wMarker.bindPopup(
+            `<div style="min-width:180px;font-family:'Inter',sans-serif;">
+              <div style="font-size:13.5px;font-weight:600;color:#f2f2f2;">${escapeHtml(
+                snap.locationName
+              )}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(242,242,242,0.65);margin-top:4px;text-transform:uppercase;">
+                ${snap.tempC}&deg;C (${escapeHtml(snap.condition)}) &middot; WIND ${snap.windKmh} KM/H
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#ff4d00;margin-top:4px;text-transform:uppercase;">
+                PRECIP ${snap.precipProbPct}% &middot; VIS ${snap.visibilityKm} KM
+              </div>
+            </div>`
+          );
+          wMarker.addTo(group);
+        });
+      }
     }
   }, [
     stops,
@@ -614,6 +681,8 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     incidents,
     showTrafficLayer,
     weatherSnapshots,
+    corridorStations,
+    hazardReport,
     showWeatherLayer,
     navigationActive,
     currentStep,

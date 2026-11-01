@@ -20,7 +20,8 @@ export const APP_CONFIG = {
     env.VITE_TILE_ATTRIBUTION ||
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   /** OSRM-compatible routing servers, per travel profile. */
-  osrmDrivingUrl: pick('VITE_OSRM_DRIVING_URL', 'https://router.project-osrm.org/route/v1/driving'),
+  osrmDrivingUrl: pick('VITE_OSRM_DRIVING_URL', 'https://routing.openstreetmap.de/routed-car/route/v1/driving'),
+  osrmDrivingFallbackUrl: 'https://router.project-osrm.org/route/v1/driving',
   osrmCyclingUrl: pick(
     'VITE_OSRM_CYCLING_URL',
     'https://routing.openstreetmap.de/routed-bike/route/v1/bike'

@@ -339,10 +339,10 @@ function buildOsrmInstruction(
   }
 }
 
-function osrmBaseUrl(mode: TravelMode): string {
-  if (mode === 'walking') return APP_CONFIG.osrmWalkingUrl;
-  if (mode === 'cycling') return APP_CONFIG.osrmCyclingUrl;
-  return APP_CONFIG.osrmDrivingUrl;
+function osrmBaseUrls(mode: TravelMode): string[] {
+  if (mode === 'walking') return [APP_CONFIG.osrmWalkingUrl];
+  if (mode === 'cycling') return [APP_CONFIG.osrmCyclingUrl];
+  return [APP_CONFIG.osrmDrivingUrl, APP_CONFIG.osrmDrivingFallbackUrl].filter(Boolean);
 }
 
 async function fetchOsrmRoutes(
@@ -352,12 +352,27 @@ async function fetchOsrmRoutes(
 ): Promise<ComputedRoute[] | null> {
   const coordString = stops.map((s) => `${s.lng.toFixed(6)},${s.lat.toFixed(6)}`).join(';');
   const alternatives = stops.length === 2 ? 'true' : 'false';
-  const url = `${osrmBaseUrl(mode)}/${coordString}?overview=full&geometries=geojson&steps=true&alternatives=${alternatives}`;
 
-  const res = await fetchWithTimeout(url, 9000);
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!data || data.code !== 'Ok' || !Array.isArray(data.routes) || data.routes.length === 0) {
+  const baseUrls = osrmBaseUrls(mode);
+  let data: any = null;
+
+  for (const base of baseUrls) {
+    try {
+      const url = `${base}/${coordString}?overview=full&geometries=geojson&steps=true&alternatives=${alternatives}`;
+      const res = await fetchWithTimeout(url, 7000);
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.code === 'Ok' && Array.isArray(json.routes) && json.routes.length > 0) {
+          data = json;
+          break;
+        }
+      }
+    } catch {
+      // try next fallback server
+    }
+  }
+
+  if (!data || !Array.isArray(data.routes) || data.routes.length === 0) {
     return null;
   }
 
