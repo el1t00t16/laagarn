@@ -81,6 +81,7 @@ interface LeafletMapViewProps {
   simulationProgress?: number;
   simSpeedMultiplier?: number;
   onChangeSimSpeed?: (speed: number) => void;
+  mobileSheetOpen?: boolean;
 }
 
 function applyTileStyleFilter(
@@ -309,6 +310,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   simulationProgress = 0,
   simSpeedMultiplier = 2,
   onChangeSimSpeed,
+  mobileSheetOpen = false,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -807,54 +809,53 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         className="w-full h-full z-0"
       />
 
-      {/* Top Floating Quick-Action Bar */}
-      <div className="absolute top-3 left-3 right-3 sm:right-auto sm:max-w-xl z-[400] flex items-center gap-1.5 overflow-x-auto no-scrollbar pointer-events-auto">
-        <button
-          type="button"
-          onClick={onLocateUserGps}
-          disabled={gpsLoading}
-          className={`px-3 py-2 bg-[#1c1c1e]/90 backdrop-blur-md border border-[rgba(242,242,242,0.15)] text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg ${
-            gpsState ? 'text-[#ff4d00] border-[#ff4d00]/50' : 'text-[#f2f2f2]'
-          }`}
-        >
-          <Crosshair className={`w-3.5 h-3.5 ${gpsLoading ? 'animate-spin' : ''}`} />
-          <span>{gpsLoading ? 'Locating…' : gpsState ? 'GPS Locked' : 'Locate Me'}</span>
-        </button>
-
-        {(
-          [
-            { id: 'none', label: 'Pan' },
-            { id: 'origin', label: 'Origin' },
-            { id: 'destination', label: 'Dest' },
-            { id: 'waypoint', label: '+Stop' },
-          ] as { id: MapClickAction; label: string }[]
-        ).map((item) => (
+      {/* Top Floating Quick-Action Bar (Hidden during active driving to prevent any overlap with Driving HUD) */}
+      {!(navigationActive || isSimulating) && (
+        <div className="absolute top-3 left-3 right-3 sm:right-auto sm:max-w-xl z-[400] flex items-center gap-1.5 overflow-x-auto no-scrollbar pointer-events-auto">
           <button
-            key={item.id}
             type="button"
-            onClick={() => onChangeMapClickAction(item.id)}
-            className={`px-2.5 py-2 bg-[#1c1c1e]/90 backdrop-blur-md border text-xs mono uppercase tracking-wider shrink-0 transition-colors shadow-lg ${
-              mapClickAction === item.id
-                ? 'bg-[#ff4d00] text-white border-[#ff4d00]'
-                : 'border-[rgba(242,242,242,0.15)] text-[rgba(242,242,242,0.7)] hover:text-white'
+            onClick={onLocateUserGps}
+            disabled={gpsLoading}
+            className={`px-3 py-2 bg-[#1c1c1e]/90 backdrop-blur-md border border-[rgba(242,242,242,0.15)] text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg ${
+              gpsState ? 'text-[#ff4d00] border-[#ff4d00]/50' : 'text-[#f2f2f2]'
             }`}
           >
-            {item.label}
+            <Crosshair className={`w-3.5 h-3.5 ${gpsLoading ? 'animate-spin' : ''}`} />
+            <span>{gpsLoading ? 'Locating…' : gpsState ? 'GPS Locked' : 'Locate Me'}</span>
           </button>
-        ))}
 
-        <button
-          type="button"
-          onClick={() => setShowLayersMenu((v) => !v)}
-          className={`p-2 bg-[#1c1c1e]/90 backdrop-blur-md border border-[rgba(242,242,242,0.15)] text-xs shrink-0 shadow-lg ${
-            showLayersMenu ? 'text-[#ff4d00] border-[#ff4d00]' : 'text-[#f2f2f2]'
-          }`}
-          title="Toggle Layers"
-          aria-label="Toggle Layers"
-        >
-          <Layers className="w-4 h-4" />
-        </button>
-      </div>
+          {(
+            [
+              { id: 'none', label: 'Pan' },
+              { id: 'origin', label: 'Origin' },
+              { id: 'destination', label: 'Dest' },
+              { id: 'waypoint', label: '+Stop' },
+            ] as { id: MapClickAction; label: string }[]
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onChangeMapClickAction(item.id)}
+              className={`px-2.5 py-2 bg-[#1c1c1e]/90 backdrop-blur-md border text-xs mono uppercase tracking-wider shrink-0 transition-colors shadow-lg ${
+                mapClickAction === item.id
+                  ? 'bg-[#ff4d00] text-white border-[#ff4d00]'
+                  : 'border-[rgba(242,242,242,0.15)] text-[rgba(242,242,242,0.7)] hover:text-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => setShowLayersMenu((v) => !v)}
+            aria-label="Toggle Cartography Layers"
+            className="p-2 bg-[#1c1c1e]/90 backdrop-blur-md border border-[rgba(242,242,242,0.15)] text-[#f2f2f2] shrink-0 shadow-lg hover:border-[#ff4d00]"
+          >
+            <Layers className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Layers Flyout Menu */}
       {showLayersMenu && (
@@ -1077,18 +1078,24 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         </div>
       )}
 
-      {/* Floating Speedometer & Status Badge (Bottom-Left) */}
-      <div className="absolute bottom-4 left-3 z-[400] flex flex-col gap-1.5 pointer-events-none">
-        {gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined && gpsState.speedKmh > 0 && (
-          <div className="bg-[#111113]/90 backdrop-blur-md border border-[#ff4d00] px-3 py-1.5 text-center pointer-events-auto shadow-xl">
-            <div className="text-2xl font-black display text-white leading-none">
+      {/* Floating Speedometer & Status Badge (Bottom-Left: Positioned cleanly above mobile drawer) */}
+      <div
+        className={`absolute bottom-[calc(7.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 left-3 z-[400] flex flex-col gap-1.5 pointer-events-none transition-all duration-300 ${
+          mobileSheetOpen ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
+        }`}
+      >
+        {gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined && (
+          <div className="bg-[#111113]/95 backdrop-blur-md border border-[#ff4d00] px-3.5 py-2 text-center pointer-events-auto shadow-2xl rounded-sm">
+            <div className="text-3xl font-black display text-white leading-none">
               {gpsState.speedKmh}
             </div>
-            <div className="text-[9px] mono uppercase text-[#ff4d00] font-bold">KM/H SPEED</div>
+            <div className="text-[9px] mono uppercase text-[#ff4d00] font-bold mt-1 tracking-wider">
+              KM/H SPEED
+            </div>
           </div>
         )}
 
-        <div className="bg-[#1c1c1e]/90 backdrop-blur-md border border-white/15 px-3 py-1.5 mono text-[11px] text-gray-300 pointer-events-auto shadow-md">
+        <div className="bg-[#1c1c1e]/95 backdrop-blur-md border border-white/15 px-3 py-1.5 mono text-[11px] text-gray-300 pointer-events-auto shadow-md rounded-sm">
           <div className="font-bold text-white flex items-center gap-1.5">
             <span
               className={`w-2 h-2 rounded-full ${
@@ -1097,7 +1104,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             />
             <span>
               {isSimulating
-                ? 'Simulated Movement (Moving A → B)'
+                ? 'Simulated Movement (A → B)'
                 : gpsState
                 ? `GPS Active: ±${gpsState.accuracyMeters}m`
                 : 'Searching Satellites…'}
@@ -1110,8 +1117,12 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom-Right Thumb Controls */}
-      <div className="absolute bottom-4 right-3 z-[400] flex flex-col gap-2">
+      {/* Bottom-Right Thumb Controls (Positioned cleanly above mobile drawer) */}
+      <div
+        className={`absolute bottom-[calc(7.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 right-3 z-[400] flex flex-col gap-2 transition-all duration-300 ${
+          mobileSheetOpen ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
+        }`}
+      >
         <button
           type="button"
           onClick={handleFitRouteOrGps}

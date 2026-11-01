@@ -506,8 +506,8 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#111113] text-[#f2f2f2] overflow-hidden select-none font-sans">
-      {/* Top Header / App Bar */}
-      <header className="h-14 shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-[rgba(242,242,242,0.1)] bg-[#111113] z-50">
+      {/* Top Header / App Bar (Padded for mobile notches & safe areas) */}
+      <header className="shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-[rgba(242,242,242,0.1)] bg-[#111113] z-50 pt-[max(env(safe-area-inset-top,0px),0.5rem)] min-h-[calc(3.75rem+env(safe-area-inset-top,0px))] pb-1 sm:pb-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-sm bg-[#ff4d00] flex items-center justify-center text-white shadow-md">
             <Compass className="w-5 h-5" />
@@ -697,6 +697,7 @@ export default function App() {
             simulationProgress={simProgressPercent}
             simSpeedMultiplier={simSpeedMultiplier}
             onChangeSimSpeed={setSimSpeedMultiplier}
+            mobileSheetOpen={mobileSheetState !== 'peek'}
           />
         </div>
 
@@ -831,8 +832,8 @@ export default function App() {
             )}
           </div>
 
-          {/* Mobile Bottom Navigation Bar (Thumb Accessible) */}
-          <div className="h-14 shrink-0 bg-[#111113] border-t border-[rgba(242,242,242,0.15)] grid grid-cols-4 items-center">
+          {/* Mobile Bottom Navigation Bar (Thumb Accessible with safe-area padding) */}
+          <div className="min-h-[3.5rem] pb-[max(env(safe-area-inset-bottom,0px),0.25rem)] shrink-0 bg-[#111113] border-t border-[rgba(242,242,242,0.15)] grid grid-cols-4 items-center">
             {(
               [
                 { id: 'routes', label: 'Planner', icon: Navigation },
