@@ -142,9 +142,9 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-6 min-h-full pb-8">
+    <div className="flex flex-col gap-5 pb-8">
       {/* 1. Header with Sync Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div>
           <span className="section-label mono !mb-0 text-[var(--accent)] font-bold">
             Weather & Road Hazards
@@ -157,7 +157,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
           type="button"
           onClick={onRefreshWeather}
           disabled={loading}
-          className="flex items-center gap-1.5 mono text-[0.65rem] uppercase tracking-[0.1em] text-[var(--accent)] hover:underline transition-colors cursor-pointer py-1 px-2.5 border border-[var(--border)] bg-[var(--surface)] rounded-lg font-bold"
+          className="flex items-center gap-1.5 mono text-[0.65rem] uppercase tracking-[0.1em] text-[var(--accent)] hover:underline transition-colors cursor-pointer py-1 px-2.5 border border-[var(--border)] bg-[var(--surface)] rounded-lg font-bold shrink-0"
         >
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Syncing...' : 'Sync Now'}
@@ -166,34 +166,34 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
 
       {/* 2. Destination Arrival Weather Forecast Banner (if route active) */}
       {destinationStation && (
-        <div className="p-4 bg-[var(--surface)] backdrop-blur-xl border border-[var(--border)] rounded-xl shadow-md relative overflow-hidden">
+        <div className="shrink-0 p-4 bg-[var(--surface)] backdrop-blur-xl border border-[var(--border)] rounded-xl shadow-md relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--accent)]/10 rounded-bl-full pointer-events-none" />
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-[var(--accent)]" />
-              <span className="mono text-[0.7rem] uppercase tracking-wider text-[var(--ink-dim)] font-bold">
+          <div className="flex items-center justify-between mb-2 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Navigation className="w-4 h-4 text-[var(--accent)] shrink-0" />
+              <span className="mono text-[0.7rem] uppercase tracking-wider text-[var(--ink-dim)] font-bold truncate">
                 Destination Arrival Weather
               </span>
             </div>
-            <span className="mono text-[0.65rem] text-[var(--accent)] bg-[var(--accent)]/15 px-2 py-0.5 rounded-lg border border-[var(--border)] font-bold">
+            <span className="mono text-[0.65rem] text-[var(--accent)] bg-[var(--accent)]/15 px-2 py-0.5 rounded-lg border border-[var(--border)] font-bold shrink-0 whitespace-nowrap">
               ETA: {destinationStation.predictedAtEta.timeLabel}
             </span>
           </div>
 
-          <div className="flex items-baseline justify-between mt-1">
-            <div>
-              <div className="text-xl display font-extrabold text-[var(--ink)]">
+          <div className="flex items-baseline justify-between mt-1 gap-2">
+            <div className="min-w-0">
+              <div className="text-xl display font-extrabold text-[var(--ink)] truncate">
                 {destinationName || destinationStation.name}
               </div>
-              <div className="text-xs text-[var(--ink-dim)] mt-0.5 font-medium">
+              <div className="text-xs text-[var(--ink-dim)] mt-0.5 font-medium truncate">
                 Arrival condition: <span className="text-[var(--ink)] font-semibold">{destinationStation.predictedAtEta.condition}</span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-3xl display font-black text-[var(--ink)]">
+            <div className="text-right shrink-0">
+              <span className="text-3xl display font-black text-[var(--ink)] leading-none">
                 {destinationStation.predictedAtEta.tempC}°C
               </span>
-              <div className="mono text-[0.65rem] text-[var(--ink-dim)]">
+              <div className="mono text-[0.65rem] text-[var(--ink-dim)] mt-0.5">
                 Rain: <span className="text-[var(--accent)] font-bold">{destinationStation.predictedAtEta.precipProbPct}%</span>
               </div>
             </div>
@@ -201,15 +201,15 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
 
           <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-[var(--border)] text-center mono text-[0.65rem]">
             <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
-              <div className="text-[var(--ink-dim)] font-bold">WIND</div>
+              <div className="text-[var(--ink-dim)] font-bold text-[9px]">WIND</div>
               <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.windKmh} KM/H</div>
             </div>
             <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
-              <div className="text-[var(--ink-dim)] font-bold">VISIBILITY</div>
+              <div className="text-[var(--ink-dim)] font-bold text-[9px]">VISIBILITY</div>
               <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.visibilityKm} KM</div>
             </div>
             <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
-              <div className="text-[var(--ink-dim)] font-bold">FEELS LIKE</div>
+              <div className="text-[var(--ink-dim)] font-bold text-[9px]">FEELS LIKE</div>
               <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.feelsLikeC}°C</div>
             </div>
           </div>
@@ -217,11 +217,11 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
       )}
 
       {/* 3. Navigation View Switcher Tabs */}
-      <div className="flex border-b border-[var(--border)] gap-2">
+      <div className="flex border-b border-[var(--border)] gap-2 shrink-0 overflow-x-auto pb-0.5">
         <button
           type="button"
           onClick={() => setActiveTab('corridor')}
-          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === 'corridor'
               ? 'border-[var(--accent)] text-[var(--accent)]'
               : 'border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]'
@@ -234,7 +234,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('hazards')}
-          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer relative ${
+          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer relative shrink-0 whitespace-nowrap ${
             activeTab === 'hazards'
               ? 'border-[var(--accent)] text-[var(--accent)]'
               : 'border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]'
@@ -254,7 +254,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('outlook')}
-          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === 'outlook'
               ? 'border-[var(--accent)] text-[var(--accent)]'
               : 'border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]'
