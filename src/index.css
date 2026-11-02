@@ -18,6 +18,23 @@
     color-scheme: dark;
   }
 
+  :root.amoled,
+  [data-theme="amoled"] {
+    --bg: #000000;
+    --bg-surface: rgba(6, 2, 12, 0.96);
+    --ink: #ffffff;
+    --accent: #c084fc;
+    --accent-light: #d8b4fe;
+    --accent-deep: #9333ea;
+    --accent-glow: rgba(192, 132, 252, 0.5);
+    --surface: #07030e;
+    --border: rgba(192, 132, 252, 0.35);
+    --border-subtle: rgba(192, 132, 252, 0.18);
+    --ink-dim: rgba(240, 235, 250, 0.7);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color-scheme: dark;
+  }
+
   :root.light,
   [data-theme="light"] {
     --bg: #f8f6fc;

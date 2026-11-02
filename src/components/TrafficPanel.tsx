@@ -1,6 +1,20 @@
 import React, { useState } from 'react';
 import { TrafficIncident, TrafficSeverity } from '../utils/routingEngine';
 import { GpsPositionState } from '../utils/gpsAndGeocoding';
+import {
+  RIDER_HAZARD_PRESETS,
+  RiderHazardType,
+  createRiderReportedHazard,
+} from '../utils/riderHazards';
+import {
+  AlertTriangle,
+  ShieldAlert,
+  Mountain,
+  Waves,
+  Construction,
+  AlertOctagon,
+  CheckCircle2,
+} from 'lucide-react';
 
 interface TrafficPanelProps {
   incidents: TrafficIncident[];
@@ -30,6 +44,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
   const [newSeverity, setNewSeverity] = useState<TrafficSeverity>('moderate');
   const [newDelay, setNewDelay] = useState<string>('10');
   const [formError, setFormError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const filteredIncidents = incidents.filter((inc) => {
     if (filterType === 'heavy') {
@@ -81,6 +96,49 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
     setShowReportForm(false);
   };
 
+  const handleQuickDropHazard = (presetId: RiderHazardType) => {
+    const lat = gpsState ? gpsState.lat : 14.5826;
+    const lng = gpsState ? gpsState.lng : 120.9787;
+    const corridor = gpsState ? gpsState.addressLabel : 'Philippine Corridor';
+    const incident = createRiderReportedHazard(presetId, lat, lng, corridor);
+
+    onAddIncident({
+      title: incident.title,
+      corridor: incident.corridor,
+      type: incident.type,
+      severity: incident.severity,
+      lat: incident.lat,
+      lng: incident.lng,
+      delayMinutes: incident.delayMinutes,
+      speedKmh: incident.speedKmh,
+      description: incident.description,
+      active: true,
+    });
+
+    const preset = RIDER_HAZARD_PRESETS.find((p) => p.id === presetId);
+    setToastMessage(`Logged: ${preset?.label || 'Hazard'}!`);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const getPresetIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'AlertOctagon':
+        return <AlertOctagon className="w-4 h-4 text-amber-400" />;
+      case 'Mountain':
+        return <Mountain className="w-4 h-4 text-rose-400" />;
+      case 'Waves':
+        return <Waves className="w-4 h-4 text-sky-400" />;
+      case 'Construction':
+        return <Construction className="w-4 h-4 text-yellow-400" />;
+      case 'AlertTriangle':
+        return <AlertTriangle className="w-4 h-4 text-red-400" />;
+      case 'ShieldAlert':
+        return <ShieldAlert className="w-4 h-4 text-blue-400" />;
+      default:
+        return <AlertTriangle className="w-4 h-4 text-purple-400" />;
+    }
+  };
+
   return (
     <div className="flex flex-col gap-10 min-h-full">
       <div>
@@ -115,6 +173,43 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
               +{activeRouteDelayMinutes}m
             </div>
           </div>
+        </div>
+
+        {/* 🏍️ 1-Tap Rider Quick Hazard Drops */}
+        <div className="mt-4 p-3 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-1.5 mono text-[0.62rem] uppercase tracking-wider font-bold text-[var(--accent)]">
+              <span>🏍️</span>
+              <span>1-Tap Rider Hazard Drop</span>
+            </div>
+            <span className="mono text-[9px] text-[var(--ink-dim)]">No typing needed</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {RIDER_HAZARD_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => handleQuickDropHazard(preset.id)}
+                className="p-2.5 bg-[var(--surface)] hover:bg-[var(--accent)]/15 border border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-left transition-all active:scale-95 cursor-pointer flex flex-col justify-between group shadow-xs"
+              >
+                <div className="flex items-center justify-between">
+                  {getPresetIcon(preset.iconName)}
+                  <span className="mono text-[9px] font-bold text-[var(--accent)]">+{preset.delayMinutes}m</span>
+                </div>
+                <div className="text-[11px] font-bold text-[var(--ink)] mt-2 leading-tight group-hover:text-[var(--accent)] transition-colors">
+                  {preset.label}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {toastMessage && (
+            <div className="mt-2.5 p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-lg flex items-center gap-2 text-emerald-300 mono text-xs font-bold">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span>{toastMessage}</span>
+            </div>
+          )}
         </div>
 
         {showReportForm && (

@@ -88,7 +88,7 @@ interface LeafletMapViewProps {
   simSpeedMultiplier?: number;
   onChangeSimSpeed?: (speed: number) => void;
   mobileSheetOpen?: boolean;
-  theme?: 'dark' | 'light';
+  theme?: 'dark' | 'amoled' | 'light';
 }
 
 function applyTileStyleFilter(
@@ -320,6 +320,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   mobileSheetOpen = false,
   theme = 'dark',
 }) => {
+  const isDark = theme !== 'light';
+  const isAmoled = theme === 'amoled';
+
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -871,9 +874,13 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             onClick={onLocateUserGps}
             disabled={gpsLoading}
             className={`h-9 px-3 backdrop-blur-xl border rounded-xl text-xs mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-lg cursor-pointer transition-all ${
-              theme === 'dark'
+              isDark
                 ? gpsState
-                  ? 'bg-[#110820]/90 text-[#c084fc] border-[#a855f7]/60 shadow-purple-500/20'
+                  ? isAmoled
+                    ? 'bg-black text-[#c084fc] border-[#a855f7]/70 shadow-purple-500/20'
+                    : 'bg-[#110820]/90 text-[#c084fc] border-[#a855f7]/60 shadow-purple-500/20'
+                  : isAmoled
+                  ? 'bg-black text-[#f8f6fc] border-purple-500/30'
                   : 'bg-[#0d0717]/90 text-[#f8f6fc] border-purple-500/25'
                 : gpsState
                 ? 'bg-purple-100/90 text-[#7c3aed] border-purple-500/60'
@@ -899,8 +906,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               className={`h-9 px-3 backdrop-blur-xl border rounded-xl text-xs mono uppercase tracking-wider flex items-center gap-1.5 shadow-lg transition-all cursor-pointer font-bold select-none ${
                 mapClickAction !== 'none'
                   ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white border-[#c084fc] shadow-purple-500/30'
-                  : theme === 'dark'
-                  ? 'bg-[#0d0717]/90 border-purple-500/25 text-[#f8f6fc] hover:border-purple-500/50'
+                  : isDark
+                  ? isAmoled
+                    ? 'bg-black border-purple-500/35 text-[#f8f6fc] hover:border-purple-500/60'
+                    : 'bg-[#0d0717]/90 border-purple-500/25 text-[#f8f6fc] hover:border-purple-500/50'
                   : 'bg-white/90 border-purple-300/40 text-[#160a2c] hover:border-purple-500/50'
               }`}
               title="Change Map Touch Mode (Pan, Set Origin, Set Dest, Add Stop)"
@@ -947,8 +956,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   exit={{ opacity: 0, y: -4, scale: 0.96 }}
                   transition={{ duration: 0.15, ease: 'easeOut' }}
                   className={`absolute top-11 left-0 w-52 backdrop-blur-2xl border p-1.5 shadow-2xl rounded-2xl z-[450] space-y-1 ${
-                    theme === 'dark'
-                      ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
+                    isDark
+                      ? isAmoled
+                        ? 'bg-black border-purple-500/40 text-[#f8f6fc]'
+                        : 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
                       : 'bg-white/95 border-purple-300/50 text-[#160a2c]'
                   }`}
                 >
@@ -1004,8 +1015,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             className={`h-9 w-9 backdrop-blur-xl border shrink-0 shadow-lg rounded-xl flex items-center justify-center cursor-pointer transition-colors ${
               showLayersMenu
                 ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                : theme === 'dark'
-                ? 'bg-[#0d0717]/90 border-purple-500/25 text-[#f8f6fc] hover:border-[#a855f7]'
+                : isDark
+                ? isAmoled
+                  ? 'bg-black border-purple-500/35 text-[#f8f6fc] hover:border-[#a855f7]'
+                  : 'bg-[#0d0717]/90 border-purple-500/25 text-[#f8f6fc] hover:border-[#a855f7]'
                 : 'bg-white/90 border-purple-300/40 text-[#160a2c] hover:border-purple-500'
             }`}
             title="Map Layers (Satellite, Street, Dark, Traffic, Weather)"
@@ -1025,14 +1038,16 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             exit={{ opacity: 0, y: -4, scale: 0.96 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className={`absolute top-14 right-3 z-[410] w-56 backdrop-blur-2xl border p-3 shadow-2xl rounded-xl space-y-3 ${
-              theme === 'dark'
-                ? 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
+              isDark
+                ? isAmoled
+                  ? 'bg-black border-purple-500/40 text-[#f8f6fc]'
+                  : 'bg-[#110820]/95 border-purple-500/30 text-[#f8f6fc]'
                 : 'bg-white/95 border-purple-300/40 text-[#160a2c]'
             }`}
           >
           <div>
             <span className={`mono text-[0.6rem] uppercase tracking-wider block mb-1.5 font-bold ${
-              theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+              isDark ? 'text-[#c084fc]' : 'text-[#7c3aed]'
             }`}>
               Base Map
             </span>
@@ -1051,8 +1066,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   className={`py-1.5 text-center text-xs mono uppercase rounded-lg transition-colors cursor-pointer ${
                     mapStyle === st.id
                       ? 'bg-[#a855f7] text-white font-bold'
-                      : theme === 'dark'
-                      ? 'bg-[#160b26] text-purple-200/80 border border-purple-500/20 hover:border-purple-500/40'
+                      : isDark
+                      ? isAmoled
+                        ? 'bg-zinc-950 text-purple-200/80 border border-purple-500/25 hover:border-purple-500/50'
+                        : 'bg-[#160b26] text-purple-200/80 border border-purple-500/20 hover:border-purple-500/40'
                       : 'bg-purple-50 text-purple-950 border border-purple-200 hover:border-purple-300'
                   }`}
                 >
@@ -1062,9 +1079,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             </div>
           </div>
 
-          <div className={`border-t pt-2 space-y-1.5 ${theme === 'dark' ? 'border-purple-500/20' : 'border-purple-200/60'}`}>
+          <div className={`border-t pt-2 space-y-1.5 ${isDark ? 'border-purple-500/20' : 'border-purple-200/60'}`}>
             <span className={`mono text-[0.6rem] uppercase tracking-wider block mb-1 font-bold ${
-              theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+              isDark ? 'text-[#c084fc]' : 'text-[#7c3aed]'
             }`}>
               Overlays
             </span>
@@ -1073,10 +1090,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               onClick={onToggleTrafficLayer}
               className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg cursor-pointer ${
                 showTrafficLayer
-                  ? theme === 'dark'
+                  ? isDark
                     ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
                     : 'border-purple-500 text-purple-800 bg-purple-100/70'
-                  : theme === 'dark'
+                  : isDark
                   ? 'border-purple-500/20 text-purple-200/80'
                   : 'border-purple-200 text-purple-900/70'
               }`}
@@ -1089,10 +1106,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               onClick={onToggleWeatherLayer}
               className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg cursor-pointer ${
                 showWeatherLayer
-                  ? theme === 'dark'
+                  ? isDark
                     ? 'border-[#a855f7] text-[#c084fc] bg-[#a855f7]/15'
                     : 'border-purple-500 text-purple-800 bg-purple-100/70'
-                  : theme === 'dark'
+                  : isDark
                   ? 'border-purple-500/20 text-purple-200/80'
                   : 'border-purple-200 text-purple-900/70'
               }`}
@@ -1104,7 +1121,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               type="button"
               onClick={handleCacheCurrentView}
               className={`w-full py-1.5 px-2 text-left text-xs mono uppercase border rounded-lg transition-colors cursor-pointer ${
-                theme === 'dark'
+                isDark
                   ? 'border-purple-500/20 text-purple-200/80 hover:text-white hover:border-[#a855f7]'
                   : 'border-purple-200 text-purple-900/70 hover:text-purple-950 hover:border-purple-500'
               }`}
@@ -1122,8 +1139,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           role="region"
           aria-label="Real-time Driving HUD"
           className={`absolute top-16 left-3 right-3 sm:left-6 sm:right-auto sm:max-w-lg z-[420] backdrop-blur-2xl border border-l-4 p-4 shadow-2xl rounded-xl ${
-            theme === 'dark'
-              ? 'bg-[#110820]/90 border-purple-500/25 border-l-[#a855f7] text-[#f8f6fc]'
+            isDark
+              ? isAmoled
+                ? 'bg-black/95 border-purple-500/35 border-l-[#a855f7] text-[#f8f6fc]'
+                : 'bg-[#110820]/90 border-purple-500/25 border-l-[#a855f7] text-[#f8f6fc]'
               : 'bg-white/95 border-purple-300/40 border-l-[#9333ea] text-[#160a2c] shadow-purple-950/15'
           }`}
         >
@@ -1308,8 +1327,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         {gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined && (
           <div
             className={`px-3 py-2 text-center pointer-events-auto shadow-2xl rounded-xl border backdrop-blur-2xl flex items-center gap-2 ${
-              theme === 'dark'
-                ? 'bg-[#110820]/90 border-purple-500/40 text-white'
+              isDark
+                ? isAmoled
+                  ? 'bg-black border-purple-500/50 text-white'
+                  : 'bg-[#110820]/90 border-purple-500/40 text-white'
                 : 'bg-white/95 border-purple-300/60 text-[#160a2c] shadow-purple-900/10'
             }`}
           >
@@ -1318,7 +1339,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             </div>
             <div className="text-left">
               <div className={`text-[10px] mono uppercase font-extrabold tracking-wider leading-none ${
-                theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'
+                isDark ? 'text-[#c084fc]' : 'text-[#7c3aed]'
               }`}>
                 KM/H
               </div>
@@ -1331,8 +1352,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
 
         <div
           className={`px-3 py-2 mono text-[11px] pointer-events-auto shadow-xl rounded-xl border backdrop-blur-xl ${
-            theme === 'dark'
-              ? 'bg-[#0d0717]/90 border-purple-500/25 text-purple-200/90'
+            isDark
+              ? isAmoled
+                ? 'bg-black border-purple-500/35 text-purple-200/90'
+                : 'bg-[#0d0717]/90 border-purple-500/25 text-purple-200/90'
               : 'bg-white/90 border-purple-200/70 text-purple-950/80 shadow-purple-900/5'
           }`}
         >
@@ -1342,7 +1365,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                 gpsState ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
               }`}
             />
-            <span className={theme === 'dark' ? 'text-white' : 'text-[#160a2c]'}>
+            <span className={isDark ? 'text-white' : 'text-[#160a2c]'}>
               {isSimulating
                 ? 'Simulated Movement (A → B)'
                 : gpsState
@@ -1351,7 +1374,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
             </span>
           </div>
           <div className={`text-[9px] uppercase mt-0.5 truncate max-w-[200px] ${
-            theme === 'dark' ? 'text-purple-300/60' : 'text-purple-700/60'
+            isDark ? 'text-purple-300/60' : 'text-purple-700/60'
           }`}>
             {isOfflineMode ? 'OFFLINE ARCHIVE' : 'PHILIPPINES'} ·{' '}
             {cursorCoords.lat.toFixed(3)}°, {cursorCoords.lng.toFixed(3)}°
@@ -1371,8 +1394,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           aria-label="Center GPS or Route"
           title="Center GPS / Route"
           className={`w-11 h-11 backdrop-blur-xl border flex items-center justify-center text-lg font-bold shadow-xl rounded-xl transition-colors cursor-pointer ${
-            theme === 'dark'
-              ? 'bg-[#0d0717]/85 border-purple-500/30 text-[#c084fc] hover:border-[#a855f7] active:bg-[#a855f7] active:text-white'
+            isDark
+              ? isAmoled
+                ? 'bg-black border-purple-500/40 text-[#c084fc] hover:border-[#a855f7] active:bg-[#a855f7] active:text-white'
+                : 'bg-[#0d0717]/85 border-purple-500/30 text-[#c084fc] hover:border-[#a855f7] active:bg-[#a855f7] active:text-white'
               : 'bg-white/90 border-purple-300/60 text-[#7c3aed] hover:border-purple-500 active:bg-[#7c3aed] active:text-white'
           }`}
         >
@@ -1383,8 +1408,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           onClick={handleZoomIn}
           aria-label="Zoom in"
           className={`w-11 h-11 backdrop-blur-xl border flex items-center justify-center text-xl font-bold shadow-xl rounded-xl transition-colors cursor-pointer ${
-            theme === 'dark'
-              ? 'bg-[#0d0717]/85 border-purple-500/30 text-white hover:border-[#a855f7] active:bg-[#a855f7]'
+            isDark
+              ? isAmoled
+                ? 'bg-black border-purple-500/40 text-white hover:border-[#a855f7] active:bg-[#a855f7]'
+                : 'bg-[#0d0717]/85 border-purple-500/30 text-white hover:border-[#a855f7] active:bg-[#a855f7]'
               : 'bg-white/90 border-purple-300/60 text-[#160a2c] hover:border-purple-500 active:bg-purple-100'
           }`}
         >
@@ -1395,8 +1422,10 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           onClick={handleZoomOut}
           aria-label="Zoom out"
           className={`w-11 h-11 backdrop-blur-xl border flex items-center justify-center text-xl font-bold shadow-xl rounded-xl transition-colors cursor-pointer ${
-            theme === 'dark'
-              ? 'bg-[#0d0717]/85 border-purple-500/30 text-white hover:border-[#a855f7] active:bg-[#a855f7]'
+            isDark
+              ? isAmoled
+                ? 'bg-black border-purple-500/40 text-white hover:border-[#a855f7] active:bg-[#a855f7]'
+                : 'bg-[#0d0717]/85 border-purple-500/30 text-white hover:border-[#a855f7] active:bg-[#a855f7]'
               : 'bg-white/90 border-purple-300/60 text-[#160a2c] hover:border-purple-500 active:bg-purple-100'
           }`}
         >

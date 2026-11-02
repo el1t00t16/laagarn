@@ -12,6 +12,12 @@ import {
   searchPhilippinePlaces,
 } from '../utils/gpsAndGeocoding';
 import { MapClickAction } from './LeafletMapView';
+import {
+  downloadGpxFile,
+  exportRouteToGpx,
+  parseGpxFile,
+} from '../utils/gpxHandler';
+import { Download, Upload, CheckCircle2 } from 'lucide-react';
 
 interface RoutePlannerPanelProps {
   stops: LatLngPoint[];
@@ -81,8 +87,56 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
   const [searchingDest, setSearchingDest] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [gpxSuccessMessage, setGpxSuccessMessage] = useState<string | null>(null);
+  const [motorcycleAvoidTolls, setMotorcycleAvoidTolls] = useState<boolean>(() => {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('laagarn_avoid_tolls') === 'true';
+    }
+    return false;
+  });
+  const gpxInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const activeRoute = routes[activeRouteIndex] || routes[0];
+
+  const handleToggleMotorcycleAvoidTolls = () => {
+    setMotorcycleAvoidTolls((prev) => {
+      const next = !prev;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('laagarn_avoid_tolls', String(next));
+      }
+      return next;
+    });
+  };
+
+  const handleGpxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        if (!text) throw new Error('File is empty.');
+        const parsed = parseGpxFile(text);
+        if (parsed.stops.length < 2) {
+          throw new Error('GPX route requires at least 2 points (origin & destination).');
+        }
+        onApplyStops(parsed.stops);
+        setGpxSuccessMessage(`Imported ${parsed.stops.length} points from ${file.name}`);
+        setTimeout(() => setGpxSuccessMessage(null), 4000);
+      } catch (err: any) {
+        setValidationError(err?.message || 'Failed to parse GPX route.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleExportGpx = () => {
+    if (!activeRoute) return;
+    downloadGpxFile(activeRoute, stops);
+    setGpxSuccessMessage(`Exported ${(activeRoute.label || 'route').toLowerCase()}.gpx!`);
+    setTimeout(() => setGpxSuccessMessage(null), 3500);
+  };
 
   useEffect(() => {
     if (stops.length >= 1) {
@@ -247,7 +301,34 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
       <div>
         <div className="flex items-center justify-between mb-4">
           <span className="section-label mono !mb-0">I. Journey Definition</span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+            <input
+              ref={gpxInputRef}
+              type="file"
+              accept=".gpx,application/gpx+xml"
+              className="hidden"
+              onChange={handleGpxUpload}
+            />
+            <button
+              type="button"
+              onClick={() => gpxInputRef.current?.click()}
+              className="mono text-[0.62rem] uppercase tracking-[0.1em] text-[var(--accent)] font-bold hover:underline cursor-pointer flex items-center gap-1"
+              title="Import GPX route file"
+            >
+              <Upload className="w-3 h-3" />
+              <span>Import GPX</span>
+            </button>
+            {activeRoute && (
+              <button
+                type="button"
+                onClick={handleExportGpx}
+                className="mono text-[0.62rem] uppercase tracking-[0.1em] text-[var(--accent)] font-bold hover:underline cursor-pointer flex items-center gap-1"
+                title="Export current route as GPX file"
+              >
+                <Download className="w-3 h-3" />
+                <span>Export GPX</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onLocateUserGps(true)}
@@ -288,7 +369,7 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
         <div
           role="group"
           aria-label="Travel mode selection"
-          className="mode-selector mb-5"
+          className="mode-selector mb-3"
         >
           {(
             [
@@ -311,6 +392,42 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
             );
           })}
         </div>
+
+        {/* Motorcycle Sub-400cc / Tollway Avoidance Toggle */}
+        <div className="mb-4 p-2.5 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-base shrink-0">🏍️</span>
+            <div className="min-w-0">
+              <div className="mono text-[0.62rem] uppercase tracking-wider font-bold text-[var(--ink)] truncate">
+                Sub-400cc Expressway Avoidance
+              </div>
+              <div className="text-[10px] text-[var(--ink-dim)] truncate">
+                {motorcycleAvoidTolls
+                  ? 'Bypasses tollways (SLEX, NLEX, Skyway) via National Highway'
+                  : 'Allows restricted Philippine expressways & tollways'}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleMotorcycleAvoidTolls}
+            className={`px-2.5 py-1 text-[10px] mono font-bold rounded-lg border transition-all shrink-0 cursor-pointer ${
+              motorcycleAvoidTolls
+                ? 'bg-purple-600 text-white border-purple-400 shadow-sm shadow-purple-500/30'
+                : 'bg-[var(--surface)] text-[var(--ink-dim)] border-[var(--border)] hover:border-[var(--accent)]'
+            }`}
+          >
+            {motorcycleAvoidTolls ? 'ACTIVE' : 'OFF'}
+          </button>
+        </div>
+
+        {/* GPX Notification Toast */}
+        {gpxSuccessMessage && (
+          <div className="mb-4 p-2.5 bg-emerald-500/15 border border-emerald-500/40 rounded-xl flex items-center gap-2 text-emerald-300 mono text-xs font-bold">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>{gpxSuccessMessage}</span>
+          </div>
+        )}
 
         {/* Live GPS Status Pill if active or error */}
         {(gpsState || gpsError) && (

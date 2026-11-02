@@ -16,8 +16,11 @@ import {
   Droplets,
   RefreshCw,
   Search,
+  Mountain,
+  TrendingUp,
 } from 'lucide-react';
 import {
+  ComputedRoute,
   evaluateWeatherTravelAdvisory,
   WeatherSnapshot,
 } from '../utils/routingEngine';
@@ -26,6 +29,7 @@ import {
   HazardSeverity,
   RouteCorridorHazardReport,
 } from '../utils/corridorWeather';
+import { computeRouteElevationProfile } from '../utils/elevationProfile';
 
 interface WeatherForecastPanelProps {
   snapshots: WeatherSnapshot[];
@@ -36,9 +40,10 @@ interface WeatherForecastPanelProps {
   onRefreshWeather: () => void;
   onSpotWeatherOnMap: () => void;
   destinationName?: string;
+  activeRoute?: ComputedRoute | null;
 }
 
-type WeatherViewTab = 'corridor' | 'hazards' | 'outlook';
+type WeatherViewTab = 'corridor' | 'hazards' | 'elevation' | 'outlook';
 
 export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
   snapshots,
@@ -49,11 +54,16 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
   onRefreshWeather,
   onSpotWeatherOnMap,
   destinationName,
+  activeRoute = null,
 }) => {
   const [activeTab, setActiveTab] = useState<WeatherViewTab>(
     corridorStations.length > 0 ? 'corridor' : 'outlook'
   );
   const [selectedStationIndex, setSelectedStationIndex] = useState<number>(0);
+
+  const elevationProfile = React.useMemo(() => {
+    return activeRoute ? computeRouteElevationProfile(activeRoute) : null;
+  }, [activeRoute?.id, activeRoute?.totalDistanceKm]);
 
   // If corridor stations are available, use their snapshots; otherwise fallback to input snapshots
   const activeStations =
@@ -249,6 +259,19 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
           {hazardReport && hazardReport.hazards.length > 0 && (
             <span className="w-2 h-2 rounded-full bg-amber-500 ml-0.5" />
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('elevation')}
+          className={`pb-2.5 px-3 text-xs mono uppercase tracking-wider font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
+            activeTab === 'elevation'
+              ? 'border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]'
+          }`}
+        >
+          <Mountain className="w-3.5 h-3.5" />
+          Elevation & Grade
         </button>
 
         <button
@@ -511,6 +534,112 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
                   </a>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 5. TAB CONTENT: Elevation & Mountain Grade Profile */}
+      {activeTab === 'elevation' && (
+        <div className="space-y-4">
+          {elevationProfile && activeRoute ? (
+            <>
+              {/* Elevation Overview Cards */}
+              <div className="grid grid-cols-3 gap-2 text-center mono text-xs">
+                <div className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-sm">
+                  <div className="text-[10px] text-[var(--ink-dim)] uppercase font-bold">Total Climb</div>
+                  <div className="text-base font-black text-[var(--accent)] mt-0.5">+{elevationProfile.totalGainM}m</div>
+                </div>
+                <div className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-sm">
+                  <div className="text-[10px] text-[var(--ink-dim)] uppercase font-bold">Alt Range</div>
+                  <div className="text-xs font-bold text-[var(--ink)] mt-1">{elevationProfile.minElevationM}m – {elevationProfile.maxElevationM}m</div>
+                </div>
+                <div className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-sm">
+                  <div className="text-[10px] text-[var(--ink-dim)] uppercase font-bold">Distance</div>
+                  <div className="text-base font-black text-[var(--ink)] mt-0.5">{activeRoute.totalDistanceKm}km</div>
+                </div>
+              </div>
+
+              {/* Visual SVG Elevation Sparkline Profile */}
+              <div className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-sm space-y-2">
+                <div className="flex items-center justify-between text-xs mono">
+                  <span className="font-bold text-[var(--ink)] flex items-center gap-1.5">
+                    <Mountain className="w-4 h-4 text-[var(--accent)]" /> Topographical Cross-Section
+                  </span>
+                  <span className="text-[10px] text-[var(--ink-dim)]">0 to {activeRoute.totalDistanceKm} km</span>
+                </div>
+
+                <div className="h-28 w-full relative pt-2">
+                  <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 60">
+                    <defs>
+                      <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#a855f7" stopOpacity="0.45" />
+                        <stop offset="100%" stopColor="#a855f7" stopOpacity="0.05" />
+                      </linearGradient>
+                    </defs>
+                    {(() => {
+                      const pts = elevationProfile.points;
+                      if (pts.length < 2) return null;
+                      const maxE = Math.max(elevationProfile.maxElevationM, 80);
+                      const minE = Math.max(0, elevationProfile.minElevationM - 20);
+                      const range = Math.max(maxE - minE, 40);
+
+                      const coords = pts.map((p, idx) => {
+                        const x = (idx / (pts.length - 1)) * 100;
+                        const y = 56 - ((p.elevationM - minE) / range) * 50;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                      });
+
+                      const polyPoints = `0,60 ${coords.join(' ')} 100,60`;
+                      return (
+                        <>
+                          <polygon points={polyPoints} fill="url(#elevGrad)" />
+                          <polyline points={coords.join(' ')} fill="none" stroke="#c084fc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+              </div>
+
+              {/* Steep Grade Alerts */}
+              <div>
+                <div className="text-xs text-[var(--ink-dim)] mono font-bold uppercase mb-2">
+                  Mountain Incline & Grade Safety ({elevationProfile.steepSections.length})
+                </div>
+                {elevationProfile.steepSections.length > 0 ? (
+                  <div className="space-y-2">
+                    {elevationProfile.steepSections.map((sec, sIdx) => (
+                      <div
+                        key={sIdx}
+                        className="p-3 bg-amber-500/10 border border-amber-600/30 rounded-xl text-xs flex items-start gap-2.5"
+                      >
+                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between font-bold text-amber-400 text-xs">
+                            <span>Km {sec.fromKm} → Km {sec.toKm}</span>
+                            <span className="px-1.5 py-0.2 bg-amber-500/20 rounded font-black text-[10px]">
+                              {sec.gradePct}% GRADE
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[var(--ink)] mt-0.5">
+                            {sec.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-xs text-[var(--ink-dim)] flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <span>Gentle road gradients throughout corridor (no extreme mountain passes detected).</span>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="route-card cursor-default text-xs mono text-[var(--ink-dim)]">
+              No active route corridor computed yet. Calculate a route to view topographical elevation profile and mountain grade safety warnings.
             </div>
           )}
         </div>

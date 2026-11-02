@@ -62,16 +62,18 @@ import {
   Download,
   Sun,
   Moon,
+  Zap,
 } from 'lucide-react';
 
+export type AppTheme = 'dark' | 'amoled' | 'light';
 type ActiveTab = 'routes' | 'traffic' | 'weather' | 'offline';
 type MobileSheetState = 'peek' | 'half' | 'full';
 
 export default function App() {
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+  const [theme, setTheme] = useState<AppTheme>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('laagarn_theme');
-      if (saved === 'dark' || saved === 'light') return saved;
+      if (saved === 'dark' || saved === 'amoled' || saved === 'light') return saved;
     }
     return 'dark';
   });
@@ -82,15 +84,19 @@ export default function App() {
   // Synchronize theme with DOM root and PWA theme-color
   useEffect(() => {
     const root = document.documentElement;
+    root.classList.remove('light', 'dark', 'amoled');
     if (theme === 'light') {
       root.classList.add('light');
-      root.classList.remove('dark');
       root.setAttribute('data-theme', 'light');
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', '#f8f6fc');
+    } else if (theme === 'amoled') {
+      root.classList.add('dark', 'amoled');
+      root.setAttribute('data-theme', 'amoled');
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', '#000000');
     } else {
       root.classList.add('dark');
-      root.classList.remove('light');
       root.setAttribute('data-theme', 'dark');
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', '#090410');
@@ -145,10 +151,14 @@ export default function App() {
 
   const handleToggleTheme = () => {
     setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      if (next === 'light' && mapStyle === 'dark') {
+      let next: AppTheme = 'dark';
+      if (prev === 'dark') next = 'amoled';
+      else if (prev === 'amoled') next = 'light';
+      else next = 'dark';
+
+      if (next === 'light' && (mapStyle === 'dark' || mapStyle === 'terrain')) {
         setMapStyle('street');
-      } else if (next === 'dark' && mapStyle === 'street') {
+      } else if ((next === 'dark' || next === 'amoled') && mapStyle === 'street') {
         setMapStyle('dark');
       }
       return next;
@@ -603,11 +613,13 @@ export default function App() {
 
   return (
     <div className={`h-screen w-screen flex flex-col overflow-hidden select-none font-sans transition-colors duration-200 ${
-      theme === 'dark' ? 'bg-[#090410] text-[#f8f6fc]' : 'bg-[#f8f6fc] text-[#160a2c]'
+      theme === 'amoled' ? 'bg-[#000000] text-white' : theme === 'dark' ? 'bg-[#090410] text-[#f8f6fc]' : 'bg-[#f8f6fc] text-[#160a2c]'
     }`}>
       {/* Top Header / App Bar (Glassy Purple with mobile notch safe-area padding) */}
       <header className={`app-header shrink-0 flex items-center px-4 sm:px-6 border-b transition-colors z-50 shadow-lg backdrop-blur-xl ${
-        theme === 'dark'
+        theme === 'amoled'
+          ? 'bg-[#000000]/95 border-purple-500/30 text-white shadow-black/80'
+          : theme === 'dark'
           ? 'bg-[#0d0717]/85 border-purple-500/20 text-[#f8f6fc] shadow-black/40'
           : 'bg-white/85 border-purple-300/40 text-[#160a2c] shadow-purple-900/5'
       }`}>
@@ -620,12 +632,12 @@ export default function App() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <h1 className={`logo display text-base sm:text-lg font-black tracking-wider leading-none ${
-                  theme === 'dark' ? 'text-white' : 'text-[#160a2c]'
+                  theme !== 'light' ? 'text-white' : 'text-[#160a2c]'
                 }`}>
                   LAAGARN
                 </h1>
                 <span className={`px-1.5 py-0.5 text-[8px] font-extrabold mono uppercase tracking-wider rounded-md shrink-0 ${
-                  theme === 'dark'
+                  theme !== 'light'
                     ? 'bg-purple-500/20 text-[#c084fc] border border-purple-500/30'
                     : 'bg-purple-100 text-[#7c3aed] border border-purple-200'
                 }`}>
@@ -633,7 +645,7 @@ export default function App() {
                 </span>
               </div>
               <div className={`mono text-[8.5px] sm:text-[9.5px] uppercase tracking-wider mt-0.5 truncate max-w-[170px] xs:max-w-[210px] sm:max-w-none ${
-                theme === 'dark' ? 'text-purple-300/60' : 'text-purple-700/70'
+                theme !== 'light' ? 'text-purple-300/60' : 'text-purple-700/70'
               }`}>
                 My Way, Your Travel Buddy.
               </div>
@@ -659,10 +671,10 @@ export default function App() {
                 onClick={() => setActiveTab(item.id)}
                 className={`mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                   activeTab === item.id
-                    ? theme === 'dark'
+                    ? theme !== 'light'
                       ? 'text-[#c084fc] border-b-2 border-[#a855f7] pb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
                       : 'text-[#7c3aed] border-b-2 border-[#9333ea] pb-1 drop-shadow-[0_0_8px_rgba(147,51,234,0.3)]'
-                    : theme === 'dark'
+                    : theme !== 'light'
                     ? 'text-gray-400 hover:text-white'
                     : 'text-purple-900/60 hover:text-purple-950'
                 }`}
@@ -674,19 +686,32 @@ export default function App() {
 
           {/* Right Header: Theme Toggle, Install PWA & Status Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Dark / Light Mode Toggle Button */}
+            {/* Theme Toggle Button: Purple -> OLED Black -> Light */}
             <button
               type="button"
               onClick={handleToggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className={`h-8 px-2 sm:px-2.5 rounded-xl border transition-all flex items-center gap-1.5 mono text-[10px] font-bold uppercase cursor-pointer ${
+              aria-label={`Current theme: ${theme}. Click to switch theme`}
+              title={
                 theme === 'dark'
+                  ? 'Switch to OLED Black (Battery Saver)'
+                  : theme === 'amoled'
+                  ? 'Switch to Light Mode'
+                  : 'Switch to Glassy Purple Dark Mode'
+              }
+              className={`h-8 px-2 sm:px-2.5 rounded-xl border transition-all flex items-center gap-1.5 mono text-[10px] font-bold uppercase cursor-pointer ${
+                theme === 'amoled'
+                  ? 'bg-black border-purple-500/50 text-[#c084fc] shadow-[0_0_12px_rgba(168,85,247,0.3)]'
+                  : theme === 'dark'
                   ? 'bg-purple-950/40 border-purple-500/30 text-purple-200 hover:text-white hover:border-[#a855f7]'
                   : 'bg-purple-100/80 border-purple-300/60 text-purple-900 hover:border-purple-500 shadow-sm'
               }`}
             >
               {theme === 'dark' ? (
+                <>
+                  <Zap className="w-3.5 h-3.5 text-purple-300" />
+                  <span className="hidden sm:inline">OLED</span>
+                </>
+              ) : theme === 'amoled' ? (
                 <>
                   <Sun className="w-3.5 h-3.5 text-amber-300" />
                   <span className="hidden sm:inline">Light</span>
@@ -718,7 +743,7 @@ export default function App() {
               </div>
             ) : (
               <div className={`h-8 px-2 sm:px-2.5 border mono text-[10px] uppercase font-bold rounded-xl flex items-center gap-1.5 ${
-                theme === 'dark'
+                theme !== 'light'
                   ? 'bg-purple-950/40 border-purple-500/30 text-purple-200'
                   : 'bg-purple-100/80 border-purple-300/60 text-purple-900'
               }`}>
@@ -736,7 +761,9 @@ export default function App() {
         <aside
           aria-label="Travel Planning Controls"
           className={`hidden lg:flex flex-col w-[390px] shrink-0 backdrop-blur-2xl border-r p-6 overflow-y-auto transition-colors ${
-            theme === 'dark'
+            theme === 'amoled'
+              ? 'bg-black/95 border-purple-500/25 shadow-2xl'
+              : theme === 'dark'
               ? 'bg-[#0e0719]/80 border-purple-500/20 shadow-2xl'
               : 'bg-white/80 border-purple-200/60 shadow-xl shadow-purple-900/5'
           }`}
@@ -788,6 +815,7 @@ export default function App() {
               onFocusCoordinate={handleFocusCoordinate}
               onRefreshWeather={syncEnRouteWeather}
               onSpotWeatherOnMap={() => setMapClickAction('weather')}
+              activeRoute={activeRoute}
             />
           )}
 
@@ -862,7 +890,9 @@ export default function App() {
         {/* Mobile Interactive Bottom Sheet Drawer (Shown on screens < 1024px) */}
         <div
           className={`lg:hidden absolute left-0 right-0 bottom-0 z-[500] backdrop-blur-2xl border-t transition-all duration-300 flex flex-col ${
-            theme === 'dark'
+            theme === 'amoled'
+              ? 'bg-black/95 border-purple-500/30 shadow-[0_-12px_36px_rgba(0,0,0,0.95)]'
+              : theme === 'dark'
               ? 'bg-[#110820]/90 border-purple-500/25 shadow-[0_-12px_36px_rgba(5,2,14,0.85)]'
               : 'bg-white/95 border-purple-200/80 shadow-[0_-12px_36px_rgba(100,50,150,0.12)]'
           } ${
@@ -881,15 +911,15 @@ export default function App() {
               );
             }}
             className={`w-full pt-2 pb-1.5 px-4 flex items-center justify-between cursor-pointer border-b active:bg-purple-500/5 ${
-              theme === 'dark' ? 'border-purple-500/15' : 'border-purple-200/60'
+              theme !== 'light' ? 'border-purple-500/15' : 'border-purple-200/60'
             }`}
           >
             <div className="flex items-center gap-2">
               <div className={`w-8 h-1 rounded-full mx-auto ${
-                theme === 'dark' ? 'bg-purple-400/40' : 'bg-purple-400/60'
+                theme !== 'light' ? 'bg-purple-400/40' : 'bg-purple-400/60'
               }`} />
               <span className={`mono text-[10px] uppercase tracking-wider ${
-                theme === 'dark' ? 'text-purple-200/70' : 'text-purple-900/80 font-semibold'
+                theme !== 'light' ? 'text-purple-200/70' : 'text-purple-900/80 font-semibold'
               }`}>
                 {activeTab === 'routes'
                   ? activeRoute
@@ -905,11 +935,11 @@ export default function App() {
 
             <button
               type="button"
-              className={`p-1 hover:opacity-100 ${theme === 'dark' ? 'text-gray-400' : 'text-purple-900/60'}`}
+              className={`p-1 hover:opacity-100 ${theme !== 'light' ? 'text-gray-400' : 'text-purple-900/60'}`}
               aria-label="Toggle Drawer Height"
             >
               {mobileSheetState === 'peek' ? (
-                <ChevronUp className={`w-5 h-5 ${theme === 'dark' ? 'text-[#c084fc]' : 'text-[#7c3aed]'}`} />
+                <ChevronUp className={`w-5 h-5 ${theme !== 'light' ? 'text-[#c084fc]' : 'text-[#7c3aed]'}`} />
               ) : (
                 <ChevronDown className="w-5 h-5" />
               )}
@@ -980,6 +1010,7 @@ export default function App() {
                   setMapClickAction('weather');
                   setMobileSheetState('peek');
                 }}
+                activeRoute={activeRoute}
               />
             )}
 
@@ -1004,7 +1035,9 @@ export default function App() {
           <nav
             aria-label="Mobile Navigation Dock"
             className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t px-3 flex items-center justify-around gap-1.5 ${
-              theme === 'dark'
+              theme === 'amoled'
+                ? 'bg-black/98 border-purple-500/25 shadow-[0_-10px_30px_rgba(0,0,0,0.9)]'
+                : theme === 'dark'
                 ? 'bg-[#0a0414]/95 border-purple-500/25 shadow-[0_-10px_30px_rgba(5,2,14,0.7)]'
                 : 'bg-white/95 border-purple-200/80 shadow-[0_-10px_30px_rgba(100,50,150,0.08)]'
             }`}
@@ -1056,7 +1089,7 @@ export default function App() {
                     <motion.div
                       layoutId="activeMobileTabPill"
                       className={`absolute inset-0 rounded-2xl border ${
-                        theme === 'dark'
+                        theme !== 'light'
                           ? 'bg-gradient-to-b from-[#a855f7]/25 to-[#7c3aed]/15 border-purple-400/40 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
                           : 'bg-purple-100 border-purple-300 shadow-sm'
                       }`}
@@ -1069,10 +1102,10 @@ export default function App() {
                       <Icon
                         className={`w-5 h-5 transition-transform duration-200 ${
                           isCurrent
-                            ? theme === 'dark'
+                            ? theme !== 'light'
                               ? 'text-[#c084fc] scale-110 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]'
                               : 'text-[#7c3aed] scale-110'
-                            : theme === 'dark'
+                            : theme !== 'light'
                             ? 'text-zinc-400'
                             : 'text-zinc-500'
                         }`}
@@ -1094,10 +1127,10 @@ export default function App() {
                     <span
                       className={`mono text-[10px] uppercase tracking-wider font-extrabold transition-colors ${
                         isCurrent
-                          ? theme === 'dark'
+                          ? theme !== 'light'
                             ? 'text-[#f8f6fc]'
                             : 'text-[#160a2c]'
-                          : theme === 'dark'
+                          : theme !== 'light'
                           ? 'text-zinc-400'
                           : 'text-zinc-500'
                       }`}
