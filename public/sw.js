@@ -1,5 +1,5 @@
-const CACHE_NAME = 'wayfarer-shell-v2';
-const TILE_CACHE_NAME = 'wayfarer-tiles-runtime-v2';
+const CACHE_NAME = 'laagarn-shell-v3';
+const TILE_CACHE_NAME = 'laagarn-tiles-runtime-v3';
 const MAX_TILE_CACHE_ENTRIES = 2500;
 
 const APP_SHELL_ASSETS = [
