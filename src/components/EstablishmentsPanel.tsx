@@ -35,6 +35,7 @@ interface EstablishmentsPanelProps {
   onFocusEstablishment: (establishment: Establishment) => void;
   onAddEstablishmentStop: (establishment: Establishment) => void;
   selectedEstablishmentId?: string | null;
+  theme?: 'dark' | 'amoled' | 'light';
 }
 
 const CATEGORY_ICON_MAP: Record<EstablishmentCategory, React.ComponentType<{ className?: string }>> = {
@@ -57,6 +58,7 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
   onFocusEstablishment,
   onAddEstablishmentStop,
   selectedEstablishmentId,
+  theme = 'dark',
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<EstablishmentCategory | 'all'>('all');
@@ -106,6 +108,8 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
     setAddedNotice(`Added "${est.name}" to route stops!`);
     setTimeout(() => setAddedNotice(null), 3000);
   };
+
+  const isLight = theme === 'light';
 
   return (
     <div className="space-y-4">
@@ -283,6 +287,32 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
             const Icon = CATEGORY_ICON_MAP[est.category] || Store;
             const isSelected = selectedEstablishmentId === est.id;
 
+            const pillBg = catMeta
+              ? isLight
+                ? catMeta.bgLight
+                : catMeta.bgDark
+              : isLight
+              ? '#f3e8ff'
+              : 'rgba(168,85,247,0.15)';
+
+            const pillColor = catMeta
+              ? isLight
+                ? catMeta.id === 'fuel'
+                  ? '#b45309'
+                  : catMeta.id === 'convenience'
+                  ? '#0891b2'
+                  : catMeta.id === 'bank'
+                  ? '#1d4ed8'
+                  : catMeta.id === 'pharmacy'
+                  ? '#047857'
+                  : catMeta.id === 'hotel'
+                  ? '#4338ca'
+                  : catMeta.color
+                : catMeta.color
+              : isLight
+              ? '#7c3aed'
+              : '#c084fc';
+
             return (
               <div
                 key={est.id}
@@ -298,8 +328,8 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
                     <span
                       className="px-2 py-0.5 rounded-md text-[9px] mono uppercase font-bold flex items-center gap-1"
                       style={{
-                        backgroundColor: catMeta ? catMeta.bgDark : 'rgba(168,85,247,0.15)',
-                        color: catMeta ? catMeta.color : '#c084fc',
+                        backgroundColor: pillBg,
+                        color: pillColor,
                         border: `1px solid ${catMeta ? catMeta.color : '#a855f7'}40`,
                       }}
                     >
@@ -315,7 +345,7 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
                   </div>
 
                   {typeof est.distanceKm === 'number' && (
-                    <span className="text-[10px] mono font-bold text-emerald-400">
+                    <span className="text-[10px] mono font-bold text-emerald-600 dark:text-emerald-400">
                       {est.distanceKm < 1
                         ? `${Math.round(est.distanceKm * 1000)} m`
                         : `${est.distanceKm.toFixed(1)} km`}
@@ -330,22 +360,22 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
 
                 {/* Address & Region */}
                 <div className="flex items-start gap-1 text-[11px] text-[var(--ink-dim)] mt-1">
-                  <MapPin className="w-3 h-3 shrink-0 text-purple-400 mt-0.5" />
+                  <MapPin className="w-3 h-3 shrink-0 text-purple-500 dark:text-purple-400 mt-0.5" />
                   <span className="line-clamp-2">{est.address || est.region}</span>
                 </div>
 
                 {/* Hours & Phone & Features */}
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   {est.openingHours && (
-                    <div className="flex items-center gap-1 text-[10px] mono font-semibold text-purple-300">
-                      <Clock className="w-3 h-3 text-purple-400" />
+                    <div className="flex items-center gap-1 text-[10px] mono font-semibold text-purple-700 dark:text-purple-300">
+                      <Clock className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                       <span>{est.openingHours}</span>
                     </div>
                   )}
 
                   {est.phone && (
                     <div className="flex items-center gap-1 text-[10px] mono text-[var(--ink-dim)]">
-                      <Phone className="w-3 h-3 text-purple-400" />
+                      <Phone className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                       <span>{est.phone}</span>
                     </div>
                   )}
@@ -353,7 +383,7 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
                   {est.features?.slice(0, 3).map((feat, idx) => (
                     <span
                       key={idx}
-                      className="px-1.5 py-0.2 rounded text-[8.5px] mono bg-purple-500/10 text-purple-200/90 border border-purple-500/20"
+                      className="px-1.5 py-0.5 rounded text-[8.5px] mono bg-purple-100 text-purple-900 border-purple-200 dark:bg-purple-500/10 dark:text-purple-200/90 dark:border-purple-500/20 font-semibold"
                     >
                       {feat}
                     </span>

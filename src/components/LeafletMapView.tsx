@@ -240,7 +240,7 @@ function createTechnicalMarkerIcon(
   return L.divIcon({
     className: 'v2-technical-pin',
     html: `<div style="position:relative;width:18px;height:18px;background:${dotBg};border:${dotBorder};box-shadow:0 0 12px rgba(168,85,247,0.5);border-radius:4px;">
-      <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;background:rgba(20,10,36,0.92);backdrop-filter:blur(10px);color:#f8f6fc;border:1px solid rgba(168,85,247,0.35);padding:3px 8px;box-shadow:0 4px 16px rgba(0,0,0,0.55);border-radius:3px;">${fullLabel}</div>
+      <div class="technical-pin-label" style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;backdrop-filter:blur(10px);padding:3px 8px;border-radius:3px;">${fullLabel}</div>
     </div>`,
     iconSize: [18, 18],
     iconAnchor: [9, 9],
@@ -308,7 +308,7 @@ function createEstablishmentMarkerIcon(
       <div style="width:${size}px;height:${size}px;background:${color};border:2px solid #ffffff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${size > 22 ? 14 : 11}px;${shadow}cursor:pointer;transition:transform 0.15s ease;">
         ${emoji}
       </div>
-      <div style="margin-top:2px;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.04em;white-space:nowrap;background:rgba(20,10,36,0.92);backdrop-filter:blur(8px);color:#f8f6fc;border:1px solid rgba(168,85,247,0.3);padding:1px 5px;border-radius:3px;max-width:110px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;">
+      <div class="est-pin-label" style="margin-top:2px;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.04em;white-space:nowrap;padding:1px 5px;border-radius:3px;max-width:110px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;">
         ${safeName}
       </div>
     </div>`,
@@ -910,43 +910,43 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       const catMeta = ESTABLISHMENT_CATEGORIES.find((c) => c.id === est.category);
       const color = catMeta?.color || '#a855f7';
       const hoursBadge = est.openingHours
-        ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c084fc;margin-top:4px;">⏱️ ${escapeHtml(est.openingHours)}</div>`
+        ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-top:4px;font-weight:700;">⏱️ ${escapeHtml(est.openingHours)}</div>`
         : '';
       const phoneBadge = est.phone
-        ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(230,220,245,0.7);margin-top:2px;">📞 ${escapeHtml(est.phone)}</div>`
+        ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-dim);margin-top:2px;font-weight:600;">📞 ${escapeHtml(est.phone)}</div>`
         : '';
       const distBadge = typeof est.distanceKm === 'number'
-        ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#34d399;margin-top:4px;font-weight:700;">📍 ${est.distanceKm < 1 ? Math.round(est.distanceKm * 1000) + ' m' : est.distanceKm.toFixed(1) + ' km'} away</div>`
+        ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#059669;margin-top:4px;font-weight:800;">📍 ${est.distanceKm < 1 ? Math.round(est.distanceKm * 1000) + ' m' : est.distanceKm.toFixed(1) + ' km'} away</div>`
         : '';
       const featuresBadges = est.features && est.features.length > 0
-        ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;">
-            ${est.features.slice(0, 3).map((f) => `<span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;background:rgba(168,85,247,0.15);color:#d8b4fe;border:1px solid rgba(168,85,247,0.25);padding:1px 4px;border-radius:3px;">${escapeHtml(f)}</span>`).join('')}
+        ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+            ${est.features.slice(0, 3).map((f) => `<span class="est-feature-pill" style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">${escapeHtml(f)}</span>`).join('')}
           </div>`
         : '';
 
       marker.bindPopup(`
-        <div style="min-width:210px;font-family:'Inter',sans-serif;padding:2px;">
+        <div style="min-width:215px;font-family:'Inter',sans-serif;padding:3px;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;font-weight:800;color:${color};background:${color}20;padding:2px 6px;border-radius:4px;border:1px solid ${color}40;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;font-weight:800;color:${color};background:${color}18;padding:2.5px 7px;border-radius:4px;border:1px solid ${color}45;">
               ${catMeta?.emoji || ''} ${escapeHtml(est.categoryLabel || est.category)}
             </span>
-            ${est.rating ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#f59e0b;">⭐ ${est.rating}</span>` : ''}
+            ${est.rating ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:800;color:#f59e0b;">⭐ ${est.rating}</span>` : ''}
           </div>
-          <div style="font-size:13.5px;font-weight:700;color:#f8f6fc;margin-top:5px;line-height:1.25;">
+          <div style="font-size:14px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.25;">
             ${escapeHtml(est.name)}
           </div>
-          <div style="font-size:11px;color:rgba(230,220,245,0.7);margin-top:3px;line-height:1.3;">
+          <div style="font-size:11.5px;color:var(--ink-dim);margin-top:3px;line-height:1.35;font-weight:500;">
             ${escapeHtml(est.address || est.region)}
           </div>
           ${distBadge}
           ${hoursBadge}
           ${phoneBadge}
           ${featuresBadges}
-          <div style="display:flex;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(168,85,247,0.2);">
-            <button class="popup-est-route-btn" data-est-id="${escapeHtml(est.id)}" style="flex:1;padding:5px 8px;background:linear-gradient(135deg, #a855f7, #7c3aed);color:#ffffff;border:none;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;cursor:pointer;">
+          <div style="display:flex;gap:6px;margin-top:9px;padding-top:7px;border-top:1px solid var(--border-subtle, rgba(168,85,247,0.2));">
+            <button class="popup-est-route-btn" data-est-id="${escapeHtml(est.id)}" style="flex:1;padding:6px 10px;background:linear-gradient(135deg, #a855f7, #7c3aed);color:#ffffff;border:none;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;box-shadow:0 2px 8px rgba(168,85,247,0.35);">
               🧭 Directions
             </button>
-            <button class="popup-est-stop-btn" data-est-id="${escapeHtml(est.id)}" style="padding:5px 8px;background:rgba(168,85,247,0.15);color:#f8f6fc;border:1px solid rgba(168,85,247,0.3);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;cursor:pointer;">
+            <button class="popup-est-stop-btn" data-est-id="${escapeHtml(est.id)}" style="padding:6px 10px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;">
               ➕ Add Stop
             </button>
           </div>

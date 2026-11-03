@@ -880,6 +880,7 @@ export default function App() {
               onFocusEstablishment={handleFocusEstablishment}
               onAddEstablishmentStop={handleAddEstablishmentStop}
               selectedEstablishmentId={selectedEstablishmentId}
+              theme={theme}
             />
           )}
 
@@ -1086,6 +1087,7 @@ export default function App() {
                 onFocusEstablishment={handleFocusEstablishment}
                 onAddEstablishmentStop={handleAddEstablishmentStop}
                 selectedEstablishmentId={selectedEstablishmentId}
+                theme={theme}
               />
             )}
 

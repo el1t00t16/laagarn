@@ -592,6 +592,87 @@
   color: #7c3aed !important;
 }
 
+/* Establishment Leaflet Pin & Popup Styling across Dark & Light Modes */
+.est-pin-label {
+  background: rgba(20, 10, 36, 0.92);
+  backdrop-filter: blur(8px);
+  color: #f8f6fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+:root.light .est-pin-label,
+[data-theme="light"] .est-pin-label {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  color: #140727;
+  border: 1px solid rgba(147, 51, 234, 0.35);
+  box-shadow: 0 4px 12px rgba(100, 50, 150, 0.15);
+}
+
+.technical-pin-label {
+  background: rgba(20, 10, 36, 0.92);
+  color: #f8f6fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+:root.light .technical-pin-label,
+[data-theme="light"] .technical-pin-label {
+  background: rgba(255, 255, 255, 0.96);
+  color: #140727;
+  border: 1px solid rgba(147, 51, 234, 0.35);
+  box-shadow: 0 4px 12px rgba(100, 50, 150, 0.15);
+}
+
+.est-feature-pill {
+  background: rgba(168, 85, 247, 0.15);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.28);
+}
+
+:root.light .est-feature-pill,
+[data-theme="light"] .est-feature-pill {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #d8b4fe;
+}
+
+.popup-est-stop-btn {
+  background: rgba(168, 85, 247, 0.15);
+  color: #f8f6fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  transition: all 0.15s ease;
+}
+
+.popup-est-stop-btn:hover {
+  background: rgba(168, 85, 247, 0.28);
+  border-color: rgba(168, 85, 247, 0.55);
+}
+
+:root.light .popup-est-stop-btn,
+[data-theme="light"] .popup-est-stop-btn {
+  background: #f3e8ff;
+  color: #581c87;
+  border: 1px solid #c084fc;
+}
+
+:root.light .popup-est-stop-btn:hover,
+[data-theme="light"] .popup-est-stop-btn:hover {
+  background: #e9d5ff;
+  color: #3b0764;
+  border-color: #a855f7;
+}
+
+:root.light .leaflet-popup-close-button,
+[data-theme="light"] .leaflet-popup-close-button {
+  color: #43335e !important;
+}
+
+:root.light .leaflet-popup-close-button:hover,
+[data-theme="light"] .leaflet-popup-close-button:hover {
+  color: #140727 !important;
+}
+
 /* Smooth 60fps marker gliding & rotation transitions */
 .leaflet-marker-icon.v2-gps-vehicle-chevron {
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
