@@ -758,15 +758,18 @@ export default function App() {
   };
 
   const handleFitConvoyBounds = (points: { lat: number; lng: number }[]) => {
-    if (points.length === 0) return;
-    if (points.length === 1) {
-      setFocusedCoord({ lat: points[0].lat, lng: points[0].lng, zoom: 16 });
+    const valid = points.filter(
+      (p) => p && typeof p.lat === 'number' && typeof p.lng === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lng)
+    );
+    if (valid.length === 0) return;
+    if (valid.length === 1) {
+      setFocusedCoord({ lat: valid[0].lat, lng: valid[0].lng, zoom: 16 });
       return;
     }
-    const minLat = Math.min(...points.map((p) => p.lat));
-    const maxLat = Math.max(...points.map((p) => p.lat));
-    const minLng = Math.min(...points.map((p) => p.lng));
-    const maxLng = Math.max(...points.map((p) => p.lng));
+    const minLat = Math.min(...valid.map((p) => p.lat));
+    const maxLat = Math.max(...valid.map((p) => p.lat));
+    const minLng = Math.min(...valid.map((p) => p.lng));
+    const maxLng = Math.max(...valid.map((p) => p.lng));
     const centerLat = (minLat + maxLat) / 2;
     const centerLng = (minLng + maxLng) / 2;
     const latDiff = maxLat - minLat;
@@ -1483,7 +1486,7 @@ export default function App() {
           {/* Mobile Bottom Navigation Dock (Thumb Accessible with safe-area padding & Tactile Framer Motion Active Indicator) */}
           <nav
             aria-label="Mobile Navigation Dock"
-            className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t px-3 flex items-center justify-around gap-1.5 ${
+            className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t px-1 xs:px-2 sm:px-3 flex items-center justify-around gap-0.5 xs:gap-1 ${
               theme === 'amoled'
                 ? 'bg-black/98 border-purple-500/25 shadow-[0_-10px_30px_rgba(0,0,0,0.9)]'
                 : theme === 'dark'
@@ -1540,7 +1543,7 @@ export default function App() {
                       setMobileSheetState('half');
                     }
                   }}
-                  className="relative flex-1 py-1.5 flex flex-col items-center justify-center rounded-2xl transition-all cursor-pointer select-none"
+                  className="relative flex-1 min-w-0 py-1.5 flex flex-col items-center justify-center rounded-2xl transition-all cursor-pointer select-none"
                 >
                   {isCurrent && (
                     <motion.div
@@ -1554,7 +1557,7 @@ export default function App() {
                     />
                   )}
 
-                  <div className="relative z-10 flex flex-col items-center gap-1">
+                  <div className="relative z-10 flex flex-col items-center gap-1 w-full px-0.5">
                     <div className="relative">
                       <Icon
                         className={`w-5 h-5 transition-transform duration-200 ${
@@ -1582,7 +1585,7 @@ export default function App() {
                       )}
                     </div>
                     <span
-                      className={`mono text-[10px] uppercase tracking-wider font-extrabold transition-colors ${
+                      className={`mono text-[8.5px] xs:text-[10px] uppercase tracking-tight xs:tracking-wider font-extrabold transition-colors truncate max-w-full text-center ${
                         isCurrent
                           ? theme !== 'light'
                             ? 'text-[#f8f6fc]'

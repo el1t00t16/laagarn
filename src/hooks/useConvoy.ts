@@ -91,20 +91,12 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     }
   }, []);
 
-  // Broadcast packet to peers (via WebSocket, HTTP, and local BroadcastChannel)
+  // Broadcast packet to peers (via HTTP POST to Ntfy and local BroadcastChannel)
   const broadcastPacket = useCallback((packet: ConvoyTelemetryPacket) => {
     const raw = JSON.stringify(packet);
 
-    // 1. WebSocket send
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      try {
-        wsRef.current.send(raw);
-      } catch {
-        // Fallback to fetch
-      }
-    }
-
-    // 2. HTTP POST Fallback (ensures delivery if WS is half-open)
+    // 1. Primary Network Delivery: HTTP POST to Ntfy topic
+    // (Ntfy immediately distributes this payload to all connected WebSocket subscribers)
     if (stateRef.current.roomCode) {
       const topic = `laagarn_convoy_${stateRef.current.roomCode.toLowerCase()}`;
       fetch(`https://ntfy.sh/${topic}`, {
@@ -112,11 +104,11 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
         headers: { 'Content-Type': 'application/json' },
         body: raw,
       }).catch(() => {
-        // Ignore network drops
+        // Ignore network drops gracefully
       });
     }
 
-    // 3. Local BroadcastChannel (cross-tab sync)
+    // 2. Cross-tab synchronization via BroadcastChannel
     if (broadcastChannelRef.current) {
       try {
         broadcastChannelRef.current.postMessage(packet);
@@ -216,13 +208,25 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
       // BroadcastChannel optional
     }
 
-    // 2. Setup WebSocket
-    let ws: WebSocket | null = null;
+    // 2. Setup WebSocket for receiving remote peer broadcasts
     let isCancelled = false;
 
     const connectWebSocket = () => {
+      if (isCancelled) return;
+
+      // Ensure any existing socket is cleanly disposed before recreating
+      if (wsRef.current) {
+        wsRef.current.onopen = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
       try {
-        ws = new WebSocket(`wss://ntfy.sh/${topic}/ws`);
+        const ws = new WebSocket(`wss://ntfy.sh/${topic}/ws`);
+        wsRef.current = ws;
 
         ws.onopen = () => {
           if (isCancelled) return;
@@ -256,7 +260,7 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
               handleIncomingPacket(parsed);
             }
           } catch {
-            // Non-JSON or open message, ignore
+            // Non-JSON or keep-alive message, ignore
           }
         };
 
@@ -271,10 +275,8 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
           // Reconnect with backoff
           reconnectTimerRef.current = setTimeout(connectWebSocket, 4000);
         };
-
-        wsRef.current = ws;
       } catch {
-        setConnectionStatus('error');
+        if (!isCancelled) setConnectionStatus('error');
       }
     };
 
@@ -282,18 +284,46 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
 
     return () => {
       isCancelled = true;
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      if (ws) {
-        ws.onclose = null;
-        ws.close();
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
       }
-      wsRef.current = null;
+      if (wsRef.current) {
+        wsRef.current.onopen = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
         broadcastChannelRef.current = null;
       }
     };
   }, [roomCode, isSharing, handleIncomingPacket, broadcastPacket]);
+
+  // Immediate Telemetry Broadcast when GPS acquires its first fix
+  const prevGpsStateRef = useRef<GpsPositionState | null>(null);
+  useEffect(() => {
+    if (!prevGpsStateRef.current && gpsState && roomCode && isSharing) {
+      const initialPacket: ConvoyTelemetryPacket = {
+        type: 'telemetry',
+        peerId: peerIdRef.current,
+        name: myName,
+        vehicle: myVehicle,
+        color: myColor,
+        lat: gpsState.lat,
+        lng: gpsState.lng,
+        heading: gpsState.heading,
+        speedKmh: gpsState.speedKmh,
+        batteryLevel: batteryLevelRef.current,
+        updatedAt: Date.now(),
+      };
+      broadcastPacket(initialPacket);
+    }
+    prevGpsStateRef.current = gpsState;
+  }, [gpsState, roomCode, isSharing, myName, myVehicle, myColor, broadcastPacket]);
 
   // Periodic GPS Telemetry Broadcast (every 4 seconds when sharing and GPS is available)
   useEffect(() => {
@@ -347,6 +377,11 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     setIsSharing(true);
     try {
       localStorage.setItem('laagarn_convoy_code', code);
+      if (typeof window !== 'undefined' && window.history) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('convoy', code);
+        window.history.replaceState({}, '', url.toString());
+      }
     } catch {
       // Ignore
     }
@@ -359,6 +394,11 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     setIsSharing(true);
     try {
       localStorage.setItem('laagarn_convoy_code', clean);
+      if (typeof window !== 'undefined' && window.history) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('convoy', clean);
+        window.history.replaceState({}, '', url.toString());
+      }
     } catch {
       // Ignore
     }
@@ -371,6 +411,14 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     setPeersMap({});
     try {
       localStorage.removeItem('laagarn_convoy_code');
+      if (typeof window !== 'undefined' && window.history) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('convoy')) {
+          url.searchParams.delete('convoy');
+          const cleanUrl = url.pathname + (url.search ? url.search : '') + url.hash;
+          window.history.replaceState({}, '', cleanUrl || '/');
+        }
+      }
     } catch {
       // Ignore
     }

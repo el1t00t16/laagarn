@@ -632,9 +632,24 @@
 
 :root.light .est-feature-pill,
 [data-theme="light"] .est-feature-pill {
-  background: #f3e8ff;
-  color: #6b21a8;
-  border: 1px solid #d8b4fe;
+  background: #f3e8ff !important;
+  color: #6b21a8 !important;
+  border: 1px solid #c084fc !important;
+}
+
+.weather-pin-label {
+  background: rgba(20, 10, 36, 0.88);
+  color: #f8f6fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+:root.light .weather-pin-label,
+[data-theme="light"] .weather-pin-label {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #140727 !important;
+  border: 1px solid rgba(147, 51, 234, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(100, 50, 150, 0.15) !important;
 }
 
 .popup-est-stop-btn {
@@ -651,16 +666,16 @@
 
 :root.light .popup-est-stop-btn,
 [data-theme="light"] .popup-est-stop-btn {
-  background: #f3e8ff;
-  color: #581c87;
-  border: 1px solid #c084fc;
+  background: #f3e8ff !important;
+  color: #581c87 !important;
+  border: 1px solid #c084fc !important;
 }
 
 :root.light .popup-est-stop-btn:hover,
 [data-theme="light"] .popup-est-stop-btn:hover {
-  background: #e9d5ff;
-  color: #3b0764;
-  border-color: #a855f7;
+  background: #e9d5ff !important;
+  color: #3b0764 !important;
+  border-color: #a855f7 !important;
 }
 
 :root.light .leaflet-popup-close-button,

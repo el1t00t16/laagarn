@@ -76,6 +76,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
   const [joinCodeInput, setJoinCodeInput] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
+  const [qrError, setQrError] = useState<boolean>(false);
   const [showProfileEdit, setShowProfileEdit] = useState<boolean>(false);
 
   const shareUrl = roomCode ? buildConvoyShareUrl(roomCode) : '';
@@ -345,7 +346,10 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowQrModal(true)}
+                    onClick={() => {
+                      setQrError(false);
+                      setShowQrModal(true);
+                    }}
                     title="Show QR Code for Camera Scan"
                     className="p-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] text-[var(--ink)] transition-colors cursor-pointer"
                   >
@@ -578,13 +582,29 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               </button>
             </div>
 
-            <div className="p-3 bg-white rounded-2xl inline-block shadow-md border border-gray-200">
-              <img
-                src={buildQrCodeImageUrl(shareUrl, 200)}
-                alt={`Convoy QR Code ${roomCode}`}
-                className="w-48 h-48 block mx-auto"
-              />
-            </div>
+            {!qrError ? (
+              <div className="p-3 bg-white rounded-2xl inline-block shadow-md border border-gray-200">
+                <img
+                  src={buildQrCodeImageUrl(shareUrl, 200)}
+                  alt={`Convoy QR Code ${roomCode}`}
+                  onError={() => setQrError(true)}
+                  className="w-48 h-48 block mx-auto"
+                />
+              </div>
+            ) : (
+              <div className="p-4 bg-[var(--surface)] rounded-2xl border border-[var(--border)] text-center space-y-2">
+                <QrCode className="w-10 h-10 mx-auto text-[var(--accent)]" />
+                <div className="mono text-xs font-bold text-[var(--ink)]">
+                  Offline / QR Service Unavailable
+                </div>
+                <p className="text-[11px] text-[var(--ink-dim)]">
+                  Share this 4-digit convoy code directly with your friends:
+                </p>
+                <div className="mono text-lg font-black text-[var(--accent)] tracking-widest bg-[var(--surface-glass)] py-2 rounded-xl border border-[var(--border)]">
+                  {roomCode}
+                </div>
+              </div>
+            )}
 
             <div>
               <div className="mono text-xs uppercase tracking-wider font-bold text-[var(--accent)]">

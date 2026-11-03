@@ -656,81 +656,83 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     map.on('popupopen', (e: L.PopupEvent) => {
       const container = e.popup.getElement();
       if (!container) return;
-      const routeBtn = container.querySelector('.popup-est-route-btn');
+
+      // Establishment Popup Action Handlers (using idempotent onclick handlers)
+      const routeBtn = container.querySelector<HTMLButtonElement>('.popup-est-route-btn');
       if (routeBtn) {
-        routeBtn.addEventListener('click', (ev) => {
+        routeBtn.onclick = (ev) => {
           ev.preventDefault();
-          const id = (routeBtn as HTMLElement).dataset.estId;
+          const id = routeBtn.dataset.estId;
           const target = establishmentsRef.current.find((x) => x.id === id);
           if (target && onSelectEstablishmentRouteRef.current) {
             onSelectEstablishmentRouteRef.current(target);
             map.closePopup();
           }
-        });
+        };
       }
-      const stopBtn = container.querySelector('.popup-est-stop-btn');
+      const stopBtn = container.querySelector<HTMLButtonElement>('.popup-est-stop-btn');
       if (stopBtn) {
-        stopBtn.addEventListener('click', (ev) => {
+        stopBtn.onclick = (ev) => {
           ev.preventDefault();
-          const id = (stopBtn as HTMLElement).dataset.estId;
+          const id = stopBtn.dataset.estId;
           const target = establishmentsRef.current.find((x) => x.id === id);
           if (target && onAddEstablishmentStopRef.current) {
             onAddEstablishmentStopRef.current(target);
             map.closePopup();
           }
-        });
+        };
       }
 
       // Traffic Light Popup Action Handlers
-      const tlRouteBtn = container.querySelector('.popup-tl-route-btn');
+      const tlRouteBtn = container.querySelector<HTMLButtonElement>('.popup-tl-route-btn');
       if (tlRouteBtn) {
-        tlRouteBtn.addEventListener('click', (ev) => {
+        tlRouteBtn.onclick = (ev) => {
           ev.preventDefault();
-          const id = (tlRouteBtn as HTMLElement).dataset.tlId;
+          const id = tlRouteBtn.dataset.tlId;
           const target = trafficLightsRef.current?.find((x) => x.id === id);
           if (target && onSelectTrafficLightRouteRef.current) {
             onSelectTrafficLightRouteRef.current(target);
             map.closePopup();
           }
-        });
+        };
       }
-      const tlStopBtn = container.querySelector('.popup-tl-stop-btn');
+      const tlStopBtn = container.querySelector<HTMLButtonElement>('.popup-tl-stop-btn');
       if (tlStopBtn) {
-        tlStopBtn.addEventListener('click', (ev) => {
+        tlStopBtn.onclick = (ev) => {
           ev.preventDefault();
-          const id = (tlStopBtn as HTMLElement).dataset.tlId;
+          const id = tlStopBtn.dataset.tlId;
           const target = trafficLightsRef.current?.find((x) => x.id === id);
           if (target && onAddTrafficLightStopRef.current) {
             onAddTrafficLightStopRef.current(target);
             map.closePopup();
           }
-        });
+        };
       }
 
       // Convoy Peer Popup Action Handlers
-      const peerRouteBtn = container.querySelector('.popup-peer-route-btn');
+      const peerRouteBtn = container.querySelector<HTMLButtonElement>('.popup-peer-route-btn');
       if (peerRouteBtn) {
-        peerRouteBtn.addEventListener('click', (ev) => {
+        peerRouteBtn.onclick = (ev) => {
           ev.preventDefault();
-          const id = (peerRouteBtn as HTMLElement).dataset.peerId;
+          const id = peerRouteBtn.dataset.peerId;
           const target = convoyPeersRef.current?.find((x) => x.id === id);
           if (target && onRouteToPeerRef.current) {
             onRouteToPeerRef.current(peerToLatLngPoint(target));
             map.closePopup();
           }
-        });
+        };
       }
-      const peerStopBtn = container.querySelector('.popup-peer-stop-btn');
+      const peerStopBtn = container.querySelector<HTMLButtonElement>('.popup-peer-stop-btn');
       if (peerStopBtn) {
-        peerStopBtn.addEventListener('click', (ev) => {
+        peerStopBtn.onclick = (ev) => {
           ev.preventDefault();
-          const id = (peerStopBtn as HTMLElement).dataset.peerId;
+          const id = peerStopBtn.dataset.peerId;
           const target = convoyPeersRef.current?.find((x) => x.id === id);
           if (target && onAddPeerStopRef.current) {
             onAddPeerStopRef.current(peerToLatLngPoint(target));
             map.closePopup();
           }
-        });
+        };
       }
     });
 
@@ -1058,21 +1060,17 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         weatherSnapshots.forEach((snap) => {
           const weatherIcon = L.divIcon({
             className: 'v2-weather-marker',
-            html: `<div style="
+            html: `<div class="weather-pin-label" style="
               display:inline-flex;
               align-items:center;
               padding:3px 8px;
-              background:rgba(20, 10, 36, 0.88);
               backdrop-filter:blur(10px);
-              color:#f8f6fc;
-              border:1px solid rgba(168,85,247,0.35);
               font-family:'JetBrains Mono',monospace;
               font-size:9.5px;
               font-weight:600;
               text-transform:uppercase;
               letter-spacing:0.1em;
               white-space:nowrap;
-              box-shadow:0 4px 12px rgba(0,0,0,0.45);
               border-radius:4px;
             "><span style="color:#c084fc;margin-right:4px;">${snap.tempC}&deg;C</span> ${escapeHtml(
               snap.condition
