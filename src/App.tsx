@@ -45,6 +45,7 @@ import { TrafficPanel } from './components/TrafficPanel';
 import { WeatherForecastPanel } from './components/WeatherForecastPanel';
 import { OfflineCachePanel } from './components/OfflineCachePanel';
 import { EstablishmentsPanel } from './components/EstablishmentsPanel';
+import { ConvoyPanel } from './components/ConvoyPanel';
 import {
   Establishment,
   KNOWN_ESTABLISHMENTS,
@@ -60,6 +61,7 @@ import { useDeviceCompass } from './hooks/useOrientation';
 import { useWakeLock } from './hooks/useWakeLock';
 import { useSpeechGuidance } from './hooks/useSpeechGuidance';
 import { useRouteSimulation } from './hooks/useRouteSimulation';
+import { useConvoy } from './hooks/useConvoy';
 import { motion } from 'motion/react';
 import {
   Compass,
@@ -74,11 +76,13 @@ import {
   Sun,
   Moon,
   Zap,
+  Users,
+  Radio,
   Store,
 } from 'lucide-react';
 
 export type AppTheme = 'dark' | 'amoled' | 'light';
-type ActiveTab = 'routes' | 'places' | 'traffic' | 'weather' | 'offline';
+type ActiveTab = 'routes' | 'places' | 'traffic' | 'convoy' | 'weather' | 'offline';
 type MobileSheetState = 'peek' | 'half' | 'full';
 
 export default function App() {
@@ -144,6 +148,7 @@ export default function App() {
   const [trafficLights, setTrafficLights] = useState<TrafficLight[]>(KNOWN_TRAFFIC_LIGHTS);
   const [showTrafficLightsLayer, setShowTrafficLightsLayer] = useState<boolean>(true);
   const [showWeatherLayer, setShowWeatherLayer] = useState<boolean>(true);
+  const [showConvoyLayer, setShowConvoyLayer] = useState<boolean>(true);
 
   // Establishments state
   const [establishments, setEstablishments] = useState<Establishment[]>(KNOWN_ESTABLISHMENTS);
@@ -225,6 +230,36 @@ export default function App() {
 
   // During simulation, the active displayed GPS is the simulated position; otherwise real satellite GPS
   const effectiveGps = isSimulating && simulatedGps ? simulatedGps : gpsState;
+
+  // Live Convoy & Location Sharing Hook
+  const {
+    roomCode: convoyRoomCode,
+    isSharing: isConvoySharing,
+    myName: convoyMyName,
+    myVehicle: convoyMyVehicle,
+    myColor: convoyMyColor,
+    peers: convoyPeers,
+    activePeersCount: convoyActivePeersCount,
+    connectionStatus: convoyConnectionStatus,
+    lastBroadcastAt: convoyLastBroadcastAt,
+    createConvoy,
+    joinConvoy,
+    leaveConvoy,
+    updateProfile: updateConvoyProfile,
+  } = useConvoy(effectiveGps);
+
+  // Auto-switch to convoy tab if ?convoy=CODE is present in URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlCode = new URLSearchParams(window.location.search).get('convoy');
+      if (urlCode) {
+        setActiveTab('convoy');
+        if (window.innerWidth < 1024) {
+          setMobileSheetState('half');
+        }
+      }
+    }
+  }, []);
 
   // Route Index for fast on-device geometry calculations
   const routeIndex = useMemo(() => {
@@ -672,6 +707,75 @@ export default function App() {
     }
   };
 
+  const handleRouteToPeer = (point: LatLngPoint) => {
+    if (gpsState) {
+      const originPoint: LatLngPoint = {
+        name: gpsState.addressLabel || 'Current GPS Location',
+        region: 'Live GPS',
+        lat: gpsState.lat,
+        lng: gpsState.lng,
+      };
+      setStops([originPoint, point]);
+    } else if (stops.length >= 1) {
+      setStops([stops[0], point]);
+    } else {
+      setStops([point]);
+    }
+    setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
+    setActiveTab('routes');
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('half');
+    }
+  };
+
+  const handleAddPeerStop = (point: LatLngPoint) => {
+    if (stops.length === 0) {
+      if (gpsState) {
+        setStops([
+          {
+            name: gpsState.addressLabel || 'Current GPS Location',
+            region: 'Live GPS',
+            lat: gpsState.lat,
+            lng: gpsState.lng,
+          },
+          point,
+        ]);
+      } else {
+        setStops([point]);
+      }
+    } else if (stops.length === 1) {
+      setStops([...stops, point]);
+    } else {
+      const prev = [...stops];
+      prev.splice(prev.length - 1, 0, point);
+      setStops(prev);
+    }
+    setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
+    setActiveTab('routes');
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('half');
+    }
+  };
+
+  const handleFitConvoyBounds = (points: { lat: number; lng: number }[]) => {
+    if (points.length === 0) return;
+    if (points.length === 1) {
+      setFocusedCoord({ lat: points[0].lat, lng: points[0].lng, zoom: 16 });
+      return;
+    }
+    const minLat = Math.min(...points.map((p) => p.lat));
+    const maxLat = Math.max(...points.map((p) => p.lat));
+    const minLng = Math.min(...points.map((p) => p.lng));
+    const maxLng = Math.max(...points.map((p) => p.lng));
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+    const latDiff = maxLat - minLat;
+    const lngDiff = maxLng - minLng;
+    const maxDiff = Math.max(latDiff, lngDiff);
+    const zoom = maxDiff > 2 ? 8 : maxDiff > 0.8 ? 10 : maxDiff > 0.3 ? 12 : maxDiff > 0.08 ? 14 : 15;
+    setFocusedCoord({ lat: centerLat, lng: centerLng, zoom });
+  };
+
   const handleFocusEstablishment = (est: Establishment) => {
     setSelectedEstablishmentId(est.id);
     setFocusedCoord({ lat: est.lat, lng: est.lng, zoom: 16 });
@@ -799,6 +903,12 @@ export default function App() {
                 { id: 'routes', label: 'Planner' },
                 { id: 'places', label: 'Places' },
                 { id: 'traffic', label: 'Traffic' },
+                {
+                  id: 'convoy',
+                  label: isConvoySharing
+                    ? `Convoy (${convoyActivePeersCount + 1})`
+                    : 'Convoy 👥',
+                },
                 { id: 'weather', label: 'Weather' },
                 { id: 'offline', label: 'Offline Cartography' },
               ] as { id: ActiveTab; label: string }[]
@@ -824,6 +934,21 @@ export default function App() {
 
           {/* Right Header: Theme Toggle, Install PWA & Status Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Live Convoy Status Badge */}
+            {isConvoySharing && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('convoy');
+                  if (window.innerWidth < 1024) setMobileSheetState('half');
+                }}
+                className="h-8 px-2 sm:px-2.5 bg-cyan-500/15 border border-cyan-500/40 text-cyan-600 dark:text-cyan-300 mono text-[10px] uppercase font-bold rounded-xl flex items-center gap-1.5 cursor-pointer hover:border-cyan-400"
+                title={`Convoy ${convoyRoomCode} · ${convoyActivePeersCount + 1} Members`}
+              >
+                <Users className="w-3.5 h-3.5 text-cyan-500 animate-pulse" />
+                <span>Convoy {convoyActivePeersCount + 1}</span>
+              </button>
+            )}
             {/* Theme Toggle Button: Purple -> OLED Black -> Light */}
             <button
               type="button"
@@ -1000,6 +1125,30 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'convoy' && (
+            <ConvoyPanel
+              roomCode={convoyRoomCode}
+              isSharing={isConvoySharing}
+              myName={convoyMyName}
+              myVehicle={convoyMyVehicle}
+              myColor={convoyMyColor}
+              peers={convoyPeers}
+              activePeersCount={convoyActivePeersCount}
+              connectionStatus={convoyConnectionStatus}
+              lastBroadcastAt={convoyLastBroadcastAt}
+              gpsState={effectiveGps}
+              onCreateConvoy={createConvoy}
+              onJoinConvoy={joinConvoy}
+              onLeaveConvoy={leaveConvoy}
+              onUpdateProfile={updateConvoyProfile}
+              onFocusCoordinate={handleFocusCoordinate}
+              onFitBounds={handleFitConvoyBounds}
+              onRouteToPeer={handleRouteToPeer}
+              onAddPeerStop={handleAddPeerStop}
+              theme={theme}
+            />
+          )}
+
           {activeTab === 'weather' && (
             <WeatherForecastPanel
               snapshots={weatherSnapshots}
@@ -1059,6 +1208,11 @@ export default function App() {
             onToggleTrafficLightsLayer={() => setShowTrafficLightsLayer((v) => !v)}
             onSelectTrafficLightRoute={handleSelectTrafficLightRoute}
             onAddTrafficLightStop={handleAddTrafficLightStop}
+            convoyPeers={convoyPeers}
+            showConvoyLayer={showConvoyLayer}
+            onToggleConvoyLayer={() => setShowConvoyLayer((v) => !v)}
+            onRouteToPeer={handleRouteToPeer}
+            onAddPeerStop={handleAddPeerStop}
             isOfflineMode={isOfflineMode}
             mapStyle={mapStyle}
             onChangeMapStyle={setMapStyle}
@@ -1262,6 +1416,33 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'convoy' && (
+              <ConvoyPanel
+                roomCode={convoyRoomCode}
+                isSharing={isConvoySharing}
+                myName={convoyMyName}
+                myVehicle={convoyMyVehicle}
+                myColor={convoyMyColor}
+                peers={convoyPeers}
+                activePeersCount={convoyActivePeersCount}
+                connectionStatus={convoyConnectionStatus}
+                lastBroadcastAt={convoyLastBroadcastAt}
+                gpsState={effectiveGps}
+                onCreateConvoy={createConvoy}
+                onJoinConvoy={joinConvoy}
+                onLeaveConvoy={leaveConvoy}
+                onUpdateProfile={updateConvoyProfile}
+                onFocusCoordinate={(lat, lng, zoom, label) => {
+                  handleFocusCoordinate(lat, lng, zoom, label);
+                  setMobileSheetState('peek');
+                }}
+                onFitBounds={handleFitConvoyBounds}
+                onRouteToPeer={handleRouteToPeer}
+                onAddPeerStop={handleAddPeerStop}
+                theme={theme}
+              />
+            )}
+
             {activeTab === 'weather' && (
               <WeatherForecastPanel
                 snapshots={weatherSnapshots}
@@ -1319,6 +1500,13 @@ export default function App() {
                   label: 'Traffic',
                   icon: AlertTriangle,
                   badge: incidents.filter((i) => i.active).length,
+                },
+                {
+                  id: 'convoy',
+                  label: 'Convoy',
+                  icon: Users,
+                  badge: isConvoySharing && convoyActivePeersCount > 0 ? convoyActivePeersCount : undefined,
+                  alertDot: isConvoySharing && convoyActivePeersCount === 0,
                 },
                 {
                   id: 'weather',

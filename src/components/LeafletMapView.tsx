@@ -38,6 +38,11 @@ import {
   KNOWN_TRAFFIC_LIGHTS,
 } from '../utils/trafficLightData';
 import {
+  ConvoyPeer,
+  CONVOY_VEHICLE_OPTIONS,
+  peerToLatLngPoint,
+} from '../utils/convoySync';
+import {
   getCachedTileObjectUrl,
   generatePlaceholderTileSvg,
 } from '../utils/tileCacheStorage';
@@ -81,6 +86,11 @@ interface LeafletMapViewProps {
   onToggleTrafficLightsLayer?: () => void;
   onSelectTrafficLightRoute?: (tl: TrafficLight) => void;
   onAddTrafficLightStop?: (tl: TrafficLight) => void;
+  convoyPeers?: ConvoyPeer[];
+  showConvoyLayer?: boolean;
+  onToggleConvoyLayer?: () => void;
+  onRouteToPeer?: (point: LatLngPoint) => void;
+  onAddPeerStop?: (point: LatLngPoint) => void;
   isOfflineMode: boolean;
   mapStyle: MapStyleMode;
   onChangeMapStyle: (style: MapStyleMode) => void;
@@ -405,6 +415,77 @@ function createHeavyTrafficMarkerIcon(inc: TrafficIncident): L.DivIcon {
   });
 }
 
+function createConvoyPeerMarkerIcon(peer: ConvoyPeer): L.DivIcon {
+  const emoji =
+    CONVOY_VEHICLE_OPTIONS.find((v) => v.id === peer.vehicle)?.emoji || '👤';
+  const safeName = escapeHtml(peer.name.split(' ')[0]);
+  const hasHeading = typeof peer.heading === 'number';
+  const headingDeg = hasHeading ? Math.round(peer.heading!) : 0;
+  const speedText =
+    peer.speedKmh !== null && peer.speedKmh !== undefined
+      ? `${peer.speedKmh}k`
+      : '';
+  const color = peer.color || '#06b6d4';
+
+  return L.divIcon({
+    className: 'v2-convoy-peer-pin',
+    html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+      <div style="
+        position:relative;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: ${color};
+        border: 2.5px solid #ffffff;
+        box-shadow: 0 0 0 2px ${color}88, 0 4px 12px rgba(0,0,0,0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+      ">
+        ${emoji}
+        ${
+          hasHeading
+            ? `<div style="
+                position: absolute;
+                top: -6px;
+                left: 50%;
+                transform: translateX(-50%) rotate(${headingDeg}deg);
+                transform-origin: 50% 21px;
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-bottom: 7px solid ${color};
+                filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+              "></div>`
+            : ''
+        }
+      </div>
+      <div class="convoy-pin-label" style="
+        margin-top: 3px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 8px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        padding: 1.5px 5px;
+        border-radius: 4px;
+        max-width: 105px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        pointer-events: none;
+      ">
+        ${safeName}${speedText ? ` &middot; ${speedText}` : ''}
+      </div>
+    </div>`,
+    iconSize: [105, 52],
+    iconAnchor: [52, 15],
+    popupAnchor: [0, -15],
+  });
+}
+
 export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   stops,
   routes,
@@ -434,6 +515,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   onToggleTrafficLightsLayer,
   onSelectTrafficLightRoute,
   onAddTrafficLightStop,
+  convoyPeers = [],
+  showConvoyLayer = true,
+  onToggleConvoyLayer,
+  onRouteToPeer,
+  onAddPeerStop,
   isOfflineMode,
   mapStyle,
   onChangeMapStyle,
@@ -471,6 +557,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   const gpsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const establishmentsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const trafficLightsLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const convoyLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
   const establishmentsRef = useRef(establishments);
   establishmentsRef.current = establishments;
@@ -485,6 +572,13 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   onSelectTrafficLightRouteRef.current = onSelectTrafficLightRoute;
   const onAddTrafficLightStopRef = useRef(onAddTrafficLightStop);
   onAddTrafficLightStopRef.current = onAddTrafficLightStop;
+
+  const convoyPeersRef = useRef(convoyPeers);
+  convoyPeersRef.current = convoyPeers;
+  const onRouteToPeerRef = useRef(onRouteToPeer);
+  onRouteToPeerRef.current = onRouteToPeer;
+  const onAddPeerStopRef = useRef(onAddPeerStop);
+  onAddPeerStopRef.current = onAddPeerStop;
 
   const [showLayersMenu, setShowLayersMenu] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
@@ -551,10 +645,12 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     const gpsGroup = L.layerGroup().addTo(map);
     const estGroup = L.layerGroup().addTo(map);
     const tlGroup = L.layerGroup().addTo(map);
+    const convoyGroup = L.layerGroup().addTo(map);
     routeLayerGroupRef.current = routeGroup;
     gpsLayerGroupRef.current = gpsGroup;
     establishmentsLayerGroupRef.current = estGroup;
     trafficLightsLayerGroupRef.current = tlGroup;
+    convoyLayerGroupRef.current = convoyGroup;
     mapInstanceRef.current = map;
 
     map.on('popupopen', (e: L.PopupEvent) => {
@@ -606,6 +702,32 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           const target = trafficLightsRef.current?.find((x) => x.id === id);
           if (target && onAddTrafficLightStopRef.current) {
             onAddTrafficLightStopRef.current(target);
+            map.closePopup();
+          }
+        });
+      }
+
+      // Convoy Peer Popup Action Handlers
+      const peerRouteBtn = container.querySelector('.popup-peer-route-btn');
+      if (peerRouteBtn) {
+        peerRouteBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const id = (peerRouteBtn as HTMLElement).dataset.peerId;
+          const target = convoyPeersRef.current?.find((x) => x.id === id);
+          if (target && onRouteToPeerRef.current) {
+            onRouteToPeerRef.current(peerToLatLngPoint(target));
+            map.closePopup();
+          }
+        });
+      }
+      const peerStopBtn = container.querySelector('.popup-peer-stop-btn');
+      if (peerStopBtn) {
+        peerStopBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const id = (peerStopBtn as HTMLElement).dataset.peerId;
+          const target = convoyPeersRef.current?.find((x) => x.id === id);
+          if (target && onAddPeerStopRef.current) {
+            onAddPeerStopRef.current(peerToLatLngPoint(target));
             map.closePopup();
           }
         });
@@ -1188,6 +1310,95 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     });
   }, [trafficLights, showTrafficLightsLayer]);
 
+  // 4d. Render Convoy Peers Layer (Live Friends Tracking)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const group = convoyLayerGroupRef.current;
+    if (!map || !group) return;
+
+    group.clearLayers();
+
+    if (!showConvoyLayer || !convoyPeers || convoyPeers.length === 0) return;
+
+    convoyPeers.forEach((peer) => {
+      const marker = L.marker([peer.lat, peer.lng], {
+        icon: createConvoyPeerMarkerIcon(peer),
+        zIndexOffset: 950,
+      });
+
+      const distText =
+        peer.distanceKm !== undefined
+          ? peer.distanceKm < 1
+            ? `${Math.round(peer.distanceKm * 1000)} m away`
+            : `${peer.distanceKm.toFixed(1)} km away`
+          : '';
+
+      const speedText =
+        peer.speedKmh !== null && peer.speedKmh !== undefined
+          ? `${peer.speedKmh} km/h`
+          : 'Stationary';
+
+      const headingText =
+        typeof peer.heading === 'number'
+          ? `${Math.round(peer.heading)}° ${peer.cardinalDirection || ''}`
+          : 'N/A';
+
+      const battText =
+        peer.batteryLevel !== null && peer.batteryLevel !== undefined
+          ? `🔋 ${Math.round(peer.batteryLevel * 100)}%`
+          : '';
+
+      const emoji =
+        CONVOY_VEHICLE_OPTIONS.find((v) => v.id === peer.vehicle)?.emoji || '👤';
+
+      const color = peer.color || '#06b6d4';
+
+      marker.bindPopup(`
+        <div style="min-width:215px;font-family:'Inter',sans-serif;padding:3px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;font-weight:800;color:${color};background:${color}18;padding:2.5px 7px;border-radius:4px;border:1px solid ${color}45;">
+              ${emoji} LIVE CONVOY PAL
+            </span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:#10b981;">
+              ● LIVE
+            </span>
+          </div>
+          <div style="font-size:14px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.25;">
+            ${escapeHtml(peer.name)}
+          </div>
+          ${distText ? `
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);margin-top:3px;">
+              📍 ${escapeHtml(distText)}
+            </div>
+          ` : ''}
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;">
+            <span style="padding:2px 6px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--ink);font-weight:700;">
+              ⚡ ${speedText}
+            </span>
+            <span style="padding:2px 6px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--ink-dim);">
+              🧭 ${headingText}
+            </span>
+            ${battText ? `
+              <span style="color:var(--ink-dim);margin-left:auto;">
+                ${battText}
+              </span>
+            ` : ''}
+          </div>
+          <div style="display:flex;gap:6px;margin-top:9px;padding-top:7px;border-top:1px solid var(--border-subtle, rgba(6,182,212,0.2));">
+            <button class="popup-peer-route-btn" data-peer-id="${escapeHtml(peer.id)}" style="flex:1;padding:6px 10px;background:linear-gradient(135deg, ${color}, #0891b2);color:#ffffff;border:none;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;box-shadow:0 2px 8px ${color}55;">
+              🧭 Route to Friend
+            </button>
+            <button class="popup-peer-stop-btn" data-peer-id="${escapeHtml(peer.id)}" style="padding:6px 10px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;">
+              ➕ Add Stop
+            </button>
+          </div>
+        </div>
+      `);
+
+      marker.addTo(group);
+    });
+  }, [convoyPeers, showConvoyLayer]);
+
   // 5. Viewport movement handlers
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -1501,6 +1712,24 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
               >
                 <span>Traffic Lights 🚦</span>
                 <span className="text-[10px] font-bold">{showTrafficLightsLayer ? 'ON' : 'OFF'}</span>
+              </button>
+            )}
+            {onToggleConvoyLayer && (
+              <button
+                type="button"
+                onClick={onToggleConvoyLayer}
+                className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg cursor-pointer ${
+                  showConvoyLayer
+                    ? isDark
+                      ? 'border-cyan-500 text-cyan-300 bg-cyan-500/15'
+                      : 'border-cyan-600 text-cyan-800 bg-cyan-100/70'
+                    : isDark
+                    ? 'border-purple-500/20 text-purple-200/80'
+                    : 'border-purple-200 text-purple-900/70'
+                }`}
+              >
+                <span>Convoy Pals 👥</span>
+                <span className="text-[10px] font-bold">{showConvoyLayer ? 'ON' : 'OFF'}</span>
               </button>
             )}
             {onToggleEstablishmentsLayer && (
