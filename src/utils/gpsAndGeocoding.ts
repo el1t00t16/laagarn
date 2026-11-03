@@ -12,6 +12,10 @@ import {
 } from './routingEngine';
 import { KNOWN_LOCATIONS } from './travelData';
 import {
+  searchOfflineEstablishments,
+  establishmentToLatLngPoint,
+} from './establishmentData';
+import {
   APP_CONFIG,
   fetchWithTimeout,
   isBrowserOnline,
@@ -169,9 +173,23 @@ export function searchOfflinePlaces(query: string): LatLngPoint[] {
   if (!q) return [];
   const coord = parseCoordinateQuery(q);
   if (coord) return [coord];
-  return getKnownPlaces().filter(
+
+  const placeMatches = getKnownPlaces().filter(
     (loc) => loc.name.toLowerCase().includes(q) || (loc.region && loc.region.toLowerCase().includes(q))
   );
+
+  const establishmentMatches = searchOfflineEstablishments(q, { limit: 8 }).map(
+    establishmentToLatLngPoint
+  );
+
+  const combined = [...establishmentMatches, ...placeMatches];
+  const seen = new Set<string>();
+  return combined.filter((p) => {
+    const key = `${p.name.toLowerCase()}|${p.lat.toFixed(3)}|${p.lng.toFixed(3)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**

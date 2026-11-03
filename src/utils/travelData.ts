@@ -1,4 +1,8 @@
 import { LatLngPoint, TrafficIncident } from './routingEngine';
+import {
+  searchOfflineEstablishments,
+  establishmentToLatLngPoint,
+} from './establishmentData';
 
 export interface OfflineRegionPack {
   id: string;
@@ -245,6 +249,12 @@ export function resolveLocationInput(
     );
   if (exactOrPartial) {
     return exactOrPartial;
+  }
+
+  // Check known establishments
+  const estMatches = searchOfflineEstablishments(clean, { limit: 1 });
+  if (estMatches.length > 0) {
+    return establishmentToLatLngPoint(estMatches[0]);
   }
 
   // "lat, lng" input

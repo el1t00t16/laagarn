@@ -44,6 +44,12 @@ import { RoutePlannerPanel } from './components/RoutePlannerPanel';
 import { TrafficPanel } from './components/TrafficPanel';
 import { WeatherForecastPanel } from './components/WeatherForecastPanel';
 import { OfflineCachePanel } from './components/OfflineCachePanel';
+import { EstablishmentsPanel } from './components/EstablishmentsPanel';
+import {
+  Establishment,
+  KNOWN_ESTABLISHMENTS,
+  establishmentToLatLngPoint,
+} from './utils/establishmentData';
 import { useLiveGps } from './hooks/useLiveGps';
 import { useDeviceCompass } from './hooks/useOrientation';
 import { useWakeLock } from './hooks/useWakeLock';
@@ -63,10 +69,11 @@ import {
   Sun,
   Moon,
   Zap,
+  Store,
 } from 'lucide-react';
 
 export type AppTheme = 'dark' | 'amoled' | 'light';
-type ActiveTab = 'routes' | 'traffic' | 'weather' | 'offline';
+type ActiveTab = 'routes' | 'places' | 'traffic' | 'weather' | 'offline';
 type MobileSheetState = 'peek' | 'half' | 'full';
 
 export default function App() {
@@ -130,6 +137,11 @@ export default function App() {
   const [incidents, setIncidents] = useState<TrafficIncident[]>(INITIAL_TRAFFIC_INCIDENTS);
   const [showTrafficLayer, setShowTrafficLayer] = useState<boolean>(true);
   const [showWeatherLayer, setShowWeatherLayer] = useState<boolean>(true);
+
+  // Establishments state
+  const [establishments, setEstablishments] = useState<Establishment[]>(KNOWN_ESTABLISHMENTS);
+  const [showEstablishmentsLayer, setShowEstablishmentsLayer] = useState<boolean>(true);
+  const [selectedEstablishmentId, setSelectedEstablishmentId] = useState<string | null>(null);
 
   // Weather state & en-route corridor hazards
   const [weatherSnapshots, setWeatherSnapshots] = useState<WeatherSnapshot[]>([]);
@@ -543,6 +555,71 @@ export default function App() {
     setIncidents((prev) => [created, ...prev]);
   };
 
+  const handleSelectEstablishmentRoute = (est: Establishment) => {
+    const estPoint = establishmentToLatLngPoint(est);
+    setSelectedEstablishmentId(est.id);
+
+    if (gpsState) {
+      const originPoint: LatLngPoint = {
+        name: gpsState.addressLabel || 'Current GPS Location',
+        region: 'Live GPS',
+        lat: gpsState.lat,
+        lng: gpsState.lng,
+      };
+      setStops([originPoint, estPoint]);
+    } else if (stops.length >= 1) {
+      setStops([stops[0], estPoint]);
+    } else {
+      setStops([estPoint]);
+    }
+
+    setActiveTab('routes');
+    setActiveRouteIndex(0);
+    setActiveStepIndex(0);
+    setFocusedCoord({ lat: est.lat, lng: est.lng, zoom: 15 });
+
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('peek');
+    }
+  };
+
+  const handleAddEstablishmentStop = (est: Establishment) => {
+    const estPoint = establishmentToLatLngPoint(est);
+    setSelectedEstablishmentId(est.id);
+
+    if (stops.length === 0) {
+      if (gpsState) {
+        setStops([
+          {
+            name: gpsState.addressLabel || 'Current GPS Location',
+            region: 'Live GPS',
+            lat: gpsState.lat,
+            lng: gpsState.lng,
+          },
+          estPoint,
+        ]);
+      } else {
+        setStops([estPoint]);
+      }
+    } else if (stops.length === 1) {
+      setStops([...stops, estPoint]);
+    } else {
+      const prev = [...stops];
+      prev.splice(prev.length - 1, 0, estPoint);
+      setStops(prev);
+    }
+
+    setFocusedCoord({ lat: est.lat, lng: est.lng, zoom: 15 });
+  };
+
+  const handleFocusEstablishment = (est: Establishment) => {
+    setSelectedEstablishmentId(est.id);
+    setFocusedCoord({ lat: est.lat, lng: est.lng, zoom: 16 });
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('peek');
+    }
+  };
+
   const handleDownloadRegionPack = async (
     pack: OfflineRegionPack,
     onProgress: (done: number, total: number) => void
@@ -660,6 +737,7 @@ export default function App() {
             {(
               [
                 { id: 'routes', label: 'Planner' },
+                { id: 'places', label: 'Places' },
                 { id: 'traffic', label: 'Traffic' },
                 { id: 'weather', label: 'Weather' },
                 { id: 'offline', label: 'Offline Cartography' },
@@ -794,6 +872,17 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'places' && (
+            <EstablishmentsPanel
+              gpsState={effectiveGps}
+              onLocateUserGps={() => handleLocateUserGps(false)}
+              onSelectEstablishmentRoute={handleSelectEstablishmentRoute}
+              onFocusEstablishment={handleFocusEstablishment}
+              onAddEstablishmentStop={handleAddEstablishmentStop}
+              selectedEstablishmentId={selectedEstablishmentId}
+            />
+          )}
+
           {activeTab === 'traffic' && (
             <TrafficPanel
               incidents={incidents}
@@ -852,6 +941,13 @@ export default function App() {
             hazardReport={hazardReport}
             showWeatherLayer={showWeatherLayer}
             onToggleWeatherLayer={() => setShowWeatherLayer((v) => !v)}
+            establishments={establishments}
+            showEstablishmentsLayer={showEstablishmentsLayer}
+            onToggleEstablishmentsLayer={() => setShowEstablishmentsLayer((v) => !v)}
+            selectedEstablishmentId={selectedEstablishmentId}
+            onSelectEstablishmentRoute={handleSelectEstablishmentRoute}
+            onAddEstablishmentStop={handleAddEstablishmentStop}
+            onSelectEstablishment={handleFocusEstablishment}
             isOfflineMode={isOfflineMode}
             mapStyle={mapStyle}
             onChangeMapStyle={setMapStyle}
@@ -925,6 +1021,8 @@ export default function App() {
                   ? activeRoute
                     ? `${activeRoute.totalDurationMinutes}m · ${activeRoute.totalDistanceKm} km`
                     : 'Route Planner'
+                  : activeTab === 'places'
+                  ? `Places & Establishments (${establishments.length})`
                   : activeTab === 'traffic'
                   ? `Traffic Alerts (${incidents.filter((i) => i.active).length})`
                   : activeTab === 'weather'
@@ -977,6 +1075,17 @@ export default function App() {
                 onStartNavigation={handleStartNavigation}
                 onStartSimulation={handleToggleSimulation}
                 isSimulating={isSimulating}
+              />
+            )}
+
+            {activeTab === 'places' && (
+              <EstablishmentsPanel
+                gpsState={effectiveGps}
+                onLocateUserGps={() => handleLocateUserGps(false)}
+                onSelectEstablishmentRoute={handleSelectEstablishmentRoute}
+                onFocusEstablishment={handleFocusEstablishment}
+                onAddEstablishmentStop={handleAddEstablishmentStop}
+                selectedEstablishmentId={selectedEstablishmentId}
               />
             )}
 
@@ -1045,6 +1154,7 @@ export default function App() {
             {(
               [
                 { id: 'routes', label: 'Planner', icon: Navigation },
+                { id: 'places', label: 'Places', icon: Store, badge: establishments.length },
                 {
                   id: 'traffic',
                   label: 'Traffic',

@@ -32,7 +32,14 @@
   - Metro Cebu & Mactan Island Hub
 - **Active Route Corridor Caching**: 1-click archiving of every tile along your plotted journey corridor before heading into areas with weak cellular reception.
 
-### 4. 🌦️ Weather & Traffic Intelligence
+### 4. 🏪 Google Maps-Style Establishments & POI Search
+- **Comprehensive Establishment Discovery**: Search and explore gas stations, fast food (Jollibee, McDonald's), supermalls (SM, Robinsons, Ayala), 24/7 convenience stores (7-Eleven), emergency hospitals, and banks/ATMs across the Philippines.
+- **Category Filter Chips**: Quick one-tap filters for ⛽ Fuel, 🍔 Food & Dining, 🛍️ Malls, 🏪 24/7 Stores, 🏥 Hospitals, 💊 Pharmacies, 🏦 Banks & ATMs, 🏨 Hotels, and 🚌 Transit.
+- **Proximity & Distance Ranking**: Filter establishments by distance from your current GPS position (5 km, 15 km, 30 km, or nationwide).
+- **Interactive Map POI Markers & 1-Click Directions**: Custom color-coded establishment pins on the interactive map with rich popup info (hours, address, phone, features) and instant `[🧭 Directions]` / `[➕ Add Stop]` buttons.
+- **Offline + Online Hybrid Discovery**: Instant offline gazetteer of major Philippine establishments and highway service plazas, combined with dynamic OpenStreetMap POI search when online.
+
+### 5. 🌦️ Weather & Traffic Intelligence
 - **En-Route Meteorological Stations**: Real-time atmospheric conditions (temperature, precipitation probability, wind, visibility, and road surface advisories) powered by Open-Meteo with offline climatology fallback.
 - **Corridor Traffic Dispatch**: Active traffic incidents, roadwork hazards, and delay calculations across Philippine expressways (Skyway, EDSA, SLEX, NLEX, CALAX).
 
