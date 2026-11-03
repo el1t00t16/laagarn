@@ -34,6 +34,10 @@ import {
   ESTABLISHMENT_CATEGORIES,
 } from '../utils/establishmentData';
 import {
+  TrafficLight,
+  KNOWN_TRAFFIC_LIGHTS,
+} from '../utils/trafficLightData';
+import {
   getCachedTileObjectUrl,
   generatePlaceholderTileSvg,
 } from '../utils/tileCacheStorage';
@@ -72,6 +76,11 @@ interface LeafletMapViewProps {
   onSelectEstablishmentRoute?: (est: Establishment) => void;
   onAddEstablishmentStop?: (est: Establishment) => void;
   onSelectEstablishment?: (est: Establishment) => void;
+  trafficLights?: TrafficLight[];
+  showTrafficLightsLayer?: boolean;
+  onToggleTrafficLightsLayer?: () => void;
+  onSelectTrafficLightRoute?: (tl: TrafficLight) => void;
+  onAddTrafficLightStop?: (tl: TrafficLight) => void;
   isOfflineMode: boolean;
   mapStyle: MapStyleMode;
   onChangeMapStyle: (style: MapStyleMode) => void;
@@ -318,6 +327,84 @@ function createEstablishmentMarkerIcon(
   });
 }
 
+function createTrafficLightMarkerIcon(tl: TrafficLight): L.DivIcon {
+  const safeName = escapeHtml(tl.name.split('(')[0].replace(/ Signal.*| Intersection/i, '').trim());
+  return L.divIcon({
+    className: 'v2-traffic-light-pin',
+    html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+      <div style="
+        width: 22px;
+        height: 32px;
+        background: #111827;
+        border: 1.5px solid #374151;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-evenly;
+        padding: 2px 0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 8px rgba(16, 185, 129, 0.4);
+        cursor: pointer;
+      ">
+        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ef4444; opacity: 0.7;"></span>
+        <span style="width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; opacity: 0.7;"></span>
+        <span style="width: 5.5px; height: 5.5px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
+      </div>
+      <div class="tl-pin-label" style="margin-top:2px;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.03em;white-space:nowrap;padding:1px 5px;border-radius:3px;max-width:105px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;">
+        🚦 ${safeName}
+      </div>
+    </div>`,
+    iconSize: [105, 50],
+    iconAnchor: [52, 16],
+    popupAnchor: [0, -16],
+  });
+}
+
+function createHeavyTrafficMarkerIcon(inc: TrafficIncident): L.DivIcon {
+  return L.divIcon({
+    className: 'v2-heavy-traffic-pin',
+    html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+      <div class="heavy-traffic-pulse" style="
+        width: 28px;
+        height: 28px;
+        background: #dc2626;
+        border: 2px solid #ffffff;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.75);
+        animation: heavy-radar-pulse 1.8s infinite;
+        cursor: pointer;
+      ">
+        🛑
+      </div>
+      <div style="
+        margin-top: 2px;
+        background: #991b1b;
+        color: #ffffff;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 8.5px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+        padding: 1px 5px;
+        border-radius: 3px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        pointer-events: none;
+      ">
+        +${inc.delayMinutes}m
+      </div>
+    </div>`,
+    iconSize: [80, 50],
+    iconAnchor: [40, 14],
+    popupAnchor: [0, -14],
+  });
+}
+
 export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   stops,
   routes,
@@ -342,6 +429,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   onSelectEstablishmentRoute,
   onAddEstablishmentStop,
   onSelectEstablishment,
+  trafficLights = KNOWN_TRAFFIC_LIGHTS,
+  showTrafficLightsLayer = true,
+  onToggleTrafficLightsLayer,
+  onSelectTrafficLightRoute,
+  onAddTrafficLightStop,
   isOfflineMode,
   mapStyle,
   onChangeMapStyle,
@@ -378,6 +470,7 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const gpsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const establishmentsLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const trafficLightsLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
   const establishmentsRef = useRef(establishments);
   establishmentsRef.current = establishments;
@@ -385,6 +478,13 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   onSelectEstablishmentRouteRef.current = onSelectEstablishmentRoute;
   const onAddEstablishmentStopRef = useRef(onAddEstablishmentStop);
   onAddEstablishmentStopRef.current = onAddEstablishmentStop;
+
+  const trafficLightsRef = useRef(trafficLights);
+  trafficLightsRef.current = trafficLights;
+  const onSelectTrafficLightRouteRef = useRef(onSelectTrafficLightRoute);
+  onSelectTrafficLightRouteRef.current = onSelectTrafficLightRoute;
+  const onAddTrafficLightStopRef = useRef(onAddTrafficLightStop);
+  onAddTrafficLightStopRef.current = onAddTrafficLightStop;
 
   const [showLayersMenu, setShowLayersMenu] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
@@ -450,9 +550,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
     const routeGroup = L.layerGroup().addTo(map);
     const gpsGroup = L.layerGroup().addTo(map);
     const estGroup = L.layerGroup().addTo(map);
+    const tlGroup = L.layerGroup().addTo(map);
     routeLayerGroupRef.current = routeGroup;
     gpsLayerGroupRef.current = gpsGroup;
     establishmentsLayerGroupRef.current = estGroup;
+    trafficLightsLayerGroupRef.current = tlGroup;
     mapInstanceRef.current = map;
 
     map.on('popupopen', (e: L.PopupEvent) => {
@@ -478,6 +580,32 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           const target = establishmentsRef.current.find((x) => x.id === id);
           if (target && onAddEstablishmentStopRef.current) {
             onAddEstablishmentStopRef.current(target);
+            map.closePopup();
+          }
+        });
+      }
+
+      // Traffic Light Popup Action Handlers
+      const tlRouteBtn = container.querySelector('.popup-tl-route-btn');
+      if (tlRouteBtn) {
+        tlRouteBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const id = (tlRouteBtn as HTMLElement).dataset.tlId;
+          const target = trafficLightsRef.current?.find((x) => x.id === id);
+          if (target && onSelectTrafficLightRouteRef.current) {
+            onSelectTrafficLightRouteRef.current(target);
+            map.closePopup();
+          }
+        });
+      }
+      const tlStopBtn = container.querySelector('.popup-tl-stop-btn');
+      if (tlStopBtn) {
+        tlStopBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const id = (tlStopBtn as HTMLElement).dataset.tlId;
+          const target = trafficLightsRef.current?.find((x) => x.id === id);
+          if (target && onAddTrafficLightStopRef.current) {
+            onAddTrafficLightStopRef.current(target);
             map.closePopup();
           }
         });
@@ -662,48 +790,80 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       incidents
         .filter((inc) => inc.active)
         .forEach((inc) => {
-          const badgeColor =
-            inc.severity === 'heavy' || inc.severity === 'closure'
-              ? '#dc2626'
-              : '#d97706';
+          const isHeavy = inc.severity === 'heavy' || inc.severity === 'closure';
+          const badgeColor = isHeavy ? '#dc2626' : '#d97706';
 
-          const incIcon = L.divIcon({
-            className: 'v2-traffic-marker',
-            html: `<div style="
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              width:24px;
-              height:24px;
-              background:${badgeColor};
-              border:1.5px solid #ffffff;
-              color:#ffffff;
-              font-family:'JetBrains Mono',monospace;
-              font-size:11px;
-              font-weight:800;
-              border-radius:4px;
-              box-shadow:0 3px 10px rgba(0,0,0,0.6);
-            ">!</div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
+          const incIcon = isHeavy
+            ? createHeavyTrafficMarkerIcon(inc)
+            : L.divIcon({
+                className: 'v2-traffic-marker',
+                html: `<div style="
+                  display:flex;
+                  align-items:center;
+                  justify-content:center;
+                  width:24px;
+                  height:24px;
+                  background:${badgeColor};
+                  border:1.5px solid #ffffff;
+                  color:#ffffff;
+                  font-family:'JetBrains Mono',monospace;
+                  font-size:11px;
+                  font-weight:800;
+                  border-radius:4px;
+                  box-shadow:0 3px 10px rgba(0,0,0,0.6);
+                ">!</div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+              });
+
+          const marker = L.marker([inc.lat, inc.lng], {
+            icon: incIcon,
+            zIndexOffset: isHeavy ? 600 : 200,
           });
 
-          const marker = L.marker([inc.lat, inc.lng], { icon: incIcon });
           marker.bindPopup(
-            `<div style="min-width:190px;font-family:'Inter',sans-serif;">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;color:var(--accent);font-weight:700;">${escapeHtml(
-                inc.corridor
-              )}</div>
-              <div style="font-size:13.5px;font-weight:600;color:var(--ink);margin-top:3px;">${escapeHtml(
-                inc.title
-              )}</div>
-              <div style="font-size:12px;color:var(--ink-dim);margin-top:4px;">${escapeHtml(
-                inc.description
-              )}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink);margin-top:6px;font-weight:600;">
-                +${inc.delayMinutes}M DELAY &middot; ${inc.speedKmh} KM/H
-              </div>
-            </div>`
+            isHeavy
+              ? `<div style="min-width:215px;font-family:'Inter',sans-serif;padding:3px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;font-weight:800;color:#dc2626;background:#dc262618;padding:2.5px 7px;border-radius:4px;border:1px solid #dc262640;">
+                      🛑 HEAVY GRIDLOCK
+                    </span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:800;color:#dc2626;">
+                      +${inc.delayMinutes}M DELAY
+                    </span>
+                  </div>
+                  <div style="font-size:13.5px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.25;">
+                    ${escapeHtml(inc.title)}
+                  </div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--accent);margin-top:3px;">
+                    ${escapeHtml(inc.corridor)}
+                  </div>
+                  <div style="font-size:12px;color:var(--ink-dim);margin-top:4px;line-height:1.35;">
+                    ${escapeHtml(inc.description)}
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;">
+                    <span style="padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e;font-weight:800;border:1px solid #fde68a;">
+                      ⚡ CRAWL: ${inc.speedKmh} KM/H
+                    </span>
+                    <span style="color:var(--ink-dim);">
+                      Updated ${inc.updatedMinutesAgo}m ago
+                    </span>
+                  </div>
+                </div>`
+              : `<div style="min-width:190px;font-family:'Inter',sans-serif;padding:3px;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;color:var(--accent);font-weight:700;">${escapeHtml(
+                    inc.corridor
+                  )}</div>
+                  <div style="font-size:13.5px;font-weight:700;color:var(--ink);margin-top:3px;">${escapeHtml(
+                    inc.title
+                  )}</div>
+                  <div style="font-size:12px;color:var(--ink-dim);margin-top:4px;">${escapeHtml(
+                    inc.description
+                  )}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink);margin-top:6px;font-weight:600;">
+                    +${inc.delayMinutes}M DELAY &middot; ${inc.speedKmh} KM/H
+                  </div>
+                </div>`
           );
           marker.addTo(group);
         });
@@ -964,6 +1124,69 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       }
     });
   }, [establishments, showEstablishmentsLayer, selectedEstablishmentId, onSelectEstablishment]);
+
+  // 4c. Render Traffic Lights Layer (Signalized Intersections)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const group = trafficLightsLayerGroupRef.current;
+    if (!map || !group) return;
+
+    group.clearLayers();
+
+    if (!showTrafficLightsLayer || !trafficLights || trafficLights.length === 0) return;
+
+    trafficLights.forEach((tl) => {
+      const marker = L.marker([tl.lat, tl.lng], {
+        icon: createTrafficLightMarkerIcon(tl),
+        zIndexOffset: 150,
+      });
+
+      const distBadge = typeof tl.distanceKm === 'number'
+        ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#059669;margin-top:4px;font-weight:800;">📍 ${tl.distanceKm < 1 ? Math.round(tl.distanceKm * 1000) + ' m' : tl.distanceKm.toFixed(1) + ' km'} away</div>`
+        : '';
+
+      const featuresBadges = tl.features && tl.features.length > 0
+        ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+            ${tl.features.slice(0, 3).map((f) => `<span class="est-feature-pill" style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">${escapeHtml(f)}</span>`).join('')}
+          </div>`
+        : '';
+
+      marker.bindPopup(`
+        <div style="min-width:215px;font-family:'Inter',sans-serif;padding:3px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;font-weight:800;color:#10b981;background:#10b98118;padding:2.5px 7px;border-radius:4px;border:1px solid #10b98145;">
+              🚦 TRAFFIC SIGNAL
+            </span>
+            ${tl.cycleSeconds ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:var(--accent);">⏱️ ${tl.cycleSeconds}s CYCLE</span>` : ''}
+          </div>
+          <div style="font-size:13.5px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.25;">
+            ${escapeHtml(tl.name)}
+          </div>
+          <div style="font-size:11.5px;color:var(--accent);font-weight:700;margin-top:3px;">
+            ${escapeHtml(tl.intersection)}
+          </div>
+          <div style="font-size:11px;color:var(--ink-dim);margin-top:2px;font-weight:500;">
+            ${escapeHtml(tl.corridor)} &middot; ${escapeHtml(tl.region)}
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--ink-dim);margin-top:4px;">
+            System: ${escapeHtml(tl.systemType)}
+          </div>
+          ${distBadge}
+          ${featuresBadges}
+          <div style="display:flex;gap:6px;margin-top:9px;padding-top:7px;border-top:1px solid var(--border-subtle, rgba(16,185,129,0.2));">
+            <button class="popup-tl-route-btn" data-tl-id="${escapeHtml(tl.id)}" style="flex:1;padding:6px 10px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;">
+              🧭 Directions
+            </button>
+            <button class="popup-tl-stop-btn" data-tl-id="${escapeHtml(tl.id)}" style="padding:6px 10px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;">
+              ➕ Add Stop
+            </button>
+          </div>
+        </div>
+      `);
+
+      marker.addTo(group);
+    });
+  }, [trafficLights, showTrafficLightsLayer]);
 
   // 5. Viewport movement handlers
   useEffect(() => {
@@ -1259,9 +1482,27 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
                   : 'border-purple-200 text-purple-900/70'
               }`}
             >
-              <span>Traffic Incidents</span>
+              <span>Traffic & Bottlenecks</span>
               <span className="text-[10px] font-bold">{showTrafficLayer ? 'ON' : 'OFF'}</span>
             </button>
+            {onToggleTrafficLightsLayer && (
+              <button
+                type="button"
+                onClick={onToggleTrafficLightsLayer}
+                className={`w-full py-1.5 px-2 text-left text-xs mono uppercase flex items-center justify-between border rounded-lg cursor-pointer ${
+                  showTrafficLightsLayer
+                    ? isDark
+                      ? 'border-emerald-500 text-emerald-300 bg-emerald-500/15'
+                      : 'border-emerald-600 text-emerald-800 bg-emerald-100/70'
+                    : isDark
+                    ? 'border-purple-500/20 text-purple-200/80'
+                    : 'border-purple-200 text-purple-900/70'
+                }`}
+              >
+                <span>Traffic Lights 🚦</span>
+                <span className="text-[10px] font-bold">{showTrafficLightsLayer ? 'ON' : 'OFF'}</span>
+              </button>
+            )}
             {onToggleEstablishmentsLayer && (
               <button
                 type="button"

@@ -16,6 +16,10 @@ import {
   establishmentToLatLngPoint,
 } from './establishmentData';
 import {
+  searchTrafficLights,
+  trafficLightToLatLngPoint,
+} from './trafficLightData';
+import {
   APP_CONFIG,
   fetchWithTimeout,
   isBrowserOnline,
@@ -182,7 +186,10 @@ export function searchOfflinePlaces(query: string): LatLngPoint[] {
     establishmentToLatLngPoint
   );
 
-  const combined = [...establishmentMatches, ...placeMatches];
+  const trafficLightMatches = searchTrafficLights(q, { limit: 6 })
+    .map(trafficLightToLatLngPoint);
+
+  const combined = [...trafficLightMatches, ...establishmentMatches, ...placeMatches];
   const seen = new Set<string>();
   return combined.filter((p) => {
     const key = `${p.name.toLowerCase()}|${p.lat.toFixed(3)}|${p.lng.toFixed(3)}`;

@@ -3,6 +3,10 @@ import {
   searchOfflineEstablishments,
   establishmentToLatLngPoint,
 } from './establishmentData';
+import {
+  searchTrafficLights,
+  trafficLightToLatLngPoint,
+} from './trafficLightData';
 
 export interface OfflineRegionPack {
   id: string;
@@ -160,8 +164,135 @@ export const KNOWN_LOCATIONS: LatLngPoint[] = [
   { name: 'Caticlan Jetty Port', region: 'Malay / Caticlan, Aklan', lat: 11.9367, lng: 121.9547 },
 ];
 
-// Clean initial traffic state — no pre-seeded sample incidents
-export const INITIAL_TRAFFIC_INCIDENTS: TrafficIncident[] = [];
+// Initial realistic Philippine Traffic Congestion & Heavy Traffic Hotspots
+export const INITIAL_TRAFFIC_INCIDENTS: TrafficIncident[] = [
+  {
+    id: 'inc-edsa-guadalupe-heavy',
+    title: 'Severe Stop-and-Go Gridlock',
+    corridor: 'EDSA (Guadalupe to Shaw Blvd, Northbound)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 14.5675,
+    lng: 121.0456,
+    delayMinutes: 28,
+    speedKmh: 8,
+    description: 'Heavy vehicular volume around Guadalupe bridge with bottleneck into Shaw underpass.',
+    updatedMinutesAgo: 4,
+    active: true,
+  },
+  {
+    id: 'inc-slex-alabang-heavy',
+    title: 'Alabang Viaduct Merge Bottleneck',
+    corridor: 'SLEX Alabang Viaduct (Northbound)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 14.4192,
+    lng: 121.0442,
+    delayMinutes: 24,
+    speedKmh: 12,
+    description: 'Lane reduction bottleneck from 5 lanes to 3 lanes over viaduct approach.',
+    updatedMinutesAgo: 8,
+    active: true,
+  },
+  {
+    id: 'inc-c5-libis-heavy',
+    title: 'C5 Eastwood Commercial Congestion',
+    corridor: 'C5 E. Rodriguez Jr. Ave (Libis, Southbound)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 14.6094,
+    lng: 121.0808,
+    delayMinutes: 22,
+    speedKmh: 11,
+    description: 'Heavy commercial and truck volume merging around Eastwood flyover.',
+    updatedMinutesAgo: 6,
+    active: true,
+  },
+  {
+    id: 'inc-nlex-bocaue-heavy',
+    title: 'Toll Plaza Queue Congestion',
+    corridor: 'NLEX Bocaue Tollway (Southbound)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 14.8014,
+    lng: 120.9419,
+    delayMinutes: 25,
+    speedKmh: 14,
+    description: 'Extended toll queue stretching 1.8km before Bocaue barrier.',
+    updatedMinutesAgo: 10,
+    active: true,
+  },
+  {
+    id: 'inc-skyway-quezon-ave',
+    title: 'Skyway Stage 3 Off-Ramp Heavy Traffic',
+    corridor: 'Skyway Stage 3 (Quezon Ave Off-Ramp)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 14.6367,
+    lng: 121.0189,
+    delayMinutes: 18,
+    speedKmh: 14,
+    description: 'Slow-moving exit queue spilling back onto elevated expressway mainline.',
+    updatedMinutesAgo: 12,
+    active: true,
+  },
+  {
+    id: 'inc-commonwealth-lane-squeeze',
+    title: 'MRT-7 Works Lane Squeeze',
+    corridor: 'Commonwealth Ave (Tandang Sora, Eastbound)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 14.6681,
+    lng: 121.0664,
+    delayMinutes: 20,
+    speedKmh: 15,
+    description: 'Heavy volume reduced to 2 lanes due to transit construction zone.',
+    updatedMinutesAgo: 15,
+    active: true,
+  },
+  {
+    id: 'inc-cebu-banilad-heavy',
+    title: 'Banilad-Talamban Corridor Gridlock',
+    corridor: 'Gov. M. Cuenco Ave (Banilad, Cebu City)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 10.3456,
+    lng: 123.9142,
+    delayMinutes: 22,
+    speedKmh: 10,
+    description: 'Severe peak-hour crawl through commercial center and flyover merge.',
+    updatedMinutesAgo: 5,
+    active: true,
+  },
+  {
+    id: 'inc-davao-matina-heavy',
+    title: 'Matina Crossing Peak Hour Heavy Crawl',
+    corridor: 'McArthur Highway (Matina, Davao City)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 7.0519,
+    lng: 125.5878,
+    delayMinutes: 18,
+    speedKmh: 12,
+    description: 'Heavy intersection back-up across Matina Galleria junction.',
+    updatedMinutesAgo: 9,
+    active: true,
+  },
+  {
+    id: 'inc-tagaytay-rotonda-heavy',
+    title: 'Tagaytay Ridge Tourist Traffic',
+    corridor: 'Tagaytay Rotonda (Aguinaldo Highway junction)',
+    type: 'congestion',
+    severity: 'heavy',
+    lat: 14.1153,
+    lng: 120.9622,
+    delayMinutes: 20,
+    speedKmh: 12,
+    description: 'High volume of vehicles heading towards Taal ridge restaurants and hotels.',
+    updatedMinutesAgo: 11,
+    active: true,
+  },
+];
 
 export const OFFLINE_REGION_PACKS: OfflineRegionPack[] = [
   {
@@ -255,6 +386,12 @@ export function resolveLocationInput(
   const estMatches = searchOfflineEstablishments(clean, { limit: 1 });
   if (estMatches.length > 0) {
     return establishmentToLatLngPoint(estMatches[0]);
+  }
+
+  // Check known traffic lights & signalized intersections
+  const tlMatches = searchTrafficLights(clean, { limit: 1 });
+  if (tlMatches.length > 0) {
+    return trafficLightToLatLngPoint(tlMatches[0]);
   }
 
   // "lat, lng" input

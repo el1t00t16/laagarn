@@ -50,6 +50,11 @@ import {
   KNOWN_ESTABLISHMENTS,
   establishmentToLatLngPoint,
 } from './utils/establishmentData';
+import {
+  TrafficLight,
+  KNOWN_TRAFFIC_LIGHTS,
+  trafficLightToLatLngPoint,
+} from './utils/trafficLightData';
 import { useLiveGps } from './hooks/useLiveGps';
 import { useDeviceCompass } from './hooks/useOrientation';
 import { useWakeLock } from './hooks/useWakeLock';
@@ -133,9 +138,11 @@ export default function App() {
   // Compass heading (Device orientation sensor + movement heading fallback)
   const compassHeading = useDeviceCompass(gpsState?.heading ?? null);
 
-  // Traffic incidents state
+  // Traffic incidents & Traffic Lights state
   const [incidents, setIncidents] = useState<TrafficIncident[]>(INITIAL_TRAFFIC_INCIDENTS);
   const [showTrafficLayer, setShowTrafficLayer] = useState<boolean>(true);
+  const [trafficLights, setTrafficLights] = useState<TrafficLight[]>(KNOWN_TRAFFIC_LIGHTS);
+  const [showTrafficLightsLayer, setShowTrafficLightsLayer] = useState<boolean>(true);
   const [showWeatherLayer, setShowWeatherLayer] = useState<boolean>(true);
 
   // Establishments state
@@ -184,6 +191,7 @@ export default function App() {
     lat: number;
     lng: number;
     zoom?: number;
+    label?: string;
   } | null>(null);
 
   // Active Navigation & Voice Guidance
@@ -612,6 +620,58 @@ export default function App() {
     setFocusedCoord({ lat: est.lat, lng: est.lng, zoom: 15 });
   };
 
+  const handleSelectTrafficLightRoute = (tl: TrafficLight) => {
+    const tlPoint = trafficLightToLatLngPoint(tl);
+    if (gpsState) {
+      const originPoint: LatLngPoint = {
+        name: gpsState.addressLabel || 'Current GPS Location',
+        region: 'Live GPS',
+        lat: gpsState.lat,
+        lng: gpsState.lng,
+      };
+      setStops([originPoint, tlPoint]);
+    } else if (stops.length >= 1) {
+      setStops([stops[0], tlPoint]);
+    } else {
+      setStops([tlPoint]);
+    }
+    setFocusedCoord({ lat: tl.lat, lng: tl.lng, zoom: 16, label: tl.name });
+    setActiveTab('routes');
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('half');
+    }
+  };
+
+  const handleAddTrafficLightStop = (tl: TrafficLight) => {
+    const tlPoint = trafficLightToLatLngPoint(tl);
+    if (stops.length === 0) {
+      if (gpsState) {
+        setStops([
+          {
+            name: gpsState.addressLabel || 'Current GPS Location',
+            region: 'Live GPS',
+            lat: gpsState.lat,
+            lng: gpsState.lng,
+          },
+          tlPoint,
+        ]);
+      } else {
+        setStops([tlPoint]);
+      }
+    } else if (stops.length === 1) {
+      setStops([...stops, tlPoint]);
+    } else {
+      const prev = [...stops];
+      prev.splice(prev.length - 1, 0, tlPoint);
+      setStops(prev);
+    }
+    setFocusedCoord({ lat: tl.lat, lng: tl.lng, zoom: 16, label: tl.name });
+    setActiveTab('routes');
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('half');
+    }
+  };
+
   const handleFocusEstablishment = (est: Establishment) => {
     setSelectedEstablishmentId(est.id);
     setFocusedCoord({ lat: est.lat, lng: est.lng, zoom: 16 });
@@ -651,8 +711,8 @@ export default function App() {
     setTileStats(updated);
   };
 
-  const handleFocusCoordinate = (lat: number, lng: number, zoom = 14) => {
-    setFocusedCoord({ lat, lng, zoom });
+  const handleFocusCoordinate = (lat: number, lng: number, zoom = 14, label?: string) => {
+    setFocusedCoord({ lat, lng, zoom, label });
   };
 
   const handleStepChange = (stepIdx: number) => {
@@ -892,6 +952,51 @@ export default function App() {
               onFocusCoordinate={handleFocusCoordinate}
               activeRouteDelayMinutes={activeRoute?.trafficDelayMinutes || 0}
               gpsState={effectiveGps}
+              trafficLights={trafficLights}
+              onSelectDestination={(point) => {
+                if (gpsState) {
+                  setStops([
+                    {
+                      name: gpsState.addressLabel || 'Current GPS Location',
+                      region: 'Live GPS',
+                      lat: gpsState.lat,
+                      lng: gpsState.lng,
+                    },
+                    point,
+                  ]);
+                } else if (stops.length >= 1) {
+                  setStops([stops[0], point]);
+                } else {
+                  setStops([point]);
+                }
+                setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
+                setActiveTab('routes');
+              }}
+              onAddStop={(point) => {
+                if (stops.length === 0) {
+                  if (gpsState) {
+                    setStops([
+                      {
+                        name: gpsState.addressLabel || 'Current GPS Location',
+                        region: 'Live GPS',
+                        lat: gpsState.lat,
+                        lng: gpsState.lng,
+                      },
+                      point,
+                    ]);
+                  } else {
+                    setStops([point]);
+                  }
+                } else if (stops.length === 1) {
+                  setStops([...stops, point]);
+                } else {
+                  const prev = [...stops];
+                  prev.splice(prev.length - 1, 0, point);
+                  setStops(prev);
+                }
+                setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
+                setActiveTab('routes');
+              }}
             />
           )}
 
@@ -949,6 +1054,11 @@ export default function App() {
             onSelectEstablishmentRoute={handleSelectEstablishmentRoute}
             onAddEstablishmentStop={handleAddEstablishmentStop}
             onSelectEstablishment={handleFocusEstablishment}
+            trafficLights={trafficLights}
+            showTrafficLightsLayer={showTrafficLightsLayer}
+            onToggleTrafficLightsLayer={() => setShowTrafficLightsLayer((v) => !v)}
+            onSelectTrafficLightRoute={handleSelectTrafficLightRoute}
+            onAddTrafficLightStop={handleAddTrafficLightStop}
             isOfflineMode={isOfflineMode}
             mapStyle={mapStyle}
             onChangeMapStyle={setMapStyle}
@@ -1096,12 +1206,59 @@ export default function App() {
                 incidents={incidents}
                 onToggleIncidentActive={handleToggleIncidentActive}
                 onAddIncident={handleAddIncident}
-                onFocusCoordinate={(lat, lng, zoom) => {
-                  handleFocusCoordinate(lat, lng, zoom);
+                onFocusCoordinate={(lat, lng, zoom, label) => {
+                  handleFocusCoordinate(lat, lng, zoom, label);
                   setMobileSheetState('peek');
                 }}
                 activeRouteDelayMinutes={activeRoute?.trafficDelayMinutes || 0}
                 gpsState={effectiveGps}
+                trafficLights={trafficLights}
+                onSelectDestination={(point) => {
+                  if (gpsState) {
+                    setStops([
+                      {
+                        name: gpsState.addressLabel || 'Current GPS Location',
+                        region: 'Live GPS',
+                        lat: gpsState.lat,
+                        lng: gpsState.lng,
+                      },
+                      point,
+                    ]);
+                  } else if (stops.length >= 1) {
+                    setStops([stops[0], point]);
+                  } else {
+                    setStops([point]);
+                  }
+                  setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
+                  setActiveTab('routes');
+                  setMobileSheetState('half');
+                }}
+                onAddStop={(point) => {
+                  if (stops.length === 0) {
+                    if (gpsState) {
+                      setStops([
+                        {
+                          name: gpsState.addressLabel || 'Current GPS Location',
+                          region: 'Live GPS',
+                          lat: gpsState.lat,
+                          lng: gpsState.lng,
+                        },
+                        point,
+                      ]);
+                    } else {
+                      setStops([point]);
+                    }
+                  } else if (stops.length === 1) {
+                    setStops([...stops, point]);
+                  } else {
+                    const prev = [...stops];
+                    prev.splice(prev.length - 1, 0, point);
+                    setStops(prev);
+                  }
+                  setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
+                  setActiveTab('routes');
+                  setMobileSheetState('half');
+                }}
               />
             )}
 

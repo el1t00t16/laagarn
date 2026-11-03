@@ -691,3 +691,71 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Traffic Lights and Heavy Bottleneck Map Indicators */
+@keyframes heavy-radar-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.75);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+
+.tl-pin-label {
+  background: rgba(18, 12, 28, 0.88);
+  color: #a7f3d0;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+:root.light .tl-pin-label,
+[data-theme="light"] .tl-pin-label {
+  background: #ffffff !important;
+  color: #065f46 !important;
+  border: 1px solid rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+.popup-tl-route-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+  transition: all 0.15s ease;
+}
+
+.popup-tl-route-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
+}
+
+.popup-tl-stop-btn {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  transition: all 0.15s ease;
+}
+
+.popup-tl-stop-btn:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+:root.light .popup-tl-stop-btn,
+[data-theme="light"] .popup-tl-stop-btn {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #10b981 !important;
+}
+
+:root.light .popup-tl-stop-btn:hover,
+[data-theme="light"] .popup-tl-stop-btn:hover {
+  background: #d1fae5 !important;
+  color: #064e3b !important;
+  border-color: #059669 !important;
+}
