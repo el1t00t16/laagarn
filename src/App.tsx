@@ -855,6 +855,51 @@ export default function App() {
     }
   };
 
+  // Brand Logo Click: Return to Home (Planner) or Refresh
+  const handleHomeOrRefresh = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+
+    // If already on Home (Planner) with no sub-selection and not in navigation, perform a clean page refresh
+    if (activeTab === 'routes' && !selectedEstablishmentId && !navigationActive) {
+      if (typeof window !== 'undefined') {
+        if (window.location.search) {
+          window.location.href = window.location.pathname || '/';
+        } else {
+          window.location.reload();
+        }
+      }
+      return;
+    }
+
+    // Otherwise, smoothly reset to Home dashboard view
+    setActiveTab('routes');
+    setSelectedEstablishmentId(null);
+    setNavigationActive(false);
+    resetSimulation();
+
+    if (window.innerWidth < 1024) {
+      setMobileSheetState('half');
+    }
+
+    // Recenter map camera to live GPS if available, else route or default Philippine center
+    if (gpsState) {
+      setFocusedCoord({ lat: gpsState.lat, lng: gpsState.lng, zoom: 15 });
+    } else if (activeRoute && activeRoute.coordinates.length > 0) {
+      setFocusedCoord({
+        lat: activeRoute.coordinates[0][0],
+        lng: activeRoute.coordinates[0][1],
+        zoom: 13,
+      });
+    } else {
+      setFocusedCoord({ lat: 14.5995, lng: 120.9842, zoom: 12 });
+    }
+
+    // Clean any query string in the address bar
+    if (typeof window !== 'undefined' && window.location.search) {
+      window.history.replaceState({}, '', window.location.pathname || '/');
+    }
+  };
+
   return (
     <div className={`h-screen w-screen flex flex-col overflow-hidden select-none font-sans transition-colors duration-200 ${
       theme === 'amoled' ? 'bg-[#000000] text-white' : theme === 'dark' ? 'bg-[#090410] text-[#f8f6fc]' : 'bg-[#f8f6fc] text-[#160a2c]'
@@ -868,33 +913,39 @@ export default function App() {
           : 'bg-white/85 border-purple-300/40 text-[#160a2c] shadow-purple-900/5'
       }`}>
         <div className="w-full flex items-center justify-between gap-3">
-          {/* Left: Brand Identity with Glowing Compass & Subtitle */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35 shrink-0">
-              <Compass className="w-5 h-5 animate-[spin_12s_linear_infinite]" />
+          {/* Left: Brand Identity with Glowing Compass & Subtitle (Click to Return Home or Refresh) */}
+          <button
+            type="button"
+            onClick={handleHomeOrRefresh}
+            title={activeTab === 'routes' && !selectedEstablishmentId ? 'Click to refresh page' : 'Click to return to Home (Planner)'}
+            aria-label="LAAGARN Home - Return to Planner or Refresh"
+            className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer group select-none transition-transform hover:opacity-95 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60 rounded-xl py-1 px-1 -ml-1"
+          >
+            <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35 shrink-0 group-hover:scale-105 group-active:scale-95 group-hover:shadow-purple-500/50 transition-all">
+              <Compass className="w-5 h-5 animate-[spin_12s_linear_infinite] group-hover:rotate-180 transition-transform duration-500" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h1 className={`logo display text-base sm:text-lg font-black tracking-wider leading-none ${
-                  theme !== 'light' ? 'text-white' : 'text-[#160a2c]'
+                <h1 className={`logo display text-base sm:text-lg font-black tracking-wider leading-none transition-colors ${
+                  theme !== 'light' ? 'text-white group-hover:text-purple-200' : 'text-[#160a2c] group-hover:text-purple-800'
                 }`}>
                   LAAGARN
                 </h1>
-                <span className={`px-1.5 py-0.5 text-[8px] font-extrabold mono uppercase tracking-wider rounded-md shrink-0 ${
+                <span className={`px-1.5 py-0.5 text-[8px] font-extrabold mono uppercase tracking-wider rounded-md shrink-0 transition-colors ${
                   theme !== 'light'
-                    ? 'bg-purple-500/20 text-[#c084fc] border border-purple-500/30'
-                    : 'bg-purple-100 text-[#7c3aed] border border-purple-200'
+                    ? 'bg-purple-500/20 text-[#c084fc] border border-purple-500/30 group-hover:bg-purple-500/30'
+                    : 'bg-purple-100 text-[#7c3aed] border border-purple-200 group-hover:bg-purple-200'
                 }`}>
                   GPS
                 </span>
               </div>
-              <div className={`mono text-[8.5px] sm:text-[9.5px] uppercase tracking-wider mt-0.5 truncate max-w-[170px] xs:max-w-[210px] sm:max-w-none ${
-                theme !== 'light' ? 'text-purple-300/60' : 'text-purple-700/70'
+              <div className={`mono text-[8.5px] sm:text-[9.5px] uppercase tracking-wider mt-0.5 truncate max-w-[170px] xs:max-w-[210px] sm:max-w-none transition-colors ${
+                theme !== 'light' ? 'text-purple-300/60 group-hover:text-purple-300/90' : 'text-purple-700/70 group-hover:text-purple-900'
               }`}>
                 My Way, Your Travel Buddy.
               </div>
             </div>
-          </div>
+          </button>
 
           {/* Desktop View Navigation */}
           <nav
