@@ -901,32 +901,32 @@ export default function App() {
   };
 
   return (
-    <div className={`h-screen w-screen flex flex-col overflow-hidden select-none font-sans transition-colors duration-200 ${
+    <div className={`h-full h-[100dvh] w-full flex flex-col overflow-hidden select-none font-sans transition-colors duration-200 ${
       theme === 'amoled' ? 'bg-[#000000] text-white' : theme === 'dark' ? 'bg-[#090410] text-[#f8f6fc]' : 'bg-[#f8f6fc] text-[#160a2c]'
     }`}>
       {/* Top Header / App Bar (Glassy Purple with mobile notch safe-area padding) */}
-      <header className={`app-header shrink-0 flex items-center px-4 sm:px-6 border-b transition-colors z-50 shadow-lg backdrop-blur-xl ${
+      <header className={`app-header shrink-0 flex items-center px-3 sm:px-6 border-b transition-colors z-50 shadow-lg backdrop-blur-xl ${
         theme === 'amoled'
           ? 'bg-[#000000]/95 border-purple-500/30 text-white shadow-black/80'
           : theme === 'dark'
           ? 'bg-[#0d0717]/85 border-purple-500/20 text-[#f8f6fc] shadow-black/40'
           : 'bg-white/85 border-purple-300/40 text-[#160a2c] shadow-purple-900/5'
       }`}>
-        <div className="w-full flex items-center justify-between gap-3">
+        <div className="w-full flex items-center justify-between gap-2 sm:gap-3 py-1.5">
           {/* Left: Brand Identity with Glowing Compass & Subtitle (Click to Return Home or Refresh) */}
           <button
             type="button"
             onClick={handleHomeOrRefresh}
             title={activeTab === 'routes' && !selectedEstablishmentId ? 'Click to refresh page' : 'Click to return to Home (Planner)'}
             aria-label="LAAGARN Home - Return to Planner or Refresh"
-            className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer group select-none transition-transform hover:opacity-95 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60 rounded-xl py-1 px-1 -ml-1"
+            className="flex items-center gap-2 sm:gap-2.5 min-w-0 text-left cursor-pointer group select-none transition-transform hover:opacity-95 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60 rounded-xl py-0.5 px-1 -ml-1"
           >
-            <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35 shrink-0 group-hover:scale-105 group-active:scale-95 group-hover:shadow-purple-500/50 transition-all">
-              <Compass className="w-5 h-5 animate-[spin_12s_linear_infinite] group-hover:rotate-180 transition-transform duration-500" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35 shrink-0 group-hover:scale-105 group-active:scale-95 group-hover:shadow-purple-500/50 transition-all">
+              <Compass className="w-4.5 h-4.5 sm:w-5 sm:h-5 animate-[spin_12s_linear_infinite] group-hover:rotate-180 transition-transform duration-500" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h1 className={`logo display text-base sm:text-lg font-black tracking-wider leading-none transition-colors ${
+                <h1 className={`logo display text-sm sm:text-lg font-black tracking-wider leading-none transition-colors ${
                   theme !== 'light' ? 'text-white group-hover:text-purple-200' : 'text-[#160a2c] group-hover:text-purple-800'
                 }`}>
                   LAAGARN
@@ -939,7 +939,7 @@ export default function App() {
                   GPS
                 </span>
               </div>
-              <div className={`mono text-[8.5px] sm:text-[9.5px] uppercase tracking-wider mt-0.5 truncate max-w-[170px] xs:max-w-[210px] sm:max-w-none transition-colors ${
+              <div className={`mono text-[8px] sm:text-[9.5px] uppercase tracking-wider mt-0.5 truncate max-w-[160px] xs:max-w-[210px] sm:max-w-none transition-colors ${
                 theme !== 'light' ? 'text-purple-300/60 group-hover:text-purple-300/90' : 'text-purple-700/70 group-hover:text-purple-900'
               }`}>
                 My Way, Your Travel Buddy.
@@ -1073,7 +1073,7 @@ export default function App() {
       </header>
 
       {/* Main Container: Split Desktop layout & Mobile Drawer layout */}
-      <main className="flex-1 relative w-full h-[calc(100vh-4rem)] overflow-hidden flex flex-col lg:flex-row">
+      <main className="flex-1 relative w-full min-h-0 overflow-hidden flex flex-col lg:flex-row">
         {/* Desktop Sidebar (Left side, Glassy Purple) */}
         <aside
           aria-label="Travel Planning Controls"
@@ -1314,8 +1314,8 @@ export default function App() {
             mobileSheetState === 'peek'
               ? 'h-auto'
               : mobileSheetState === 'half'
-              ? 'h-[50vh]'
-              : 'h-[86vh]'
+              ? 'h-[50dvh]'
+              : 'h-[86dvh]'
           }`}
         >
           {/* Drawer Handle & Quick Route Summary Bar */}
@@ -1364,7 +1364,7 @@ export default function App() {
           </div>
 
           {/* Drawer Scrollable Content (Hidden when drawer is in peek mode to prevent squashed content) */}
-          <div className={`${mobileSheetState === 'peek' ? 'hidden' : 'flex-1 overflow-y-auto px-4 pt-3 pb-32 overscroll-contain'}`}>
+          <div className={`${mobileSheetState === 'peek' ? 'hidden' : 'flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-24 overscroll-contain'}`}>
             {activeTab === 'routes' && (
               <RoutePlannerPanel
                 stops={stops}
@@ -1537,7 +1537,7 @@ export default function App() {
           {/* Mobile Bottom Navigation Dock (Thumb Accessible with safe-area padding & Tactile Framer Motion Active Indicator) */}
           <nav
             aria-label="Mobile Navigation Dock"
-            className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t px-1 xs:px-2 sm:px-3 flex items-center justify-around gap-0.5 xs:gap-1 ${
+            className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t px-1.5 xs:px-2.5 sm:px-3 flex items-center justify-around gap-0.5 xs:gap-1 z-30 ${
               theme === 'amoled'
                 ? 'bg-black/98 border-purple-500/25 shadow-[0_-10px_30px_rgba(0,0,0,0.9)]'
                 : theme === 'dark'
@@ -1594,12 +1594,12 @@ export default function App() {
                       setMobileSheetState('half');
                     }
                   }}
-                  className="relative flex-1 min-w-0 py-1.5 flex flex-col items-center justify-center rounded-2xl transition-all cursor-pointer select-none"
+                  className="relative flex-1 min-w-0 py-1 flex flex-col items-center justify-center rounded-xl transition-all cursor-pointer select-none"
                 >
                   {isCurrent && (
                     <motion.div
                       layoutId="activeMobileTabPill"
-                      className={`absolute inset-0 rounded-2xl border ${
+                      className={`absolute inset-0 rounded-xl border ${
                         theme !== 'light'
                           ? 'bg-gradient-to-b from-[#a855f7]/25 to-[#7c3aed]/15 border-purple-400/40 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
                           : 'bg-purple-100 border-purple-300 shadow-sm'
@@ -1608,35 +1608,35 @@ export default function App() {
                     />
                   )}
 
-                  <div className="relative z-10 flex flex-col items-center gap-1 w-full px-0.5">
-                    <div className="relative">
+                  <div className="relative z-10 flex flex-col items-center justify-center w-full px-0.5">
+                    <div className="relative flex items-center justify-center">
                       <Icon
-                        className={`w-5 h-5 transition-transform duration-200 ${
+                        className={`w-4.5 h-4.5 xs:w-5 xs:h-5 transition-transform duration-200 ${
                           isCurrent
                             ? theme !== 'light'
-                              ? 'text-[#c084fc] scale-110 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]'
-                              : 'text-[#7c3aed] scale-110'
+                              ? 'text-[#c084fc] scale-105 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]'
+                              : 'text-[#7c3aed] scale-105'
                             : theme !== 'light'
                             ? 'text-zinc-400'
                             : 'text-zinc-500'
                         }`}
                       />
-                      {/* Badge count for Traffic */}
+                      {/* Badge count for Traffic / Places */}
                       {typeof tab.badge === 'number' && tab.badge > 0 && (
-                        <span className="absolute -top-1 -right-2.5 px-1 min-w-[15px] h-[15px] bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md">
+                        <span className="absolute -top-1 -right-2 px-1 min-w-[13px] h-[13px] bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-md leading-none">
                           {tab.badge}
                         </span>
                       )}
                       {/* Alert dot for Weather Hazards / Offline */}
                       {tab.alertDot && (
-                        <span className="absolute -top-0.5 -right-1.5 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                        <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                       )}
                       {tab.alertDot && (
-                        <span className="absolute -top-0.5 -right-1.5 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-[#0a0414]" />
+                        <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-[#0a0414]" />
                       )}
                     </div>
                     <span
-                      className={`mono text-[8.5px] xs:text-[10px] uppercase tracking-tight xs:tracking-wider font-extrabold transition-colors truncate max-w-full text-center ${
+                      className={`mono text-[8px] xs:text-[9.5px] uppercase tracking-tight xs:tracking-wider font-extrabold transition-colors truncate max-w-full text-center leading-none mt-1 ${
                         isCurrent
                           ? theme !== 'light'
                             ? 'text-[#f8f6fc]'
