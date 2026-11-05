@@ -20,6 +20,7 @@ interface DashcamPreviewModalProps {
   videoSize: number;
   durationSeconds: number;
   mode: 'normal' | 'timelapse';
+  mimeType?: string;
   onSaveToDevice: () => void;
   onShareToPhotos: () => Promise<boolean>;
   theme?: 'dark' | 'amoled' | 'light';
@@ -32,6 +33,7 @@ export const DashcamPreviewModal: React.FC<DashcamPreviewModalProps> = ({
   videoSize,
   durationSeconds,
   mode,
+  mimeType = 'video/mp4',
   onSaveToDevice,
   onShareToPhotos,
   theme = 'dark',
@@ -143,10 +145,10 @@ export const DashcamPreviewModal: React.FC<DashcamPreviewModalProps> = ({
             }`}
           >
             <div className="text-[10px] mono opacity-70 uppercase flex items-center justify-center gap-1">
-              <Sparkles className="w-3 h-3 text-purple-400" /> Type
+              <Sparkles className="w-3 h-3 text-purple-400" /> Format
             </div>
             <div className="text-xs font-black mt-0.5 uppercase mono text-[#c084fc] truncate">
-              {mode}
+              {mimeType.toLowerCase().includes('mp4') ? 'MP4 (Photos Ready)' : 'WEBM'}
             </div>
           </div>
         </div>

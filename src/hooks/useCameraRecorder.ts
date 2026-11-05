@@ -24,6 +24,7 @@ export interface UseCameraRecorderResult {
   recordedBlobUrl: string | null;
   recordedBlob: Blob | null;
   recordedBlobSize: number;
+  videoMimeType: string;
   startCamera: (mode?: CameraFacingMode) => Promise<boolean>;
   stopCamera: () => void;
   toggleCamera: () => Promise<void>;
@@ -38,6 +39,13 @@ export interface UseCameraRecorderResult {
   saveToDevice: (filenamePrefix?: string) => void;
   shareToPhotosOrApps: (filenamePrefix?: string) => Promise<boolean>;
 }
+
+const isIOS =
+  typeof navigator !== 'undefined' &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (typeof navigator.platform === 'string' &&
+      navigator.platform === 'MacIntel' &&
+      navigator.maxTouchPoints > 1));
 
 export function useCameraRecorder({
   effectiveGps = null,
@@ -60,6 +68,8 @@ export function useCameraRecorder({
   const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedBlobSize, setRecordedBlobSize] = useState<number>(0);
+  const [videoMimeType, setVideoMimeType] = useState<string>(isIOS ? 'video/mp4' : 'video/webm');
+  const selectedMimeRef = useRef<string>(isIOS ? 'video/mp4' : 'video/webm');
 
   // References for MediaStream and Recorder
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -224,13 +234,16 @@ export function useCameraRecorder({
     setRecordingSeconds(0);
     setIsPaused(false);
 
-    // Pick best supported MIME type
+    // Prioritize MP4 (H.264) for iOS Photos (Camera Roll), WhatsApp, and universal compatibility.
+    // iOS and Apple Photos strictly reject WebM video files.
     const mimeCandidates = [
+      'video/mp4;codecs=avc1',
+      'video/mp4;codecs=h264',
+      'video/mp4',
+      'video/webm;codecs=h264',
       'video/webm;codecs=vp9,opus',
       'video/webm;codecs=vp8',
       'video/webm',
-      'video/mp4;codecs=avc1',
-      'video/mp4',
     ];
     let selectedMime = '';
     for (const mime of mimeCandidates) {
@@ -239,6 +252,11 @@ export function useCameraRecorder({
         break;
       }
     }
+    if (!selectedMime && isIOS) {
+      selectedMime = 'video/mp4';
+    }
+    selectedMimeRef.current = selectedMime || (isIOS ? 'video/mp4' : 'video/webm');
+    setVideoMimeType(selectedMimeRef.current);
 
     // Set up canvas for rendering frames
     const video = videoRef.current;
@@ -302,8 +320,9 @@ export function useCameraRecorder({
       };
 
       recorder.onstop = () => {
+        const mime = selectedMimeRef.current || (isIOS ? 'video/mp4' : 'video/webm');
         const blob = new Blob(recordedChunksRef.current, {
-          type: selectedMime || 'video/webm',
+          type: mime,
         });
         const url = URL.createObjectURL(blob);
         setRecordedBlob(blob);
@@ -388,7 +407,10 @@ export function useCameraRecorder({
       const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
       const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
       const modeTag = recordingMode === 'timelapse' ? 'timelapse' : 'clip';
-      const extension = recordedChunksRef.current[0]?.type?.includes('mp4') ? 'mp4' : 'webm';
+      const isMp4 =
+        (recordedBlob?.type || selectedMimeRef.current || '').toLowerCase().includes('mp4') ||
+        isIOS;
+      const extension = isMp4 ? 'mp4' : 'webm';
       const filename = `${filenamePrefix}_${modeTag}_${datePart}_${timePart}.${extension}`;
 
       const a = document.createElement('a');
@@ -398,7 +420,7 @@ export function useCameraRecorder({
       a.click();
       document.body.removeChild(a);
     },
-    [recordedBlobUrl, recordingMode]
+    [recordedBlobUrl, recordingMode, recordedBlob]
   );
 
   /**
@@ -416,11 +438,15 @@ export function useCameraRecorder({
       const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
       const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
       const modeTag = recordingMode === 'timelapse' ? 'timelapse' : 'clip';
-      const extension = recordedBlob.type.includes('mp4') ? 'mp4' : 'webm';
+      const isMp4 =
+        (recordedBlob?.type || selectedMimeRef.current || '').toLowerCase().includes('mp4') ||
+        isIOS;
+      const extension = isMp4 ? 'mp4' : 'webm';
+      const mimeType = isMp4 ? 'video/mp4' : (recordedBlob?.type || 'video/webm');
       const filename = `${filenamePrefix}_${modeTag}_${datePart}_${timePart}.${extension}`;
 
       try {
-        const file = new File([recordedBlob], filename, { type: recordedBlob.type });
+        const file = new File([recordedBlob], filename, { type: mimeType });
         if (
           typeof navigator !== 'undefined' &&
           navigator.canShare &&
@@ -477,6 +503,7 @@ export function useCameraRecorder({
     recordedBlobUrl,
     recordedBlob,
     recordedBlobSize,
+    videoMimeType,
     startCamera,
     stopCamera,
     toggleCamera,
