@@ -62,6 +62,10 @@ import { useWakeLock } from './hooks/useWakeLock';
 import { useSpeechGuidance } from './hooks/useSpeechGuidance';
 import { useRouteSimulation } from './hooks/useRouteSimulation';
 import { useConvoy } from './hooks/useConvoy';
+import { useCameraRecorder } from './hooks/useCameraRecorder';
+import { DashcamOverlay, DashcamViewMode } from './components/DashcamOverlay';
+import { useStravaTrackRecorder } from './hooks/useStravaTrackRecorder';
+import { StravaActivityModal } from './components/StravaActivityModal';
 import { motion } from 'motion/react';
 import {
   Compass,
@@ -247,6 +251,32 @@ export default function App() {
     leaveConvoy,
     updateProfile: updateConvoyProfile,
   } = useConvoy(effectiveGps);
+
+  // Highway Dashcam & Timelapse recorder hook
+  const [dashcamViewMode, setDashcamViewMode] = useState<DashcamViewMode>('hidden');
+  const cameraRecorder = useCameraRecorder({
+    effectiveGps,
+    currentRoadName: activeRoute?.steps[activeStepIndex]?.instruction || activeRoute?.label,
+  });
+
+  // Strava Simulation Track Recorder hook
+  const [stravaModalOpen, setStravaModalOpen] = useState<boolean>(false);
+  const stravaRecorder = useStravaTrackRecorder(
+    effectiveGps,
+    isSimulating,
+    activeRoute?.label || 'Philippine Highway Simulation'
+  );
+
+  const handleToggleDashcam = () => {
+    if (dashcamViewMode === 'hidden') {
+      setDashcamViewMode('pip');
+      cameraRecorder.startCamera();
+    } else if (dashcamViewMode === 'pip') {
+      setDashcamViewMode('hud');
+    } else {
+      setDashcamViewMode('hidden');
+    }
+  };
 
   // Auto-switch to convoy tab if ?convoy=CODE is present in URL
   useEffect(() => {
@@ -1108,6 +1138,9 @@ export default function App() {
               onStartNavigation={handleStartNavigation}
               onStartSimulation={handleToggleSimulation}
               isSimulating={isSimulating}
+              onOpenStravaModal={() => setStravaModalOpen(true)}
+              stravaRecordingActive={stravaRecorder.isRecording}
+              stravaPointsCount={stravaRecorder.trackPoints.length}
             />
           )}
 
@@ -1297,6 +1330,9 @@ export default function App() {
             simulationProgress={simProgressPercent}
             simSpeedMultiplier={simSpeedMultiplier}
             onChangeSimSpeed={setSimSpeedMultiplier}
+            onToggleDashcam={handleToggleDashcam}
+            dashcamActive={dashcamViewMode !== 'hidden'}
+            isRecordingVideo={cameraRecorder.isRecording}
             mobileSheetOpen={mobileSheetState !== 'peek'}
             theme={theme}
           />
@@ -1394,6 +1430,9 @@ export default function App() {
                 onStartNavigation={handleStartNavigation}
                 onStartSimulation={handleToggleSimulation}
                 isSimulating={isSimulating}
+                onOpenStravaModal={() => setStravaModalOpen(true)}
+                stravaRecordingActive={stravaRecorder.isRecording}
+                stravaPointsCount={stravaRecorder.trackPoints.length}
               />
             )}
 
@@ -1655,6 +1694,29 @@ export default function App() {
           </nav>
         </div>
       </main>
+
+      {/* Highway Dashcam & Timelapse Overlay (PiP or Fullscreen AR HUD) */}
+      <DashcamOverlay
+        recorder={cameraRecorder}
+        viewMode={dashcamViewMode}
+        onChangeViewMode={setDashcamViewMode}
+        gpsState={effectiveGps}
+        currentStep={activeRoute?.steps[activeStepIndex]}
+        nextStep={activeRoute?.steps[activeStepIndex + 1]}
+        activeRouteLabel={activeRoute?.label}
+        theme={theme}
+      />
+
+      {/* Strava Simulation Activity Summary Modal */}
+      <StravaActivityModal
+        isOpen={stravaModalOpen}
+        onClose={() => setStravaModalOpen(false)}
+        stats={stravaRecorder.stats}
+        activityName={stravaRecorder.activityName}
+        sportType={stravaRecorder.sportType}
+        onDownloadGpx={stravaRecorder.downloadGpx}
+        theme={theme}
+      />
     </div>
   );
 }

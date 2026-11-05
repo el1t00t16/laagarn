@@ -17,7 +17,7 @@ import {
   exportRouteToGpx,
   parseGpxFile,
 } from '../utils/gpxHandler';
-import { Download, Upload, CheckCircle2 } from 'lucide-react';
+import { Download, Upload, CheckCircle2, Activity } from 'lucide-react';
 
 interface RoutePlannerPanelProps {
   stops: LatLngPoint[];
@@ -41,6 +41,9 @@ interface RoutePlannerPanelProps {
   onStartNavigation: () => void;
   onStartSimulation?: () => void;
   isSimulating?: boolean;
+  onOpenStravaModal?: () => void;
+  stravaRecordingActive?: boolean;
+  stravaPointsCount?: number;
 }
 
 export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
@@ -65,6 +68,9 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
   onStartNavigation,
   onStartSimulation,
   isSimulating = false,
+  onOpenStravaModal,
+  stravaRecordingActive = false,
+  stravaPointsCount = 0,
 }) => {
   const [originInput, setOriginInput] = useState<string>(stops[0]?.name || '');
   const [destInput, setDestInput] = useState<string>(
@@ -823,6 +829,30 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
           </button>
         )}
       </div>
+
+      {/* Strava Simulation Tracker Status */}
+      {onOpenStravaModal && (stravaPointsCount > 0 || isSimulating) && (
+        <div className="mt-2 p-2.5 rounded-xl border border-[#fc5200]/30 bg-[#fc5200]/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-2.5 h-2.5 rounded-full ${
+                stravaRecordingActive ? 'bg-[#fc5200] animate-pulse' : 'bg-gray-400'
+              }`}
+            />
+            <div className="text-xs font-bold text-[#fc5200] mono uppercase flex items-center gap-1">
+              <Activity className="w-3.5 h-3.5" />
+              <span>Strava Track: {stravaPointsCount} pts</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenStravaModal}
+            className="px-2.5 py-1 rounded-lg bg-[#fc5200] hover:bg-[#e04500] text-white mono text-[10px] font-bold uppercase transition-colors cursor-pointer"
+          >
+            View / Export
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -19,6 +19,7 @@ import {
   Flag,
   PlusCircle,
   ChevronDown,
+  Camera,
 } from 'lucide-react';
 import {
   ComputedRoute,
@@ -117,6 +118,9 @@ interface LeafletMapViewProps {
   simulationProgress?: number;
   simSpeedMultiplier?: number;
   onChangeSimSpeed?: (speed: number) => void;
+  onToggleDashcam?: () => void;
+  dashcamActive?: boolean;
+  isRecordingVideo?: boolean;
   mobileSheetOpen?: boolean;
   theme?: 'dark' | 'amoled' | 'light';
 }
@@ -542,6 +546,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   simulationProgress = 0,
   simSpeedMultiplier = 2,
   onChangeSimSpeed,
+  onToggleDashcam,
+  dashcamActive = false,
+  isRecordingVideo = false,
   mobileSheetOpen = false,
   theme = 'dark',
 }) => {
@@ -2035,6 +2042,31 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           mobileSheetOpen ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
         }`}
       >
+        {onToggleDashcam && (
+          <button
+            type="button"
+            onClick={onToggleDashcam}
+            aria-label="Toggle Dashcam & Highway Timelapse"
+            title="Dashcam & Timelapse HUD"
+            className={`w-11 h-11 backdrop-blur-xl border flex items-center justify-center text-lg font-bold shadow-xl rounded-xl transition-colors cursor-pointer relative ${
+              dashcamActive
+                ? 'bg-purple-600 border-purple-400 text-white'
+                : isDark
+                ? isAmoled
+                  ? 'bg-black border-purple-500/40 text-[#c084fc] hover:border-[#a855f7]'
+                  : 'bg-[#0d0717]/85 border-purple-500/30 text-[#c084fc] hover:border-[#a855f7]'
+                : 'bg-white/90 border-purple-300/60 text-[#7c3aed] hover:border-purple-500'
+            }`}
+          >
+            <Camera className="w-5 h-5" />
+            {isRecordingVideo && (
+              <>
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-600" />
+              </>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={handleFitRouteOrGps}
