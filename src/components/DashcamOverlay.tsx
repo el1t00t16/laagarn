@@ -184,53 +184,33 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
       <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-black/85 via-black/20 to-black/75" />
 
       {/* TOP HUD: Turn-by-turn guidance and Recording Status Bar */}
-      <div className="relative z-20 p-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          {/* Turn Direction Card */}
-          {currentStep ? (
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-black/60 backdrop-blur-xl border border-purple-500/40 shadow-2xl text-white max-w-sm">
-              <div className="w-10 h-10 rounded-xl bg-[#a855f7]/30 border border-[#a855f7]/60 flex items-center justify-center text-[#c084fc]">
-                <Navigation2 className="w-6 h-6 rotate-45" />
-              </div>
-              <div>
-                <div className="text-[11px] mono uppercase font-bold text-[#c084fc] flex items-center gap-1">
-                  <span>{currentStep.distanceKm ? `${(currentStep.distanceKm * 1000).toFixed(0)}m` : 'Ahead'}</span>
-                  <span>&middot;</span>
-                  <span className="truncate max-w-[150px]">{currentStep.instruction}</span>
-                </div>
-                <div className="text-xs font-semibold text-gray-200 truncate max-w-[200px]">
-                  {nextStep ? `Then ${nextStep.instruction}` : activeRouteLabel}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-xl border border-purple-500/30 text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#c084fc]" />
-              <span className="text-xs mono font-bold uppercase tracking-wider">{activeRouteLabel}</span>
-            </div>
-          )}
-
-          {/* Top-Right HUD Controls */}
-          <div className="flex items-center gap-2">
-            {/* Recording Badge */}
+      <div className="relative z-20 p-3 sm:p-4 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] flex flex-col gap-2.5">
+        {/* Top Control Bar: Status on left, Actions (Minimize & Close) on right */}
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: Recording Status Badge or Mode Tag */}
+          <div className="flex items-center gap-2 min-w-0">
             {recorder.isRecording ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/90 text-white mono text-xs font-bold shadow-lg shadow-red-600/30">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/95 text-white mono text-xs font-bold shadow-lg shadow-red-600/40 shrink-0">
                 <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
                 <span>REC {formatDurationSec(recorder.recordingSeconds)}</span>
               </div>
             ) : (
-              <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-purple-500/30 text-purple-200 mono text-xs font-semibold">
+              <div className="px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-purple-500/40 text-purple-200 mono text-xs font-semibold shrink-0">
                 {recorder.recordingMode === 'timelapse'
                   ? `Timelapse (${recorder.timelapseIntervalSec}s)`
                   : 'Standard Video'}
               </div>
             )}
+          </div>
 
+          {/* Right: Always-Visible Quick Controls (Minimize to PiP & Close) */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => onChangeViewMode('pip')}
-              className="p-2.5 rounded-xl bg-black/60 backdrop-blur-xl border border-purple-500/30 text-white hover:bg-black/90 transition-colors cursor-pointer"
+              className="p-2 sm:p-2.5 rounded-xl bg-black/70 backdrop-blur-xl border border-purple-500/40 text-white hover:bg-black/90 active:scale-95 transition-all cursor-pointer shadow-lg"
               title="Minimize to Map Picture-in-Picture"
+              aria-label="Minimize to PiP"
             >
               <Minimize2 className="w-5 h-5" />
             </button>
@@ -238,36 +218,57 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
             <button
               type="button"
               onClick={() => onChangeViewMode('hidden')}
-              className="p-2.5 rounded-xl bg-black/60 backdrop-blur-xl border border-purple-500/30 text-white hover:bg-red-600 transition-colors cursor-pointer"
+              className="p-2 sm:p-2.5 rounded-xl bg-red-600/90 hover:bg-red-600 active:scale-95 backdrop-blur-xl border border-red-400/50 text-white transition-all cursor-pointer shadow-lg shadow-red-950/40 flex items-center gap-1 font-bold mono text-xs"
               title="Close Dashcam HUD"
+              aria-label="Close Dashcam"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 stroke-[2.5]" />
+              <span className="hidden xs:inline uppercase text-[10px] pr-0.5">Exit</span>
             </button>
           </div>
         </div>
+
+        {/* Turn Direction Card (if navigating) - sits cleanly below the top control bar */}
+        {currentStep && (
+          <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/40 shadow-2xl text-white w-full sm:max-w-md animate-fadeIn">
+            <div className="w-9 h-9 rounded-xl bg-[#a855f7]/30 border border-[#a855f7]/60 flex items-center justify-center text-[#c084fc] shrink-0">
+              <Navigation2 className="w-5 h-5 rotate-45" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] mono uppercase font-bold text-[#c084fc] flex items-center gap-1.5 truncate">
+                <span className="shrink-0">{currentStep.distanceKm ? `${(currentStep.distanceKm * 1000).toFixed(0)}m` : 'Ahead'}</span>
+                <span>&middot;</span>
+                <span className="truncate">{currentStep.instruction}</span>
+              </div>
+              <div className="text-xs font-semibold text-gray-200 truncate">
+                {nextStep ? `Then ${nextStep.instruction}` : activeRouteLabel}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* BOTTOM HUD: Telemetry Speedometer, Highway Label & Dashcam Controls */}
-      <div className="relative z-20 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] flex flex-col sm:flex-row items-end justify-between gap-4">
+      <div className="relative z-20 p-3 sm:p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3">
         {/* Speedometer & Location Badge */}
-        <div className="flex items-center gap-4">
-          <div className="px-5 py-3 rounded-3xl bg-black/75 backdrop-blur-2xl border border-purple-500/50 shadow-2xl flex items-baseline gap-2 text-white">
-            <span className="text-5xl sm:text-6xl font-black display tracking-tight leading-none text-white drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 sm:px-5 sm:py-3 rounded-2xl sm:rounded-3xl bg-black/75 backdrop-blur-2xl border border-purple-500/50 shadow-2xl flex items-baseline gap-2 text-white shrink-0">
+            <span className="text-4xl sm:text-6xl font-black display tracking-tight leading-none text-white drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]">
               {speed}
             </span>
             <div className="flex flex-col">
               <span className="text-xs mono font-extrabold uppercase text-[#c084fc] leading-none">
                 KM/H
               </span>
-              <span className="text-[9px] mono uppercase text-gray-400 mt-1">SPEED</span>
+              <span className="text-[9px] mono uppercase text-gray-400 mt-0.5">SPEED</span>
             </div>
           </div>
 
-          <div className="hidden sm:flex flex-col px-4 py-2.5 rounded-2xl bg-black/60 backdrop-blur-xl border border-purple-500/30 text-white">
-            <div className="text-xs font-bold truncate max-w-[220px]">
+          <div className="flex flex-col px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl bg-black/60 backdrop-blur-xl border border-purple-500/30 text-white min-w-0 flex-1 sm:flex-none">
+            <div className="text-xs font-bold truncate max-w-[200px] sm:max-w-[240px]">
               {gpsState?.addressLabel || 'Philippine Highway'}
             </div>
-            <div className="text-[10px] mono text-purple-300 mt-0.5">
+            <div className="text-[10px] mono text-purple-300 mt-0.5 truncate">
               {gpsState ? `${gpsState.lat.toFixed(4)}°, ${gpsState.lng.toFixed(4)}°` : 'Acquiring GPS…'}
             </div>
           </div>
@@ -279,7 +280,7 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
           <button
             type="button"
             onClick={recorder.toggleCamera}
-            className="p-3 rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white hover:bg-purple-900/40 transition-colors cursor-pointer"
+            className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white hover:bg-purple-900/40 active:scale-95 transition-all cursor-pointer"
             title="Switch Front/Rear Camera"
           >
             <RefreshCw className="w-5 h-5" />
@@ -294,7 +295,7 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
                 recorder.recordingMode === 'timelapse' ? 'normal' : 'timelapse'
               )
             }
-            className="px-3.5 py-3 rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white mono text-xs font-bold hover:bg-purple-900/40 transition-colors disabled:opacity-40 cursor-pointer"
+            className="px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-xl sm:rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white mono text-xs font-bold hover:bg-purple-900/40 active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
           >
             {recorder.recordingMode === 'timelapse' ? 'TIMELAPSE' : 'NORMAL'}
           </button>
@@ -304,7 +305,7 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
             <select
               value={recorder.timelapseIntervalSec}
               onChange={(e) => recorder.setTimelapseIntervalSec(Number(e.target.value))}
-              className="px-3 py-3 rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white mono text-xs font-bold cursor-pointer outline-none"
+              className="px-2.5 py-2.5 sm:px-3 sm:py-3 rounded-xl sm:rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white mono text-xs font-bold cursor-pointer outline-none"
             >
               <option value={0.5}>0.5s / frame</option>
               <option value={1}>1.0s / frame</option>
@@ -318,7 +319,7 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
             <button
               type="button"
               onClick={recorder.stopRecording}
-              className="px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black mono text-sm flex items-center gap-2 shadow-2xl shadow-red-600/40 transition-all cursor-pointer"
+              className="flex-1 sm:flex-none px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-black mono text-sm flex items-center justify-center gap-2 shadow-2xl shadow-red-600/40 transition-all cursor-pointer"
             >
               <Square className="w-4 h-4 fill-white" /> STOP REC
             </button>
@@ -326,7 +327,7 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
             <button
               type="button"
               onClick={recorder.startRecording}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#a855f7] to-[#7c3aed] hover:brightness-110 text-white font-black mono text-sm flex items-center gap-2 shadow-2xl shadow-purple-600/40 transition-all cursor-pointer"
+              className="flex-1 sm:flex-none px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#a855f7] to-[#7c3aed] hover:brightness-110 active:scale-95 text-white font-black mono text-sm flex items-center justify-center gap-2 shadow-2xl shadow-purple-600/40 transition-all cursor-pointer"
             >
               <Disc className="w-5 h-5 text-red-300" /> START REC
             </button>
@@ -337,7 +338,7 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
             <button
               type="button"
               onClick={handleSaveRecording}
-              className="px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold mono text-xs flex items-center gap-1.5 shadow-xl transition-all cursor-pointer"
+              className="px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold mono text-xs flex items-center gap-1.5 shadow-xl transition-all cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>{downloadSuccess ? 'Saved to Phone!' : 'Save Video'}</span>
