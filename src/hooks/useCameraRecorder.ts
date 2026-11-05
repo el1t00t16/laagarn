@@ -22,6 +22,7 @@ export interface UseCameraRecorderResult {
   timelapseIntervalSec: number;
   burnTelemetry: boolean;
   recordedBlobUrl: string | null;
+  recordedBlob: Blob | null;
   recordedBlobSize: number;
   startCamera: (mode?: CameraFacingMode) => Promise<boolean>;
   stopCamera: () => void;
@@ -35,6 +36,7 @@ export interface UseCameraRecorderResult {
   stopRecording: () => void;
   discardRecording: () => void;
   saveToDevice: (filenamePrefix?: string) => void;
+  shareToPhotosOrApps: (filenamePrefix?: string) => Promise<boolean>;
 }
 
 export function useCameraRecorder({
@@ -56,6 +58,7 @@ export function useCameraRecorder({
 
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
   const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedBlobSize, setRecordedBlobSize] = useState<number>(0);
 
   // References for MediaStream and Recorder
@@ -303,6 +306,7 @@ export function useCameraRecorder({
           type: selectedMime || 'video/webm',
         });
         const url = URL.createObjectURL(blob);
+        setRecordedBlob(blob);
         setRecordedBlobUrl(url);
         setRecordedBlobSize(blob.size);
       };
@@ -367,6 +371,7 @@ export function useCameraRecorder({
     if (recordedBlobUrl) {
       URL.revokeObjectURL(recordedBlobUrl);
     }
+    setRecordedBlob(null);
     setRecordedBlobUrl(null);
     setRecordedBlobSize(0);
     setRecordingSeconds(0);
@@ -396,6 +401,53 @@ export function useCameraRecorder({
     [recordedBlobUrl, recordingMode]
   );
 
+  /**
+   * Triggers the native iOS / Android Web Share Sheet with the video file.
+   * On iPhone (Safari), this opens the native sheet with "Save Video" to Camera Roll!
+   */
+  const shareToPhotosOrApps = useCallback(
+    async (filenamePrefix: string = 'laagarn_dashcam'): Promise<boolean> => {
+      if (!recordedBlob) {
+        saveToDevice(filenamePrefix);
+        return false;
+      }
+
+      const now = new Date();
+      const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
+      const modeTag = recordingMode === 'timelapse' ? 'timelapse' : 'clip';
+      const extension = recordedBlob.type.includes('mp4') ? 'mp4' : 'webm';
+      const filename = `${filenamePrefix}_${modeTag}_${datePart}_${timePart}.${extension}`;
+
+      try {
+        const file = new File([recordedBlob], filename, { type: recordedBlob.type });
+        if (
+          typeof navigator !== 'undefined' &&
+          navigator.canShare &&
+          navigator.canShare({ files: [file] })
+        ) {
+          await navigator.share({
+            files: [file],
+            title: 'LAAGARN Highway Recording',
+            text: 'Highway recording from LAAGARN GPS Navigation',
+          });
+          return true;
+        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          // User dismissed the share sheet
+          return false;
+        }
+        console.warn('Native share failed, falling back to download:', err);
+      }
+
+      // Fallback to regular file download
+      saveToDevice(filenamePrefix);
+      return true;
+    },
+    [recordedBlob, recordingMode, saveToDevice]
+  );
+
   // Clean up timers and streams on unmount
   useEffect(() => {
     return () => {
@@ -423,6 +475,7 @@ export function useCameraRecorder({
     timelapseIntervalSec,
     burnTelemetry,
     recordedBlobUrl,
+    recordedBlob,
     recordedBlobSize,
     startCamera,
     stopCamera,
@@ -436,5 +489,6 @@ export function useCameraRecorder({
     stopRecording,
     discardRecording,
     saveToDevice,
+    shareToPhotosOrApps,
   };
 }

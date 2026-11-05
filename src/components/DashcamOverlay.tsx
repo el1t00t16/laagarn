@@ -24,6 +24,7 @@ import { GpsPositionState } from '../utils/gpsAndGeocoding';
 import { UseCameraRecorderResult, RecordingMode } from '../hooks/useCameraRecorder';
 import { RouteStep } from '../utils/routingEngine';
 import { formatDurationSec } from '../utils/stravaRecorder';
+import { DashcamPreviewModal } from './DashcamPreviewModal';
 
 export type DashcamViewMode = 'pip' | 'hud' | 'hidden';
 
@@ -50,11 +51,7 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-
-  if (viewMode === 'hidden') return null;
-
-  const isDark = theme !== 'light';
-  const speed = gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined ? gpsState.speedKmh : 0;
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const handleSaveRecording = () => {
     recorder.saveToDevice();
@@ -62,12 +59,32 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
     setTimeout(() => setDownloadSuccess(false), 3500);
   };
 
+  if (viewMode === 'hidden') {
+    return (
+      <DashcamPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        videoUrl={recorder.recordedBlobUrl}
+        videoSize={recorder.recordedBlobSize}
+        durationSeconds={recorder.recordingSeconds}
+        mode={recorder.recordingMode}
+        onSaveToDevice={handleSaveRecording}
+        onShareToPhotos={recorder.shareToPhotosOrApps}
+        theme={theme}
+      />
+    );
+  }
+
+  const isDark = theme !== 'light';
+  const speed = gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined ? gpsState.speedKmh : 0;
+
   /* =========================================================================
    * MODE 1: PICTURE-IN-PICTURE (PiP) DOCKED OVER MAP
    * ========================================================================= */
   if (viewMode === 'pip') {
     return (
-      <div className="absolute top-20 right-3 z-[600] w-48 sm:w-60 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/40 bg-black/90 backdrop-blur-md animate-fadeIn transition-all">
+      <>
+        <div className="absolute top-20 right-3 z-[600] w-48 sm:w-60 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/40 bg-black/90 backdrop-blur-md animate-fadeIn transition-all">
         {/* Video feed container */}
         <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
           <video
@@ -151,18 +168,31 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
 
         {/* Save Recording Prompt if clip ready */}
         {recorder.recordedBlobUrl && !recorder.isRecording && (
-          <div className="p-2 bg-purple-950/80 border-t border-purple-500/30 flex items-center justify-between">
-            <span className="text-[10px] text-purple-200 truncate">Clip Ready!</span>
+          <div className="p-2 bg-purple-950/90 border-t border-purple-500/40 flex items-center justify-between">
+            <span className="text-[10px] text-purple-200 truncate font-semibold">Clip Ready!</span>
             <button
               type="button"
-              onClick={handleSaveRecording}
-              className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+              onClick={() => setShowPreviewModal(true)}
+              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer shadow"
             >
-              <Download className="w-3 h-3" /> Save
+              <Play className="w-3 h-3 fill-white" /> Preview
             </button>
           </div>
         )}
       </div>
+
+      <DashcamPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        videoUrl={recorder.recordedBlobUrl}
+        videoSize={recorder.recordedBlobSize}
+        durationSeconds={recorder.recordingSeconds}
+        mode={recorder.recordingMode}
+        onSaveToDevice={handleSaveRecording}
+        onShareToPhotos={recorder.shareToPhotosOrApps}
+        theme={theme}
+      />
+    </>
     );
   }
 
@@ -333,19 +363,32 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
             </button>
           )}
 
-          {/* Save to Phone Storage Button */}
+          {/* Preview & Save to Photos Button */}
           {recorder.recordedBlobUrl && !recorder.isRecording && (
             <button
               type="button"
-              onClick={handleSaveRecording}
-              className="px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold mono text-xs flex items-center gap-1.5 shadow-xl transition-all cursor-pointer"
+              onClick={() => setShowPreviewModal(true)}
+              className="flex-1 sm:flex-none px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:brightness-110 active:scale-95 text-white font-bold mono text-xs flex items-center justify-center gap-2 shadow-2xl shadow-emerald-600/30 transition-all cursor-pointer animate-pulse"
             >
-              <Download className="w-4 h-4" />
-              <span>{downloadSuccess ? 'Saved to Phone!' : 'Save Video'}</span>
+              <Play className="w-4 h-4 fill-white" />
+              <span>Preview & Save to Photos</span>
             </button>
           )}
         </div>
       </div>
+
+      {/* In-App Preview & Native Share Modal */}
+      <DashcamPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        videoUrl={recorder.recordedBlobUrl}
+        videoSize={recorder.recordedBlobSize}
+        durationSeconds={recorder.recordingSeconds}
+        mode={recorder.recordingMode}
+        onSaveToDevice={handleSaveRecording}
+        onShareToPhotos={recorder.shareToPhotosOrApps}
+        theme={theme}
+      />
     </div>
   );
 };
