@@ -142,6 +142,23 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
               <RefreshCw className="w-3 h-3" />
             </button>
 
+            {recorder.facingMode === 'environment' && recorder.supportsUltraWide && (
+              <button
+                type="button"
+                onClick={() =>
+                  recorder.setLensZoom(recorder.currentLens === '0.5x' ? '1x' : '0.5x')
+                }
+                className={`px-1.5 py-0.5 rounded text-[10px] mono font-bold border transition-colors cursor-pointer ${
+                  recorder.currentLens === '0.5x'
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
+                    : 'bg-black/40 border-purple-500/30 text-purple-300'
+                }`}
+                title="Toggle 0.5x Ultra-Wide / 1x Lens"
+              >
+                {recorder.currentLens}
+              </button>
+            )}
+
             <span className="text-[10px] text-purple-300 uppercase font-semibold">
               {recorder.recordingMode === 'timelapse' ? 'Timelapse' : 'Video'}
             </span>
@@ -225,12 +242,24 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/95 text-white mono text-xs font-bold shadow-lg shadow-red-600/40 shrink-0">
                 <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
                 <span>REC {formatDurationSec(recorder.recordingSeconds)}</span>
+                {recorder.currentLens === '0.5x' && (
+                  <span className="px-1.5 py-0.2 rounded bg-black/40 text-yellow-300 text-[10px]">
+                    0.5x
+                  </span>
+                )}
               </div>
             ) : (
-              <div className="px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-purple-500/40 text-purple-200 mono text-xs font-semibold shrink-0">
-                {recorder.recordingMode === 'timelapse'
-                  ? `Timelapse (${recorder.timelapseIntervalSec}s)`
-                  : 'Standard Video'}
+              <div className="px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-purple-500/40 text-purple-200 mono text-xs font-semibold shrink-0 flex items-center gap-1.5">
+                <span>
+                  {recorder.recordingMode === 'timelapse'
+                    ? `Timelapse (${recorder.timelapseIntervalSec}s)`
+                    : 'Standard Video'}
+                </span>
+                {recorder.currentLens === '0.5x' && (
+                  <span className="px-1.5 py-0.5 rounded bg-purple-500/40 text-purple-200 text-[10px] font-bold">
+                    0.5x
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -317,6 +346,36 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
           >
             <RefreshCw className="w-5 h-5" />
           </button>
+
+          {/* 0.5x Ultra-Wide / 1x Standard Lens Selector (iPhone & multi-camera phones) */}
+          {recorder.facingMode === 'environment' && recorder.supportsUltraWide && (
+            <div className="flex items-center p-1 rounded-xl sm:rounded-2xl bg-black/75 backdrop-blur-xl border border-purple-500/40 shadow-lg">
+              <button
+                type="button"
+                onClick={() => recorder.setLensZoom('0.5x')}
+                className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl mono text-xs font-black transition-all cursor-pointer ${
+                  recorder.currentLens === '0.5x'
+                    ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white shadow-md shadow-purple-900/50 scale-105'
+                    : 'text-purple-300/80 hover:text-white'
+                }`}
+                title="0.5x Ultra-Wide Highway Lens"
+              >
+                0.5x
+              </button>
+              <button
+                type="button"
+                onClick={() => recorder.setLensZoom('1x')}
+                className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl mono text-xs font-black transition-all cursor-pointer ${
+                  recorder.currentLens === '1x'
+                    ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white shadow-md shadow-purple-900/50 scale-105'
+                    : 'text-purple-300/80 hover:text-white'
+                }`}
+                title="1x Standard Wide Lens"
+              >
+                1x
+              </button>
+            </div>
+          )}
 
           {/* Mode Selector (Timelapse vs Normal) */}
           <button

@@ -3,6 +3,7 @@ import { GpsPositionState } from '../utils/gpsAndGeocoding';
 
 export type CameraFacingMode = 'environment' | 'user';
 export type RecordingMode = 'normal' | 'timelapse';
+export type LensZoom = '0.5x' | '1x';
 
 export interface UseCameraRecorderOptions {
   effectiveGps?: GpsPositionState | null;
@@ -15,6 +16,9 @@ export interface UseCameraRecorderResult {
   cameraActive: boolean;
   cameraError: string | null;
   facingMode: CameraFacingMode;
+  currentLens: LensZoom;
+  supportsUltraWide: boolean;
+  setLensZoom: (zoom: LensZoom) => Promise<boolean>;
   isRecording: boolean;
   isPaused: boolean;
   recordingMode: RecordingMode;
@@ -71,6 +75,17 @@ export function useCameraRecorder({
   const [videoMimeType, setVideoMimeType] = useState<string>(isIOS ? 'video/mp4' : 'video/webm');
   const selectedMimeRef = useRef<string>(isIOS ? 'video/mp4' : 'video/webm');
 
+  // Lens selection (0.5x Ultra-Wide vs 1x Standard Wide)
+  const [currentLens, setCurrentLens] = useState<LensZoom>('1x');
+  const [supportsUltraWide, setSupportsUltraWide] = useState<boolean>(isIOS);
+  const wideDeviceIdRef = useRef<string | null>(null);
+  const ultraWideDeviceIdRef = useRef<string | null>(null);
+  const currentLensRef = useRef<LensZoom>('1x');
+
+  useEffect(() => {
+    currentLensRef.current = currentLens;
+  }, [currentLens]);
+
   // References for MediaStream and Recorder
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -90,6 +105,75 @@ export function useCameraRecorder({
   }, [effectiveGps, currentRoadName]);
 
   /**
+   * Scans available video cameras to detect ultra-wide (0.5x) vs standard (1x) lenses.
+   */
+  const detectAndCategorizeCameras = useCallback(async (activeStream?: MediaStream) => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) {
+      return;
+    }
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+
+      let foundWideId: string | null = null;
+      let foundUltraWideId: string | null = null;
+      const backCams: MediaDeviceInfo[] = [];
+
+      videoInputs.forEach((dev) => {
+        const lbl = (dev.label || '').toLowerCase();
+        if (
+          lbl.includes('front') ||
+          lbl.includes('user') ||
+          lbl.includes('selfie') ||
+          lbl.includes('facetime')
+        ) {
+          return;
+        }
+        backCams.push(dev);
+
+        if (
+          lbl.includes('ultra') ||
+          lbl.includes('0.5') ||
+          lbl.includes('super wide') ||
+          lbl.includes('wide-angle')
+        ) {
+          foundUltraWideId = dev.deviceId;
+        } else if (lbl.includes('back') || lbl.includes('wide') || lbl.includes('main')) {
+          if (!foundWideId) foundWideId = dev.deviceId;
+        }
+      });
+
+      // If ultra-wide was not matched by keyword, dual camera phones (e.g. iPhone 11/12/13/14)
+      // expose standard wide as camera 0 and ultra-wide as camera 1
+      if (!foundUltraWideId && backCams.length >= 2) {
+        foundWideId = foundWideId || backCams[0].deviceId;
+        foundUltraWideId = backCams[1].deviceId;
+      }
+
+      if (foundWideId) wideDeviceIdRef.current = foundWideId;
+      if (foundUltraWideId) ultraWideDeviceIdRef.current = foundUltraWideId;
+
+      // Also check track zoom capabilities if supported
+      const track = (activeStream || mediaStreamRef.current)?.getVideoTracks()[0];
+      let hasZoomCap = false;
+      if (track && typeof track.getCapabilities === 'function') {
+        const caps: any = track.getCapabilities();
+        if (caps && caps.zoom && typeof caps.zoom.min === 'number' && caps.zoom.min <= 0.6) {
+          hasZoomCap = true;
+        }
+      }
+
+      const hasUltraWide = Boolean(
+        foundUltraWideId || hasZoomCap || (isIOS && backCams.length >= 2) || isIOS
+      );
+      setSupportsUltraWide(hasUltraWide);
+    } catch (err) {
+      console.warn('Failed to enumerate camera devices:', err);
+    }
+  }, []);
+
+  /**
    * Starts camera stream with environment (back) camera preference.
    */
   const startCamera = useCallback(
@@ -107,12 +191,27 @@ export function useCameraRecorder({
       }
 
       try {
+        const targetDeviceId =
+          mode === 'environment' && currentLensRef.current === '0.5x'
+            ? ultraWideDeviceIdRef.current
+            : mode === 'environment' && currentLensRef.current === '1x'
+            ? wideDeviceIdRef.current
+            : undefined;
+
+        const videoConstraints: MediaTrackConstraints = targetDeviceId
+          ? {
+              deviceId: { exact: targetDeviceId },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            }
+          : {
+              facingMode: { ideal: mode },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            };
+
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: mode },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
+          video: videoConstraints,
           audio: false,
         });
 
@@ -124,6 +223,9 @@ export function useCameraRecorder({
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(() => {});
         }
+
+        // Detect cameras once stream permission is granted
+        detectAndCategorizeCameras(stream);
         return true;
       } catch (err: any) {
         console.warn('Failed to start camera:', err);
@@ -132,7 +234,79 @@ export function useCameraRecorder({
         return false;
       }
     },
-    [facingMode]
+    [facingMode, detectAndCategorizeCameras]
+  );
+
+  /**
+   * Switches between 0.5x Ultra-Wide and 1x Standard Wide lenses.
+   */
+  const setLensZoom = useCallback(
+    async (zoom: LensZoom): Promise<boolean> => {
+      currentLensRef.current = zoom;
+      setCurrentLens(zoom);
+
+      if (facingMode !== 'environment') {
+        return false;
+      }
+
+      // 1. Try track hardware zoom constraint if supported
+      const currentTrack = mediaStreamRef.current?.getVideoTracks()[0];
+      if (currentTrack && typeof currentTrack.getCapabilities === 'function') {
+        const caps: any = currentTrack.getCapabilities();
+        if (caps && caps.zoom) {
+          const targetZoom = zoom === '0.5x' ? (caps.zoom.min <= 0.6 ? caps.zoom.min : 0.5) : 1;
+          try {
+            await currentTrack.applyConstraints({ advanced: [{ zoom: targetZoom } as any] });
+            return true;
+          } catch (err) {
+            console.warn('Track zoom constraint failed, switching via deviceId:', err);
+          }
+        }
+      }
+
+      // 2. Multi-camera deviceId switch (iOS Safari ultra-wide camera)
+      if (!ultraWideDeviceIdRef.current || !wideDeviceIdRef.current) {
+        await detectAndCategorizeCameras();
+      }
+
+      const targetDeviceId = zoom === '0.5x' ? ultraWideDeviceIdRef.current : wideDeviceIdRef.current;
+
+      try {
+        const streamConstraints: MediaStreamConstraints = {
+          video: targetDeviceId
+            ? {
+                deviceId: { exact: targetDeviceId },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+              }
+            : {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+              },
+          audio: false,
+        };
+
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        }
+
+        const newStream = await navigator.mediaDevices.getUserMedia(streamConstraints);
+        mediaStreamRef.current = newStream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = newStream;
+          videoRef.current.play().catch(() => {});
+        }
+
+        detectAndCategorizeCameras(newStream);
+        return true;
+      } catch (err: any) {
+        console.warn(`Failed to switch to ${zoom} lens:`, err);
+        return false;
+      }
+    },
+    [facingMode, detectAndCategorizeCameras]
   );
 
   /**
@@ -202,11 +376,12 @@ export function useCameraRecorder({
         ctx.fillText(coordsText, 180, height - 12);
       }
 
-      // Date / Time / App Logo (Bottom Right)
+      // Date / Time / App Logo / Lens Mode (Bottom Right)
       ctx.textAlign = 'right';
       ctx.fillStyle = '#a855f7';
       ctx.font = 'bold 14px "JetBrains Mono", monospace';
-      ctx.fillText('LAAGARN DASHCAM', width - 24, height - 34);
+      const lensSuffix = currentLensRef.current === '0.5x' ? ' · 0.5x ULTRA' : '';
+      ctx.fillText(`LAAGARN DASHCAM${lensSuffix}`, width - 24, height - 34);
 
       ctx.fillStyle = '#cbd5e1';
       ctx.font = '13px "JetBrains Mono", monospace';
@@ -494,6 +669,9 @@ export function useCameraRecorder({
     cameraActive,
     cameraError,
     facingMode,
+    currentLens,
+    supportsUltraWide,
+    setLensZoom,
     isRecording,
     isPaused,
     recordingMode,
