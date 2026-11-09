@@ -5,6 +5,7 @@ import {
   sanitizeRoomCode,
   normalizeConvoyCode,
   getConvoyTopic,
+  getConvoyMqttTopic,
   enrichPeerMetrics,
   buildConvoyShareUrl,
   buildQrCodeImageUrl,
@@ -32,6 +33,15 @@ test('getConvoyTopic ensures different formats of same code map to identical top
   assert.strictEqual(topic1, 'laagarn_convoy_laag6689');
   assert.strictEqual(topic2, 'laagarn_convoy_laag6689');
   assert.strictEqual(topic3, 'laagarn_convoy_laag6689');
+});
+
+test('getConvoyMqttTopic ensures different formats of same code map to identical MQTT topic', () => {
+  const topic1 = getConvoyMqttTopic('6689');
+  const topic2 = getConvoyMqttTopic('LAAG-6689');
+  const topic3 = getConvoyMqttTopic('laag6689');
+  assert.strictEqual(topic1, 'laagarn/convoy/laag6689');
+  assert.strictEqual(topic2, 'laagarn/convoy/laag6689');
+  assert.strictEqual(topic3, 'laagarn/convoy/laag6689');
 });
 
 test('enrichPeerMetrics calculates accurate distance and cardinal direction', () => {

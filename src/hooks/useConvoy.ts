@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import mqtt, { MqttClient } from 'mqtt';
 import { GpsPositionState } from '../utils/gpsAndGeocoding';
 import {
   ConvoyPeer,
@@ -12,6 +13,7 @@ import {
   getSavedVehicle,
   normalizeConvoyCode,
   getConvoyTopic,
+  getConvoyMqttTopic,
   saveNickname,
   saveVehicle,
   enrichPeerMetrics,
@@ -76,10 +78,8 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
   const sharedRouteRef = useRef<ConvoySharedRoute | null>(null);
   sharedRouteRef.current = sharedRoute;
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const sseRef = useRef<EventSource | null>(null);
+  const mqttClientRef = useRef<MqttClient | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
-  const reconnectTimerRef = useRef<any>(null);
 
   // Keep latest refs to avoid stale closures
   const stateRef = useRef({
@@ -107,20 +107,18 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     }
   }, []);
 
-  // Broadcast packet to peers (via HTTP POST to Ntfy and local BroadcastChannel)
+  // Broadcast packet to peers (via MQTT over WebSocket and local BroadcastChannel)
   const broadcastPacket = useCallback((packet: ConvoyTelemetryPacket) => {
     const raw = JSON.stringify(packet);
 
-    // 1. Primary Network Delivery: HTTP POST to Ntfy topic
-    if (stateRef.current.roomCode) {
-      const topic = getConvoyTopic(stateRef.current.roomCode);
-      fetch(`https://ntfy.sh/${topic}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: raw,
-      }).catch(() => {
-        // Ignore network drops gracefully
-      });
+    // 1. Primary Network Delivery: MQTT publish to broker
+    if (mqttClientRef.current && mqttClientRef.current.connected && stateRef.current.roomCode) {
+      const topic = getConvoyMqttTopic(stateRef.current.roomCode);
+      try {
+        mqttClientRef.current.publish(topic, raw, { qos: 0 });
+      } catch (err) {
+        console.warn('Convoy MQTT publish error:', err);
+      }
     }
 
     // 2. Cross-tab synchronization via BroadcastChannel
@@ -256,17 +254,15 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     }
   }, [broadcastPacket]);
 
-  // Connect to room transport
+  // Connect to room transport via EMQX MQTT over WebSocket
   useEffect(() => {
     if (!roomCode || !isSharing) {
       setConnectionStatus('disconnected');
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (sseRef.current) {
-        sseRef.current.close();
-        sseRef.current = null;
+      if (mqttClientRef.current) {
+        try {
+          mqttClientRef.current.end(true);
+        } catch {}
+        mqttClientRef.current = null;
       }
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
@@ -277,12 +273,12 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     }
 
     setConnectionStatus('connecting');
-    const topic = getConvoyTopic(roomCode);
+    const topic = getConvoyMqttTopic(roomCode);
 
     // 1. Setup BroadcastChannel for instant local cross-tab communication
     try {
       if (typeof BroadcastChannel !== 'undefined') {
-        const bc = new BroadcastChannel(`laagarn_convoy_${topic}`);
+        const bc = new BroadcastChannel(`laagarn_convoy_${topic.replace(/\//g, '_')}`);
         bc.onmessage = (ev) => {
           handleIncomingPacket(ev.data);
         };
@@ -292,136 +288,89 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
       // BroadcastChannel optional
     }
 
-    // 2. Setup WebSocket and SSE fallback for receiving remote peer broadcasts
+    // 2. Connect to high-reliability EMQX public MQTT WebSocket broker
     let isCancelled = false;
+    const clientId = `laagarn_${peerIdRef.current}_${Math.random().toString(16).slice(2, 6)}`;
 
-    const setupFallbackSSE = () => {
-      if (isCancelled || sseRef.current) return;
-      try {
-        const sse = new EventSource(`https://ntfy.sh/${topic}/sse`);
-        sseRef.current = sse;
-        sse.onopen = () => {
-          if (isCancelled) return;
-          setConnectionStatus('connected');
-        };
-        sse.onmessage = (event) => {
-          if (isCancelled) return;
-          try {
-            const raw = JSON.parse(event.data);
-            if (raw.event === 'message' && raw.message) {
-              const parsed = JSON.parse(raw.message);
-              handleIncomingPacket(parsed);
-            }
-          } catch {
-            // Ignore non-json
-          }
-        };
-        sse.onerror = () => {
-          if (isCancelled) return;
-          setConnectionStatus('connecting');
-        };
-      } catch {
-        // SSE not supported or blocked
-      }
-    };
+    const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+      clientId,
+      clean: true,
+      keepalive: 30,
+      reconnectPeriod: 2500,
+      connectTimeout: 8000,
+    });
+    mqttClientRef.current = client;
 
-    const connectTransport = () => {
+    client.on('connect', () => {
       if (isCancelled) return;
+      setConnectionStatus('connected');
 
-      if (wsRef.current) {
-        wsRef.current.onopen = null;
-        wsRef.current.onmessage = null;
-        wsRef.current.onerror = null;
-        wsRef.current.onclose = null;
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+      // Subscribe to the shared convoy topic
+      client.subscribe(topic, { qos: 0 }, (err) => {
+        if (err || isCancelled) return;
 
+        // Immediately send handshake ping packet as soon as subscribed
+        const pingPacket: ConvoyTelemetryPacket = {
+          type: 'ping',
+          peerId: peerIdRef.current,
+          name: stateRef.current.myName,
+          vehicle: stateRef.current.myVehicle,
+          color: stateRef.current.myColor,
+          lat: stateRef.current.gpsState?.lat ?? 0,
+          lng: stateRef.current.gpsState?.lng ?? 0,
+          heading: stateRef.current.gpsState?.heading ?? null,
+          speedKmh: stateRef.current.gpsState?.speedKmh ?? null,
+          batteryLevel: batteryLevelRef.current,
+          updatedAt: Date.now(),
+          route: sharedRouteRef.current || undefined,
+        };
+        try {
+          client.publish(topic, JSON.stringify(pingPacket), { qos: 0 });
+        } catch {}
+      });
+    });
+
+    client.on('message', (_receivedTopic, message) => {
+      if (isCancelled) return;
       try {
-        const ws = new WebSocket(`wss://ntfy.sh/${topic}/ws`);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-          if (isCancelled) return;
-          setConnectionStatus('connected');
-
-          // Immediately send handshake ping packet
-          const pingPacket: ConvoyTelemetryPacket = {
-            type: 'ping',
-            peerId: peerIdRef.current,
-            name: stateRef.current.myName,
-            vehicle: stateRef.current.myVehicle,
-            color: stateRef.current.myColor,
-            lat: stateRef.current.gpsState?.lat ?? 0,
-            lng: stateRef.current.gpsState?.lng ?? 0,
-            heading: stateRef.current.gpsState?.heading ?? null,
-            speedKmh: stateRef.current.gpsState?.speedKmh ?? null,
-            batteryLevel: batteryLevelRef.current,
-            updatedAt: Date.now(),
-            route: sharedRouteRef.current || undefined,
-          };
-          broadcastPacket(pingPacket);
-        };
-
-        ws.onmessage = (event) => {
-          if (isCancelled) return;
-          try {
-            const raw = JSON.parse(event.data);
-            if (raw.event === 'message' && raw.message) {
-              const parsed = JSON.parse(raw.message);
-              handleIncomingPacket(parsed);
-            }
-          } catch {
-            // Non-JSON or keep-alive message, ignore
-          }
-        };
-
-        ws.onerror = () => {
-          if (isCancelled) return;
-          // If WebSocket has error, activate SSE fallback
-          setupFallbackSSE();
-        };
-
-        ws.onclose = () => {
-          if (isCancelled) return;
-          setConnectionStatus('connecting');
-          setupFallbackSSE();
-          reconnectTimerRef.current = setTimeout(connectTransport, 5000);
-        };
+        const parsed = JSON.parse(message.toString());
+        handleIncomingPacket(parsed);
       } catch {
-        if (!isCancelled) {
-          setupFallbackSSE();
-          reconnectTimerRef.current = setTimeout(connectTransport, 6000);
-        }
+        // Ignore non-json or corrupt message
       }
-    };
+    });
 
-    connectTransport();
+    client.on('reconnect', () => {
+      if (isCancelled) return;
+      setConnectionStatus('connecting');
+    });
+
+    client.on('close', () => {
+      if (isCancelled) return;
+      setConnectionStatus('connecting');
+    });
+
+    client.on('error', (err) => {
+      if (isCancelled) return;
+      console.warn('Convoy MQTT connection error:', err);
+    });
 
     return () => {
       isCancelled = true;
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
-      if (wsRef.current) {
-        wsRef.current.onopen = null;
-        wsRef.current.onmessage = null;
-        wsRef.current.onerror = null;
-        wsRef.current.onclose = null;
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (sseRef.current) {
-        sseRef.current.close();
-        sseRef.current = null;
+      if (client) {
+        try {
+          client.end(true);
+        } catch {}
+        if (mqttClientRef.current === client) {
+          mqttClientRef.current = null;
+        }
       }
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
         broadcastChannelRef.current = null;
       }
     };
-  }, [roomCode, isSharing, handleIncomingPacket, broadcastPacket]);
+  }, [roomCode, isSharing, handleIncomingPacket]);
 
   // Immediate Telemetry Broadcast when GPS acquires its first fix
   const prevGpsStateRef = useRef<GpsPositionState | null>(null);

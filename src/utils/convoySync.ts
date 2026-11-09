@@ -104,7 +104,17 @@ export function sanitizeRoomCode(code: string): string {
 }
 
 /**
- * Derives a deterministic canonical ntfy.sh topic from any room code format.
+ * Derives a deterministic canonical MQTT topic from any room code format.
+ * Strips hyphens so that "6689", "LAAG-6689", and "laag6689" all resolve to "laagarn/convoy/laag6689".
+ */
+export function getConvoyMqttTopic(code: string): string {
+  const norm = normalizeConvoyCode(code);
+  const clean = norm.replace(/[^A-Z0-9]/gi, '').toLowerCase();
+  return `laagarn/convoy/${clean || 'lobby'}`;
+}
+
+/**
+ * Derives a deterministic canonical topic from any room code format.
  * Strips hyphens so that "6689", "LAAG-6689", and "laag6689" all resolve to "laagarn_convoy_laag6689".
  */
 export function getConvoyTopic(code: string): string {
