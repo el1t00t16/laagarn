@@ -142,7 +142,7 @@ export function useRouteSimulation(activeRoute: ComputedRoute | null): RouteSimu
         lng,
         accuracyMeters: 3,
         heading,
-        speedKmh: Math.round(baseKmh * speedMultiplier),
+        speedKmh: Math.round(baseKmh),
         addressLabel: `Moving towards ${activeRoute.stops[activeRoute.stops.length - 1]?.name || 'Destination'}`,
         withinPhilippines: true,
         timestamp: Date.now(),

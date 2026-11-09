@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import {
   ConvoyPeer,
   ConvoyVehicleType,
+  ConvoySharedRoute,
   CONVOY_VEHICLE_OPTIONS,
   CONVOY_COLOR_PALETTE,
   buildConvoyShareUrl,
   buildQrCodeImageUrl,
   peerToLatLngPoint,
+  normalizeConvoyCode,
 } from '../utils/convoySync';
 import { GpsPositionState } from '../utils/gpsAndGeocoding';
-import { LatLngPoint } from '../utils/routingEngine';
+import { LatLngPoint, ComputedRoute } from '../utils/routingEngine';
 import {
   Share2,
   Copy,
@@ -25,6 +27,8 @@ import {
   Sparkles,
   Battery,
   Zap,
+  MapPin,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface ConvoyPanelProps {
@@ -38,6 +42,9 @@ interface ConvoyPanelProps {
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
   lastBroadcastAt: number | null;
   gpsState: GpsPositionState | null;
+  currentRoute?: ComputedRoute | null;
+  sharedRoute?: ConvoySharedRoute | null;
+  routeSuggestions?: ConvoySharedRoute[];
   onCreateConvoy: (customCode?: string) => void;
   onJoinConvoy: (code: string) => void;
   onLeaveConvoy: () => void;
@@ -46,6 +53,10 @@ interface ConvoyPanelProps {
   onFitBounds?: (points: { lat: number; lng: number }[]) => void;
   onRouteToPeer: (point: LatLngPoint) => void;
   onAddPeerStop: (point: LatLngPoint) => void;
+  onShareRouteToConvoy?: (route: ConvoySharedRoute) => void;
+  onSuggestRouteToConvoy?: (route: ConvoySharedRoute) => void;
+  onLoadSharedRoute?: (route: ConvoySharedRoute) => void;
+  onDismissRouteSuggestion?: (id: string) => void;
   theme?: 'dark' | 'amoled' | 'light';
 }
 
@@ -60,6 +71,9 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
   connectionStatus,
   lastBroadcastAt,
   gpsState,
+  currentRoute,
+  sharedRoute,
+  routeSuggestions = [],
   onCreateConvoy,
   onJoinConvoy,
   onLeaveConvoy,
@@ -68,6 +82,10 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
   onFitBounds,
   onRouteToPeer,
   onAddPeerStop,
+  onShareRouteToConvoy,
+  onSuggestRouteToConvoy,
+  onLoadSharedRoute,
+  onDismissRouteSuggestion,
   theme = 'dark',
 }) => {
   const [nameInput, setNameInput] = useState<string>(myName);
@@ -290,21 +308,21 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                 Have a Friend&apos;s Room Code?
               </div>
               <p className="text-[11px] text-[var(--ink-dim)] mb-3">
-                Enter their 6-character room code (e.g. LAAG-8942) to connect.
+                Enter either the 4-digit PIN (e.g. 6689) or full code (LAAG-6689) to connect instantly.
               </p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={joinCodeInput}
                   onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
-                  placeholder="LAAG-XXXX"
+                  placeholder="e.g. 6689 or LAAG-6689"
                   className="editorial-input !uppercase mono tracking-wider flex-1 text-center font-bold"
-                  maxLength={12}
+                  maxLength={16}
                 />
                 <button
                   type="button"
                   disabled={!joinCodeInput.trim()}
-                  onClick={() => onJoinConvoy(joinCodeInput)}
+                  onClick={() => onJoinConvoy(normalizeConvoyCode(joinCodeInput))}
                   className="px-4 py-2 bg-[var(--surface)] hover:bg-[var(--accent)] text-[var(--ink)] hover:text-white border border-[var(--border)] hover:border-[var(--accent)] rounded-xl mono text-xs uppercase font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Join
@@ -322,8 +340,15 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                   <div className="mono text-[9px] uppercase tracking-wider text-[var(--ink-dim)]">
                     Active Convoy Room
                   </div>
-                  <div className="text-xl font-extrabold display text-[var(--accent)] tracking-wider mt-0.5">
-                    {roomCode}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xl font-extrabold display text-[var(--accent)] tracking-wider">
+                      {roomCode}
+                    </span>
+                    {roomCode && (
+                      <span className="px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-[var(--accent)] mono text-[10px] font-black">
+                        PIN: {roomCode.replace(/[^0-9]/g, '') || roomCode}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -387,6 +412,175 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Convoy Route Plan & Member Proposals */}
+            <div className="p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-2xl shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="mono text-[10px] font-extrabold uppercase tracking-wider text-[var(--ink-dim)]">
+                    Convoy Route Plan
+                  </span>
+                  {sharedRoute && (
+                    <span className="px-2 py-0.5 rounded text-[8.5px] mono font-bold bg-purple-500/15 text-[var(--accent)] border border-purple-500/30">
+                      Active
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {sharedRoute ? (
+                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <Navigation className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-[var(--ink)]">
+                          {sharedRoute.label}
+                        </div>
+                        <div className="mono text-[9px] text-[var(--ink-dim)] mt-0.5">
+                          Shared by <span className="font-bold text-[var(--accent)]">{sharedRoute.suggestedByName}</span> &middot; {sharedRoute.stops.length} Stops &middot; {sharedRoute.totalDistanceKm} km
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-purple-500/20">
+                    {onLoadSharedRoute && (
+                      <button
+                        type="button"
+                        onClick={() => onLoadSharedRoute(sharedRoute)}
+                        className="flex-1 py-1.5 px-3 bg-[var(--accent)] hover:opacity-90 active:scale-95 text-white mono text-[10px] font-bold rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                      >
+                        <Navigation className="w-3 h-3" />
+                        <span>Load & Follow Route</span>
+                      </button>
+                    )}
+                    {currentRoute && onShareRouteToConvoy && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onShareRouteToConvoy({
+                            id: `route-${Date.now()}`,
+                            label: currentRoute.label,
+                            stops: currentRoute.stops,
+                            totalDistanceKm: currentRoute.totalDistanceKm,
+                            durationMinutes: currentRoute.totalDurationMinutes,
+                            suggestedByPeerId: 'self',
+                            suggestedByName: myName,
+                            timestamp: Date.now(),
+                            isHostRoute: true,
+                          });
+                        }}
+                        className="py-1.5 px-3 bg-[var(--surface)] hover:bg-[var(--accent)]/15 border border-[var(--border)] text-[var(--ink)] mono text-[9px] font-bold rounded-lg uppercase cursor-pointer"
+                        title="Update with my current route"
+                      >
+                        Update
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-[var(--ink-dim)] leading-relaxed">
+                    Host or joiners can plan a route and broadcast it here so the entire convoy follows the same waypoints.
+                  </p>
+                  {currentRoute && onShareRouteToConvoy && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onShareRouteToConvoy({
+                          id: `route-${Date.now()}`,
+                          label: currentRoute.label,
+                          stops: currentRoute.stops,
+                          totalDistanceKm: currentRoute.totalDistanceKm,
+                          durationMinutes: currentRoute.totalDurationMinutes,
+                          suggestedByPeerId: 'self',
+                          suggestedByName: myName,
+                          timestamp: Date.now(),
+                          isHostRoute: true,
+                        });
+                      }}
+                      className="w-full py-2 px-3 bg-[var(--accent)] hover:opacity-90 active:scale-95 text-white mono text-[10px] font-bold rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share My Route with Convoy</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Member Route Suggestions */}
+              {routeSuggestions.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+                  <div className="mono text-[9px] font-bold text-[var(--ink-dim)] uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <span>Route Suggestions from Pals ({routeSuggestions.length})</span>
+                  </div>
+                  {routeSuggestions.map((sug) => (
+                    <div
+                      key={sug.id}
+                      className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-2 shadow-xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-[var(--ink)] truncate">
+                          {sug.label}
+                        </div>
+                        <div className="mono text-[8.5px] text-[var(--ink-dim)] mt-0.5">
+                          From <span className="text-amber-500 font-bold">{sug.suggestedByName}</span> &middot; {sug.totalDistanceKm} km
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {onLoadSharedRoute && (
+                          <button
+                            type="button"
+                            onClick={() => onLoadSharedRoute(sug)}
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-black mono text-[9px] font-black uppercase rounded-lg cursor-pointer"
+                          >
+                            Accept
+                          </button>
+                        )}
+                        {onDismissRouteSuggestion && (
+                          <button
+                            type="button"
+                            onClick={() => onDismissRouteSuggestion(sug.id)}
+                            className="px-2 py-1 bg-[var(--surface)] border border-[var(--border)] text-[var(--ink-dim)] hover:text-rose-500 mono text-[9px] rounded-lg cursor-pointer"
+                            title="Dismiss suggestion"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Joiner suggest alternate button */}
+              {sharedRoute && currentRoute && onSuggestRouteToConvoy && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSuggestRouteToConvoy({
+                      id: `sug-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                      label: currentRoute.label,
+                      stops: currentRoute.stops,
+                      totalDistanceKm: currentRoute.totalDistanceKm,
+                      durationMinutes: currentRoute.totalDurationMinutes,
+                      suggestedByPeerId: 'self',
+                      suggestedByName: myName,
+                      timestamp: Date.now(),
+                    });
+                  }}
+                  className="w-full py-1.5 px-3 bg-[var(--surface)] hover:bg-[var(--accent)]/15 border border-purple-500/30 text-[var(--accent)] mono text-[9.5px] font-bold rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Suggest My Route as Alternative</span>
+                </button>
+              )}
             </div>
 
             {/* Proximity / Meetup Banner */}

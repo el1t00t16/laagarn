@@ -20,6 +20,7 @@ import {
   PlusCircle,
   ChevronDown,
   Camera,
+  Activity,
 } from 'lucide-react';
 import {
   ComputedRoute,
@@ -40,6 +41,7 @@ import {
 } from '../utils/trafficLightData';
 import {
   ConvoyPeer,
+  ConvoySharedRoute,
   CONVOY_VEHICLE_OPTIONS,
   peerToLatLngPoint,
 } from '../utils/convoySync';
@@ -122,6 +124,11 @@ interface LeafletMapViewProps {
   dashcamActive?: boolean;
   isRecordingVideo?: boolean;
   mobileSheetOpen?: boolean;
+  onOpenStravaModal?: () => void;
+  stravaRecordingActive?: boolean;
+  stravaPointsCount?: number;
+  convoySharedRoute?: ConvoySharedRoute | null;
+  onLoadSharedRoute?: (route: ConvoySharedRoute) => void;
   theme?: 'dark' | 'amoled' | 'light';
 }
 
@@ -550,6 +557,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   dashcamActive = false,
   isRecordingVideo = false,
   mobileSheetOpen = false,
+  onOpenStravaModal,
+  stravaRecordingActive = false,
+  stravaPointsCount = 0,
+  convoySharedRoute = null,
+  onLoadSharedRoute,
   theme = 'dark',
 }) => {
   const isDark = theme !== 'light';
@@ -1787,6 +1799,31 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
       )}
     </AnimatePresence>
 
+      {/* Floating Convoy Shared Route Notice on Map */}
+      {convoySharedRoute && onLoadSharedRoute && !(navigationActive || isSimulating) && (
+        <div className="absolute top-16 left-3 right-3 sm:left-6 sm:right-auto z-[415] max-w-sm animate-fadeIn pointer-events-auto">
+          <div className="p-3 rounded-2xl bg-black/85 backdrop-blur-xl border border-cyan-500/50 shadow-2xl flex items-center justify-between gap-3 text-white">
+            <div className="min-w-0">
+              <div className="text-[9.5px] mono uppercase font-extrabold text-cyan-400 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                <span>Convoy Route Shared by {convoySharedRoute.suggestedByName}</span>
+              </div>
+              <div className="text-xs font-black truncate mt-0.5">{convoySharedRoute.label}</div>
+              <div className="text-[10px] mono text-gray-300">
+                {convoySharedRoute.totalDistanceKm} km &middot; {convoySharedRoute.stops.length} stops
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onLoadSharedRoute(convoySharedRoute)}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:brightness-110 active:scale-95 text-white mono text-[10px] font-black uppercase shrink-0 cursor-pointer shadow-md"
+            >
+              Load Route
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Real-time Turn-by-Turn Mobile Driving HUD (supports live GPS & Drive Simulation) */}
       {(navigationActive || isSimulating) && activeRoute && currentStep && (
         <div
@@ -2042,6 +2079,31 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
           mobileSheetOpen ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
         }`}
       >
+        {onOpenStravaModal && (
+          <button
+            type="button"
+            onClick={onOpenStravaModal}
+            aria-label="Open Strava Simulation & GPS Activity"
+            title="Strava GPX Tracker & Activity"
+            className={`w-11 h-11 backdrop-blur-xl border flex items-center justify-center shadow-xl rounded-xl transition-all cursor-pointer relative ${
+              stravaRecordingActive
+                ? 'bg-[#fc5200] border-orange-400 text-white shadow-orange-950/50'
+                : isDark
+                ? isAmoled
+                  ? 'bg-black border-[#fc5200]/40 text-[#fc5200] hover:border-[#fc5200]'
+                  : 'bg-[#120824]/90 border-[#fc5200]/40 text-[#fc5200] hover:border-[#fc5200]'
+                : 'bg-white/95 border-[#fc5200]/50 text-[#fc5200]'
+            }`}
+          >
+            <Activity className="w-5 h-5" />
+            {stravaRecordingActive && (
+              <>
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-600" />
+              </>
+            )}
+          </button>
+        )}
         {onToggleDashcam && (
           <button
             type="button"

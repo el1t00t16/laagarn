@@ -53,6 +53,15 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
+  // Auto-pop preview modal as soon as a recording is finished (e.g. destination arrived or user stopped REC)
+  const prevIsRecordingRef = React.useRef(recorder.isRecording);
+  React.useEffect(() => {
+    if (prevIsRecordingRef.current && !recorder.isRecording && recorder.recordedBlobUrl) {
+      setShowPreviewModal(true);
+    }
+    prevIsRecordingRef.current = recorder.isRecording;
+  }, [recorder.isRecording, recorder.recordedBlobUrl]);
+
   const handleSaveRecording = () => {
     recorder.saveToDevice();
     setDownloadSuccess(true);
@@ -61,18 +70,48 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
 
   if (viewMode === 'hidden') {
     return (
-      <DashcamPreviewModal
-        isOpen={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        videoUrl={recorder.recordedBlobUrl}
-        videoSize={recorder.recordedBlobSize}
-        durationSeconds={recorder.recordingSeconds}
-        mode={recorder.recordingMode}
-        mimeType={recorder.videoMimeType}
-        onSaveToDevice={handleSaveRecording}
-        onShareToPhotos={recorder.shareToPhotosOrApps}
-        theme={theme}
-      />
+      <>
+        {/* Recovery banner if a previous video was preserved from an interrupted session */}
+        {recorder.hasRecoveredRecording && recorder.recordedBlobUrl && !showPreviewModal && (
+          <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 z-[900] p-3 rounded-2xl bg-[#120824] border border-emerald-500/50 shadow-2xl flex items-center justify-between gap-3 text-white animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="text-xs font-bold">
+                Restored Previous Dashcam Video ({(recorder.recordedBlobSize / (1024 * 1024)).toFixed(1)} MB)
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(true)}
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white mono text-[10px] font-bold uppercase rounded-lg cursor-pointer"
+              >
+                Preview & Save
+              </button>
+              <button
+                type="button"
+                onClick={recorder.discardRecording}
+                className="p-1 text-gray-400 hover:text-white mono text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        <DashcamPreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          videoUrl={recorder.recordedBlobUrl}
+          videoSize={recorder.recordedBlobSize}
+          durationSeconds={recorder.recordingSeconds}
+          mode={recorder.recordingMode}
+          mimeType={recorder.videoMimeType}
+          onSaveToDevice={handleSaveRecording}
+          onShareToPhotos={recorder.shareToPhotosOrApps}
+          theme={theme}
+        />
+      </>
     );
   }
 

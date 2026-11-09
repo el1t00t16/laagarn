@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   generateConvoyRoomCode,
   sanitizeRoomCode,
+  normalizeConvoyCode,
+  getConvoyTopic,
   enrichPeerMetrics,
   buildConvoyShareUrl,
   buildQrCodeImageUrl,
@@ -15,9 +17,21 @@ test('generateConvoyRoomCode produces valid LAAG-XXXX code format', () => {
   assert.match(code, /^LAAG-\d{4}$/);
 });
 
-test('sanitizeRoomCode formats clean uppercase alphanumeric room code', () => {
-  assert.strictEqual(sanitizeRoomCode('  laag-7281  '), 'LAAG-7281');
-  assert.strictEqual(sanitizeRoomCode('cebu-ride#1'), 'CEBU-RIDE1');
+test('normalizeConvoyCode normalizes 4 digits, lowercase and prefixed codes identically', () => {
+  assert.strictEqual(normalizeConvoyCode('6689'), 'LAAG-6689');
+  assert.strictEqual(normalizeConvoyCode('laag-6689'), 'LAAG-6689');
+  assert.strictEqual(normalizeConvoyCode('LAAG6689'), 'LAAG-6689');
+  assert.strictEqual(normalizeConvoyCode('  laag-7281  '), 'LAAG-7281');
+  assert.strictEqual(normalizeConvoyCode('cebu-ride#1'), 'CEBU-RIDE1');
+});
+
+test('getConvoyTopic ensures different formats of same code map to identical topic', () => {
+  const topic1 = getConvoyTopic('6689');
+  const topic2 = getConvoyTopic('LAAG-6689');
+  const topic3 = getConvoyTopic('laag6689');
+  assert.strictEqual(topic1, 'laagarn_convoy_laag6689');
+  assert.strictEqual(topic2, 'laagarn_convoy_laag6689');
+  assert.strictEqual(topic3, 'laagarn_convoy_laag6689');
 });
 
 test('enrichPeerMetrics calculates accurate distance and cardinal direction', () => {

@@ -8,6 +8,7 @@ import {
   downloadStravaGpx,
 } from '../utils/stravaRecorder';
 import { estimatePhilippineElevation } from '../utils/elevationProfile';
+import { haversineKmPrecise } from '../utils/routingEngine';
 
 export interface UseStravaTrackRecorderResult {
   isRecording: boolean;
@@ -43,6 +44,11 @@ export function useStravaTrackRecorder(
   const lastRecordedTimeRef = useRef<number>(0);
   const pointsRef = useRef<StravaTrackPoint[]>([]);
 
+  // Simulation time & distance tracking refs
+  const simStartTimeRef = useRef<number>(0);
+  const accumulatedSimDistanceKmRef = useRef<number>(0);
+  const prevSimPointRef = useRef<{ lat: number; lng: number } | null>(null);
+
   // Keep ref synchronized
   useEffect(() => {
     pointsRef.current = trackPoints;
@@ -62,6 +68,9 @@ export function useStravaTrackRecorder(
       setTrackPoints([]);
       pointsRef.current = [];
       lastRecordedTimeRef.current = 0;
+      simStartTimeRef.current = Date.now();
+      accumulatedSimDistanceKmRef.current = 0;
+      prevSimPointRef.current = null;
       setIsPaused(false);
       setIsRecording(true);
     },
@@ -88,6 +97,9 @@ export function useStravaTrackRecorder(
     setTrackPoints([]);
     pointsRef.current = [];
     lastRecordedTimeRef.current = 0;
+    simStartTimeRef.current = 0;
+    accumulatedSimDistanceKmRef.current = 0;
+    prevSimPointRef.current = null;
   }, []);
 
   const downloadGpx = useCallback(() => {
@@ -112,22 +124,55 @@ export function useStravaTrackRecorder(
     if (!isRecording || isPaused || !effectiveGps) return;
 
     const now = Date.now();
-    // Throttle to 1 second minimum interval between trackpoints
-    if (now - lastRecordedTimeRef.current < 900) return;
+    // Throttle to minimum 800ms between recorded points
+    if (now - lastRecordedTimeRef.current < 800) return;
     lastRecordedTimeRef.current = now;
+
+    let pointTimeStr = new Date(effectiveGps.timestamp || now).toISOString();
+    let pointSpeedKmh = effectiveGps.speedKmh ?? 0;
+
+    if (isSimulating) {
+      if (!simStartTimeRef.current) {
+        simStartTimeRef.current = now;
+      }
+      if (prevSimPointRef.current) {
+        const segDist = haversineKmPrecise(
+          prevSimPointRef.current,
+          { lat: effectiveGps.lat, lng: effectiveGps.lng }
+        );
+        accumulatedSimDistanceKmRef.current += segDist;
+      }
+      prevSimPointRef.current = { lat: effectiveGps.lat, lng: effectiveGps.lng };
+
+      // Generate realistic Strava road speeds for simulation
+      const baseSpeed =
+        sportType === 'VirtualRide' || sportType === 'Ride'
+          ? 28 + (Math.sin(accumulatedSimDistanceKmRef.current * 2) * 4)
+          : sportType === 'Run' || sportType === 'Walk'
+          ? 9.5 + (Math.sin(accumulatedSimDistanceKmRef.current * 2) * 1.5)
+          : 56 + (Math.sin(accumulatedSimDistanceKmRef.current * 2) * 7);
+
+      pointSpeedKmh = Math.max(5, Math.round(baseSpeed));
+
+      // Monotonically advance simulated time based on real distance covered
+      const simulatedElapsedSec = Math.round(
+        (accumulatedSimDistanceKmRef.current / (pointSpeedKmh || 30)) * 3600
+      );
+      pointTimeStr = new Date(simStartTimeRef.current + simulatedElapsedSec * 1000).toISOString();
+    }
 
     const ele = estimatePhilippineElevation(effectiveGps.lat, effectiveGps.lng);
     const newPoint: StravaTrackPoint = {
       lat: effectiveGps.lat,
       lng: effectiveGps.lng,
       ele,
-      time: new Date(effectiveGps.timestamp || now).toISOString(),
-      speedKmh: effectiveGps.speedKmh ?? 0,
+      time: pointTimeStr,
+      speedKmh: pointSpeedKmh,
       heading: effectiveGps.heading ?? undefined,
     };
 
     setTrackPoints((prev) => [...prev, newPoint]);
-  }, [effectiveGps, isRecording, isPaused]);
+  }, [effectiveGps, isRecording, isPaused, isSimulating, sportType]);
 
   const stats = calculateStravaStats(trackPoints);
 

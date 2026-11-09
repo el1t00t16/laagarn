@@ -23,6 +23,9 @@ interface StravaActivityModalProps {
   stats: StravaActivityStats;
   activityName: string;
   sportType: StravaSportType;
+  onChangeSportType?: (sport: StravaSportType) => void;
+  onResetRecording?: () => void;
+  isRecording?: boolean;
   onDownloadGpx: () => void;
   theme?: 'dark' | 'amoled' | 'light';
 }
@@ -33,6 +36,9 @@ export const StravaActivityModal: React.FC<StravaActivityModalProps> = ({
   stats,
   activityName,
   sportType,
+  onChangeSportType,
+  onResetRecording,
+  isRecording = false,
   onDownloadGpx,
   theme = 'dark',
 }) => {
@@ -80,6 +86,33 @@ export const StravaActivityModal: React.FC<StravaActivityModalProps> = ({
             </h2>
           </div>
         </div>
+
+        {/* Sport Type Selector */}
+        {onChangeSportType && (
+          <div className="mb-3">
+            <div className="mono text-[9px] uppercase font-bold text-gray-400 mb-1.5">
+              Activity Sport Type
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {(['VirtualRide', 'Ride', 'Drive', 'Run'] as StravaSportType[]).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => onChangeSportType(st)}
+                  className={`py-1.5 px-1 rounded-lg mono text-[10px] font-bold text-center transition-all cursor-pointer ${
+                    sportType === st
+                      ? 'bg-[#fc5200] text-white shadow-sm'
+                      : isDark
+                      ? 'bg-white/5 hover:bg-white/10 text-gray-300'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {st === 'VirtualRide' ? 'Virtual' : st}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-2.5 my-4">

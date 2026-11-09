@@ -4,12 +4,14 @@ import {
   ConvoyPeer,
   ConvoyTelemetryPacket,
   ConvoyVehicleType,
+  ConvoySharedRoute,
   generateConvoyRoomCode,
   getOrCreatePeerId,
   getSavedColor,
   getSavedNickname,
   getSavedVehicle,
-  sanitizeRoomCode,
+  normalizeConvoyCode,
+  getConvoyTopic,
   saveNickname,
   saveVehicle,
   enrichPeerMetrics,
@@ -25,10 +27,16 @@ export interface UseConvoyReturn {
   activePeersCount: number;
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
   lastBroadcastAt: number | null;
+  sharedRoute: ConvoySharedRoute | null;
+  routeSuggestions: ConvoySharedRoute[];
   createConvoy: (customCode?: string) => void;
   joinConvoy: (code: string) => void;
   leaveConvoy: () => void;
   updateProfile: (name: string, vehicle: ConvoyVehicleType, color: string) => void;
+  shareRouteToConvoy: (route: ConvoySharedRoute) => void;
+  suggestRouteToConvoy: (route: ConvoySharedRoute) => void;
+  clearSharedRoute: () => void;
+  dismissRouteSuggestion: (id: string) => void;
 }
 
 export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
@@ -36,8 +44,9 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
   const [roomCode, setRoomCode] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       const urlCode = new URLSearchParams(window.location.search).get('convoy');
-      if (urlCode) return sanitizeRoomCode(urlCode);
-      return localStorage.getItem('laagarn_convoy_code') || null;
+      if (urlCode) return normalizeConvoyCode(urlCode);
+      const stored = localStorage.getItem('laagarn_convoy_code');
+      return stored ? normalizeConvoyCode(stored) : null;
     }
     return null;
   });
@@ -61,7 +70,14 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
   // Map of remote peers: peerId -> ConvoyPeer
   const [peersMap, setPeersMap] = useState<Record<string, ConvoyPeer>>({});
 
+  // Shared route states
+  const [sharedRoute, setSharedRoute] = useState<ConvoySharedRoute | null>(null);
+  const [routeSuggestions, setRouteSuggestions] = useState<ConvoySharedRoute[]>([]);
+  const sharedRouteRef = useRef<ConvoySharedRoute | null>(null);
+  sharedRouteRef.current = sharedRoute;
+
   const wsRef = useRef<WebSocket | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const reconnectTimerRef = useRef<any>(null);
 
@@ -96,9 +112,8 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     const raw = JSON.stringify(packet);
 
     // 1. Primary Network Delivery: HTTP POST to Ntfy topic
-    // (Ntfy immediately distributes this payload to all connected WebSocket subscribers)
     if (stateRef.current.roomCode) {
-      const topic = `laagarn_convoy_${stateRef.current.roomCode.toLowerCase()}`;
+      const topic = getConvoyTopic(stateRef.current.roomCode);
       fetch(`https://ntfy.sh/${topic}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -153,28 +168,93 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
       return;
     }
 
-    if (packet.type === 'telemetry') {
-      const newPeer: ConvoyPeer = {
-        id: packet.peerId,
-        name: packet.name || 'Friend',
-        vehicle: packet.vehicle || 'motorcycle',
-        color: packet.color || '#06b6d4',
-        lat: packet.lat,
-        lng: packet.lng,
-        heading: packet.heading,
-        speedKmh: packet.speedKmh,
-        batteryLevel: packet.batteryLevel,
-        updatedAt: packet.updatedAt || Date.now(),
-        status: 'active',
-        isSelf: false,
-      };
+    if (packet.type === 'ping') {
+      // Record peer if coordinates are available
+      if (packet.lat && packet.lng) {
+        const newPeer: ConvoyPeer = {
+          id: packet.peerId,
+          name: packet.name || 'Friend',
+          vehicle: packet.vehicle || 'motorcycle',
+          color: packet.color || '#06b6d4',
+          lat: packet.lat,
+          lng: packet.lng,
+          heading: packet.heading,
+          speedKmh: packet.speedKmh,
+          batteryLevel: packet.batteryLevel,
+          updatedAt: packet.updatedAt || Date.now(),
+          status: 'active',
+          isSelf: false,
+        };
+        setPeersMap((prev) => ({ ...prev, [packet.peerId]: newPeer }));
+      }
 
-      setPeersMap((prev) => ({
-        ...prev,
-        [packet.peerId]: newPeer,
-      }));
+      // Immediately respond with our current status and shared route
+      const replyPacket: ConvoyTelemetryPacket = {
+        type: 'telemetry',
+        peerId: peerIdRef.current,
+        name: stateRef.current.myName,
+        vehicle: stateRef.current.myVehicle,
+        color: stateRef.current.myColor,
+        lat: stateRef.current.gpsState?.lat ?? 0,
+        lng: stateRef.current.gpsState?.lng ?? 0,
+        heading: stateRef.current.gpsState?.heading ?? null,
+        speedKmh: stateRef.current.gpsState?.speedKmh ?? null,
+        batteryLevel: batteryLevelRef.current,
+        updatedAt: Date.now(),
+        route: sharedRouteRef.current || undefined,
+      };
+      broadcastPacket(replyPacket);
+
+      // If peer provided a shared route, adopt it
+      if (packet.route && !sharedRouteRef.current) {
+        setSharedRoute(packet.route);
+      }
+      return;
     }
-  }, []);
+
+    if (packet.type === 'telemetry') {
+      if (packet.lat && packet.lng) {
+        const newPeer: ConvoyPeer = {
+          id: packet.peerId,
+          name: packet.name || 'Friend',
+          vehicle: packet.vehicle || 'motorcycle',
+          color: packet.color || '#06b6d4',
+          lat: packet.lat,
+          lng: packet.lng,
+          heading: packet.heading,
+          speedKmh: packet.speedKmh,
+          batteryLevel: packet.batteryLevel,
+          updatedAt: packet.updatedAt || Date.now(),
+          status: 'active',
+          isSelf: false,
+        };
+
+        setPeersMap((prev) => ({
+          ...prev,
+          [packet.peerId]: newPeer,
+        }));
+      }
+
+      if (packet.route && !sharedRouteRef.current) {
+        setSharedRoute(packet.route);
+      }
+      return;
+    }
+
+    if (packet.type === 'route_share' && packet.route) {
+      setSharedRoute(packet.route);
+      return;
+    }
+
+    if (packet.type === 'route_suggest' && packet.route) {
+      setRouteSuggestions((prev) => {
+        const exists = prev.some((r) => r.id === packet.route?.id);
+        if (exists) return prev;
+        return [packet.route!, ...prev.slice(0, 4)];
+      });
+      return;
+    }
+  }, [broadcastPacket]);
 
   // Connect to room transport
   useEffect(() => {
@@ -183,6 +263,10 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
+      }
+      if (sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
       }
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
@@ -193,12 +277,12 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     }
 
     setConnectionStatus('connecting');
-    const topic = `laagarn_convoy_${roomCode.toLowerCase()}`;
+    const topic = getConvoyTopic(roomCode);
 
-    // 1. Setup BroadcastChannel
+    // 1. Setup BroadcastChannel for instant local cross-tab communication
     try {
       if (typeof BroadcastChannel !== 'undefined') {
-        const bc = new BroadcastChannel(`laagarn_convoy_${roomCode}`);
+        const bc = new BroadcastChannel(`laagarn_convoy_${topic}`);
         bc.onmessage = (ev) => {
           handleIncomingPacket(ev.data);
         };
@@ -208,13 +292,42 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
       // BroadcastChannel optional
     }
 
-    // 2. Setup WebSocket for receiving remote peer broadcasts
+    // 2. Setup WebSocket and SSE fallback for receiving remote peer broadcasts
     let isCancelled = false;
 
-    const connectWebSocket = () => {
+    const setupFallbackSSE = () => {
+      if (isCancelled || sseRef.current) return;
+      try {
+        const sse = new EventSource(`https://ntfy.sh/${topic}/sse`);
+        sseRef.current = sse;
+        sse.onopen = () => {
+          if (isCancelled) return;
+          setConnectionStatus('connected');
+        };
+        sse.onmessage = (event) => {
+          if (isCancelled) return;
+          try {
+            const raw = JSON.parse(event.data);
+            if (raw.event === 'message' && raw.message) {
+              const parsed = JSON.parse(raw.message);
+              handleIncomingPacket(parsed);
+            }
+          } catch {
+            // Ignore non-json
+          }
+        };
+        sse.onerror = () => {
+          if (isCancelled) return;
+          setConnectionStatus('connecting');
+        };
+      } catch {
+        // SSE not supported or blocked
+      }
+    };
+
+    const connectTransport = () => {
       if (isCancelled) return;
 
-      // Ensure any existing socket is cleanly disposed before recreating
       if (wsRef.current) {
         wsRef.current.onopen = null;
         wsRef.current.onmessage = null;
@@ -232,23 +345,22 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
           if (isCancelled) return;
           setConnectionStatus('connected');
 
-          // Send initial telemetry packet if GPS is available
-          if (stateRef.current.gpsState) {
-            const initialPacket: ConvoyTelemetryPacket = {
-              type: 'telemetry',
-              peerId: peerIdRef.current,
-              name: stateRef.current.myName,
-              vehicle: stateRef.current.myVehicle,
-              color: stateRef.current.myColor,
-              lat: stateRef.current.gpsState.lat,
-              lng: stateRef.current.gpsState.lng,
-              heading: stateRef.current.gpsState.heading,
-              speedKmh: stateRef.current.gpsState.speedKmh,
-              batteryLevel: batteryLevelRef.current,
-              updatedAt: Date.now(),
-            };
-            broadcastPacket(initialPacket);
-          }
+          // Immediately send handshake ping packet
+          const pingPacket: ConvoyTelemetryPacket = {
+            type: 'ping',
+            peerId: peerIdRef.current,
+            name: stateRef.current.myName,
+            vehicle: stateRef.current.myVehicle,
+            color: stateRef.current.myColor,
+            lat: stateRef.current.gpsState?.lat ?? 0,
+            lng: stateRef.current.gpsState?.lng ?? 0,
+            heading: stateRef.current.gpsState?.heading ?? null,
+            speedKmh: stateRef.current.gpsState?.speedKmh ?? null,
+            batteryLevel: batteryLevelRef.current,
+            updatedAt: Date.now(),
+            route: sharedRouteRef.current || undefined,
+          };
+          broadcastPacket(pingPacket);
         };
 
         ws.onmessage = (event) => {
@@ -266,21 +378,25 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
 
         ws.onerror = () => {
           if (isCancelled) return;
-          setConnectionStatus('error');
+          // If WebSocket has error, activate SSE fallback
+          setupFallbackSSE();
         };
 
         ws.onclose = () => {
           if (isCancelled) return;
           setConnectionStatus('connecting');
-          // Reconnect with backoff
-          reconnectTimerRef.current = setTimeout(connectWebSocket, 4000);
+          setupFallbackSSE();
+          reconnectTimerRef.current = setTimeout(connectTransport, 5000);
         };
       } catch {
-        if (!isCancelled) setConnectionStatus('error');
+        if (!isCancelled) {
+          setupFallbackSSE();
+          reconnectTimerRef.current = setTimeout(connectTransport, 6000);
+        }
       }
     };
 
-    connectWebSocket();
+    connectTransport();
 
     return () => {
       isCancelled = true;
@@ -295,6 +411,10 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
         wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
+      }
+      if (sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
       }
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
@@ -319,15 +439,16 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
         speedKmh: gpsState.speedKmh,
         batteryLevel: batteryLevelRef.current,
         updatedAt: Date.now(),
+        route: sharedRouteRef.current || undefined,
       };
       broadcastPacket(initialPacket);
     }
     prevGpsStateRef.current = gpsState;
   }, [gpsState, roomCode, isSharing, myName, myVehicle, myColor, broadcastPacket]);
 
-  // Periodic GPS Telemetry Broadcast (every 4 seconds when sharing and GPS is available)
+  // Periodic GPS Telemetry Broadcast (every 4 seconds when sharing)
   useEffect(() => {
-    if (!roomCode || !isSharing || !gpsState) return;
+    if (!roomCode || !isSharing) return;
 
     const interval = setInterval(() => {
       const packet: ConvoyTelemetryPacket = {
@@ -336,12 +457,13 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
         name: myName,
         vehicle: myVehicle,
         color: myColor,
-        lat: gpsState.lat,
-        lng: gpsState.lng,
-        heading: gpsState.heading,
-        speedKmh: gpsState.speedKmh,
+        lat: gpsState?.lat ?? 0,
+        lng: gpsState?.lng ?? 0,
+        heading: gpsState?.heading ?? null,
+        speedKmh: gpsState?.speedKmh ?? null,
         batteryLevel: batteryLevelRef.current,
         updatedAt: Date.now(),
+        route: sharedRouteRef.current || undefined,
       };
       broadcastPacket(packet);
     }, 4000);
@@ -372,7 +494,7 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
 
   // User Actions
   const createConvoy = useCallback((customCode?: string) => {
-    const code = customCode ? sanitizeRoomCode(customCode) : generateConvoyRoomCode();
+    const code = customCode ? normalizeConvoyCode(customCode) : generateConvoyRoomCode();
     setRoomCode(code);
     setIsSharing(true);
     try {
@@ -388,7 +510,7 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
   }, []);
 
   const joinConvoy = useCallback((code: string) => {
-    const clean = sanitizeRoomCode(code);
+    const clean = normalizeConvoyCode(code);
     if (!clean) return;
     setRoomCode(clean);
     setIsSharing(true);
@@ -409,6 +531,8 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     setIsSharing(false);
     setRoomCode(null);
     setPeersMap({});
+    setSharedRoute(null);
+    setRouteSuggestions([]);
     try {
       localStorage.removeItem('laagarn_convoy_code');
       if (typeof window !== 'undefined' && window.history) {
@@ -439,25 +563,79 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
       }
 
       // Immediately broadcast profile update if connected
-      if (roomCode && isSharing && gpsState) {
+      if (roomCode && isSharing) {
         const packet: ConvoyTelemetryPacket = {
           type: 'telemetry',
           peerId: peerIdRef.current,
           name: cleanName,
           vehicle,
           color,
-          lat: gpsState.lat,
-          lng: gpsState.lng,
-          heading: gpsState.heading,
-          speedKmh: gpsState.speedKmh,
+          lat: gpsState?.lat ?? 0,
+          lng: gpsState?.lng ?? 0,
+          heading: gpsState?.heading ?? null,
+          speedKmh: gpsState?.speedKmh ?? null,
           batteryLevel: batteryLevelRef.current,
           updatedAt: Date.now(),
+          route: sharedRouteRef.current || undefined,
         };
         broadcastPacket(packet);
       }
     },
     [roomCode, isSharing, gpsState, broadcastPacket]
   );
+
+  const shareRouteToConvoy = useCallback(
+    (route: ConvoySharedRoute) => {
+      setSharedRoute(route);
+      sharedRouteRef.current = route;
+      const packet: ConvoyTelemetryPacket = {
+        type: 'route_share',
+        peerId: peerIdRef.current,
+        name: stateRef.current.myName,
+        vehicle: stateRef.current.myVehicle,
+        color: stateRef.current.myColor,
+        lat: stateRef.current.gpsState?.lat ?? 0,
+        lng: stateRef.current.gpsState?.lng ?? 0,
+        heading: stateRef.current.gpsState?.heading ?? null,
+        speedKmh: stateRef.current.gpsState?.speedKmh ?? null,
+        batteryLevel: batteryLevelRef.current,
+        updatedAt: Date.now(),
+        route,
+      };
+      broadcastPacket(packet);
+    },
+    [broadcastPacket]
+  );
+
+  const suggestRouteToConvoy = useCallback(
+    (route: ConvoySharedRoute) => {
+      const packet: ConvoyTelemetryPacket = {
+        type: 'route_suggest',
+        peerId: peerIdRef.current,
+        name: stateRef.current.myName,
+        vehicle: stateRef.current.myVehicle,
+        color: stateRef.current.myColor,
+        lat: stateRef.current.gpsState?.lat ?? 0,
+        lng: stateRef.current.gpsState?.lng ?? 0,
+        heading: stateRef.current.gpsState?.heading ?? null,
+        speedKmh: stateRef.current.gpsState?.speedKmh ?? null,
+        batteryLevel: batteryLevelRef.current,
+        updatedAt: Date.now(),
+        route,
+      };
+      broadcastPacket(packet);
+    },
+    [broadcastPacket]
+  );
+
+  const clearSharedRoute = useCallback(() => {
+    setSharedRoute(null);
+    sharedRouteRef.current = null;
+  }, []);
+
+  const dismissRouteSuggestion = useCallback((id: string) => {
+    setRouteSuggestions((prev) => prev.filter((r) => r.id !== id));
+  }, []);
 
   // Return peers enriched with relative distance and cardinal bearing
   const peers = useMemo(() => {
@@ -478,9 +656,15 @@ export function useConvoy(gpsState: GpsPositionState | null): UseConvoyReturn {
     activePeersCount,
     connectionStatus,
     lastBroadcastAt,
+    sharedRoute,
+    routeSuggestions,
     createConvoy,
     joinConvoy,
     leaveConvoy,
     updateProfile,
+    shareRouteToConvoy,
+    suggestRouteToConvoy,
+    clearSharedRoute,
+    dismissRouteSuggestion,
   };
 }

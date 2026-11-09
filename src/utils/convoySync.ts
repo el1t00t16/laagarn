@@ -20,8 +20,20 @@ export interface ConvoyPeer {
   cardinalDirection?: string;
 }
 
+export interface ConvoySharedRoute {
+  id: string;
+  label: string;
+  stops: LatLngPoint[];
+  totalDistanceKm: number;
+  durationMinutes: number;
+  suggestedByPeerId: string;
+  suggestedByName: string;
+  timestamp: number;
+  isHostRoute?: boolean;
+}
+
 export interface ConvoyTelemetryPacket {
-  type: 'telemetry' | 'leave' | 'ping';
+  type: 'telemetry' | 'leave' | 'ping' | 'route_share' | 'route_suggest';
   peerId: string;
   name: string;
   vehicle: ConvoyVehicleType;
@@ -32,6 +44,7 @@ export interface ConvoyTelemetryPacket {
   speedKmh: number | null;
   updatedAt: number;
   batteryLevel?: number | null;
+  route?: ConvoySharedRoute;
 }
 
 export const CONVOY_VEHICLE_OPTIONS: { id: ConvoyVehicleType; label: string; emoji: string }[] = [
@@ -63,9 +76,41 @@ export function generateConvoyRoomCode(): string {
 
 /**
  * Normalize and clean room code input.
+ * Ensures consistent handling whether user enters "6689", "laag-6689", "LAAG6689", or "LAAG-6689".
+ */
+export function normalizeConvoyCode(code: string): string {
+  if (!code) return '';
+  const trimmed = code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  if (!trimmed) return '';
+
+  // If user only typed 4 digits (e.g. "6689"), prefix with LAAG-
+  if (/^\d{4}$/.test(trimmed)) {
+    return `LAAG-${trimmed}`;
+  }
+
+  // If user typed "LAAG" followed directly by digits (e.g. "LAAG6689")
+  if (/^LAAG\d{4}$/.test(trimmed)) {
+    return `LAAG-${trimmed.slice(4)}`;
+  }
+
+  return trimmed.slice(0, 16);
+}
+
+/**
+ * Backwards-compatible sanitize function that uses normalizeConvoyCode.
  */
 export function sanitizeRoomCode(code: string): string {
-  return code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16);
+  return normalizeConvoyCode(code);
+}
+
+/**
+ * Derives a deterministic canonical ntfy.sh topic from any room code format.
+ * Strips hyphens so that "6689", "LAAG-6689", and "laag6689" all resolve to "laagarn_convoy_laag6689".
+ */
+export function getConvoyTopic(code: string): string {
+  const norm = normalizeConvoyCode(code);
+  const clean = norm.replace(/[^A-Z0-9]/gi, '').toLowerCase();
+  return `laagarn_convoy_${clean || 'lobby'}`;
 }
 
 /**

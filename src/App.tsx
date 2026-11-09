@@ -46,6 +46,7 @@ import { WeatherForecastPanel } from './components/WeatherForecastPanel';
 import { OfflineCachePanel } from './components/OfflineCachePanel';
 import { EstablishmentsPanel } from './components/EstablishmentsPanel';
 import { ConvoyPanel } from './components/ConvoyPanel';
+import { ConvoySharedRoute } from './utils/convoySync';
 import {
   Establishment,
   KNOWN_ESTABLISHMENTS,
@@ -246,10 +247,16 @@ export default function App() {
     activePeersCount: convoyActivePeersCount,
     connectionStatus: convoyConnectionStatus,
     lastBroadcastAt: convoyLastBroadcastAt,
+    sharedRoute: convoySharedRoute,
+    routeSuggestions: convoyRouteSuggestions,
     createConvoy,
     joinConvoy,
     leaveConvoy,
     updateProfile: updateConvoyProfile,
+    shareRouteToConvoy,
+    suggestRouteToConvoy,
+    clearSharedRoute,
+    dismissRouteSuggestion,
   } = useConvoy(effectiveGps);
 
   // Highway Dashcam & Timelapse recorder hook
@@ -266,6 +273,50 @@ export default function App() {
     isSimulating,
     activeRoute?.label || 'Philippine Highway Simulation'
   );
+
+  const handleLoadSharedRoute = useCallback(
+    (route: ConvoySharedRoute) => {
+      if (route.stops && route.stops.length >= 2) {
+        setStops(route.stops);
+        setActiveTab('routes');
+        speakGuidance(`Loaded convoy route: ${route.label}`);
+      }
+    },
+    [speakGuidance]
+  );
+
+  const handleShareCurrentRouteToConvoy = useCallback(() => {
+    if (!activeRoute) return;
+    const shared: ConvoySharedRoute = {
+      id: `route-${Date.now()}`,
+      label: activeRoute.label,
+      stops: activeRoute.stops,
+      totalDistanceKm: activeRoute.totalDistanceKm,
+      durationMinutes: activeRoute.totalDurationMinutes,
+      suggestedByPeerId: 'self',
+      suggestedByName: convoyMyName,
+      timestamp: Date.now(),
+      isHostRoute: true,
+    };
+    shareRouteToConvoy(shared);
+    speakGuidance(`Shared ${activeRoute.label} to convoy`);
+  }, [activeRoute, convoyMyName, shareRouteToConvoy, speakGuidance]);
+
+  const handleSuggestCurrentRouteToConvoy = useCallback(() => {
+    if (!activeRoute) return;
+    const sug: ConvoySharedRoute = {
+      id: `sug-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      label: activeRoute.label,
+      stops: activeRoute.stops,
+      totalDistanceKm: activeRoute.totalDistanceKm,
+      durationMinutes: activeRoute.totalDurationMinutes,
+      suggestedByPeerId: 'self',
+      suggestedByName: convoyMyName,
+      timestamp: Date.now(),
+    };
+    suggestRouteToConvoy(sug);
+    speakGuidance(`Suggested route to convoy: ${activeRoute.label}`);
+  }, [activeRoute, convoyMyName, suggestRouteToConvoy, speakGuidance]);
 
   const handleToggleDashcam = () => {
     if (dashcamViewMode === 'hidden') {
@@ -482,11 +533,15 @@ export default function App() {
       }
     }
 
-    // Voice announcement if user arrives at destination
+    // Voice announcement and Dashcam auto-save if user arrives at destination
     if (progress.arrived) {
       speakGuidance('You have arrived at your destination.');
+      if (cameraRecorder.isRecording) {
+        cameraRecorder.stopRecording();
+        speakGuidance('Your dashcam recording is finished and ready to preview and save.');
+      }
     }
-  }, [effectiveGps, navigationActive, isSimulating, activeRoute, routeIndex, activeStepIndex, speakGuidance]);
+  }, [effectiveGps, navigationActive, isSimulating, activeRoute, routeIndex, activeStepIndex, speakGuidance, cameraRecorder]);
 
   // Handle GPS Locate button
   const handleLocateUserGps = useCallback(
@@ -1141,6 +1196,9 @@ export default function App() {
               onOpenStravaModal={() => setStravaModalOpen(true)}
               stravaRecordingActive={stravaRecorder.isRecording}
               stravaPointsCount={stravaRecorder.trackPoints.length}
+              isConvoySharing={isConvoySharing}
+              convoyRoomCode={convoyRoomCode}
+              onShareRouteToConvoy={handleShareCurrentRouteToConvoy}
             />
           )}
 
@@ -1224,6 +1282,9 @@ export default function App() {
               connectionStatus={convoyConnectionStatus}
               lastBroadcastAt={convoyLastBroadcastAt}
               gpsState={effectiveGps}
+              currentRoute={activeRoute}
+              sharedRoute={convoySharedRoute}
+              routeSuggestions={convoyRouteSuggestions}
               onCreateConvoy={createConvoy}
               onJoinConvoy={joinConvoy}
               onLeaveConvoy={leaveConvoy}
@@ -1232,6 +1293,10 @@ export default function App() {
               onFitBounds={handleFitConvoyBounds}
               onRouteToPeer={handleRouteToPeer}
               onAddPeerStop={handleAddPeerStop}
+              onShareRouteToConvoy={handleShareCurrentRouteToConvoy}
+              onSuggestRouteToConvoy={handleSuggestCurrentRouteToConvoy}
+              onLoadSharedRoute={handleLoadSharedRoute}
+              onDismissRouteSuggestion={dismissRouteSuggestion}
               theme={theme}
             />
           )}
@@ -1334,6 +1399,11 @@ export default function App() {
             dashcamActive={dashcamViewMode !== 'hidden'}
             isRecordingVideo={cameraRecorder.isRecording}
             mobileSheetOpen={mobileSheetState !== 'peek'}
+            onOpenStravaModal={() => setStravaModalOpen(true)}
+            stravaRecordingActive={stravaRecorder.isRecording}
+            stravaPointsCount={stravaRecorder.trackPoints.length}
+            convoySharedRoute={convoySharedRoute}
+            onLoadSharedRoute={handleLoadSharedRoute}
             theme={theme}
           />
         </div>
@@ -1433,6 +1503,9 @@ export default function App() {
                 onOpenStravaModal={() => setStravaModalOpen(true)}
                 stravaRecordingActive={stravaRecorder.isRecording}
                 stravaPointsCount={stravaRecorder.trackPoints.length}
+                isConvoySharing={isConvoySharing}
+                convoyRoomCode={convoyRoomCode}
+                onShareRouteToConvoy={handleShareCurrentRouteToConvoy}
               />
             )}
 
@@ -1521,6 +1594,9 @@ export default function App() {
                 connectionStatus={convoyConnectionStatus}
                 lastBroadcastAt={convoyLastBroadcastAt}
                 gpsState={effectiveGps}
+                currentRoute={activeRoute}
+                sharedRoute={convoySharedRoute}
+                routeSuggestions={convoyRouteSuggestions}
                 onCreateConvoy={createConvoy}
                 onJoinConvoy={joinConvoy}
                 onLeaveConvoy={leaveConvoy}
@@ -1532,6 +1608,10 @@ export default function App() {
                 onFitBounds={handleFitConvoyBounds}
                 onRouteToPeer={handleRouteToPeer}
                 onAddPeerStop={handleAddPeerStop}
+                onShareRouteToConvoy={handleShareCurrentRouteToConvoy}
+                onSuggestRouteToConvoy={handleSuggestCurrentRouteToConvoy}
+                onLoadSharedRoute={handleLoadSharedRoute}
+                onDismissRouteSuggestion={dismissRouteSuggestion}
                 theme={theme}
               />
             )}
@@ -1714,6 +1794,9 @@ export default function App() {
         stats={stravaRecorder.stats}
         activityName={stravaRecorder.activityName}
         sportType={stravaRecorder.sportType}
+        onChangeSportType={stravaRecorder.setSportType}
+        onResetRecording={stravaRecorder.resetRecording}
+        isRecording={stravaRecorder.isRecording}
         onDownloadGpx={stravaRecorder.downloadGpx}
         theme={theme}
       />

@@ -17,7 +17,7 @@ import {
   exportRouteToGpx,
   parseGpxFile,
 } from '../utils/gpxHandler';
-import { Download, Upload, CheckCircle2, Activity } from 'lucide-react';
+import { Download, Upload, CheckCircle2, Activity, Share2 } from 'lucide-react';
 
 interface RoutePlannerPanelProps {
   stops: LatLngPoint[];
@@ -44,6 +44,9 @@ interface RoutePlannerPanelProps {
   onOpenStravaModal?: () => void;
   stravaRecordingActive?: boolean;
   stravaPointsCount?: number;
+  isConvoySharing?: boolean;
+  convoyRoomCode?: string | null;
+  onShareRouteToConvoy?: () => void;
 }
 
 export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
@@ -71,6 +74,9 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
   onOpenStravaModal,
   stravaRecordingActive = false,
   stravaPointsCount = 0,
+  isConvoySharing = false,
+  convoyRoomCode = null,
+  onShareRouteToConvoy,
 }) => {
   const [originInput, setOriginInput] = useState<string>(stops[0]?.name || '');
   const [destInput, setDestInput] = useState<string>(
@@ -830,26 +836,40 @@ export const RoutePlannerPanel: React.FC<RoutePlannerPanelProps> = ({
         )}
       </div>
 
+      {/* Convoy Route Sharing Action (when convoy is active) */}
+      {isConvoySharing && onShareRouteToConvoy && activeRoute && (
+        <button
+          type="button"
+          onClick={onShareRouteToConvoy}
+          className="w-full mt-2 py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:brightness-110 active:scale-98 text-white mono text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+          <span>Share Route to Convoy {convoyRoomCode ? `(${convoyRoomCode})` : ''}</span>
+        </button>
+      )}
+
       {/* Strava Simulation Tracker Status */}
-      {onOpenStravaModal && (stravaPointsCount > 0 || isSimulating) && (
-        <div className="mt-2 p-2.5 rounded-xl border border-[#fc5200]/30 bg-[#fc5200]/10 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      {onOpenStravaModal && (
+        <div className="mt-2.5 p-3 rounded-xl border border-[#fc5200]/30 bg-[#fc5200]/10 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2 min-w-0">
             <span
-              className={`w-2.5 h-2.5 rounded-full ${
+              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                 stravaRecordingActive ? 'bg-[#fc5200] animate-pulse' : 'bg-gray-400'
               }`}
             />
-            <div className="text-xs font-bold text-[#fc5200] mono uppercase flex items-center gap-1">
-              <Activity className="w-3.5 h-3.5" />
-              <span>Strava Track: {stravaPointsCount} pts</span>
+            <div className="text-xs font-bold text-[#fc5200] mono uppercase flex items-center gap-1.5 truncate">
+              <Activity className="w-4 h-4 shrink-0" />
+              <span className="truncate">
+                Strava GPX {stravaPointsCount > 0 ? `(${stravaPointsCount} pts)` : '(Sim / Live)'}
+              </span>
             </div>
           </div>
           <button
             type="button"
             onClick={onOpenStravaModal}
-            className="px-2.5 py-1 rounded-lg bg-[#fc5200] hover:bg-[#e04500] text-white mono text-[10px] font-bold uppercase transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-[#fc5200] hover:bg-[#e04500] text-white mono text-[10px] font-black uppercase transition-colors cursor-pointer shrink-0 shadow-sm"
           >
-            View / Export
+            Strava Activity
           </button>
         </div>
       )}
