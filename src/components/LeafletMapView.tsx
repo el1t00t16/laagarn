@@ -42,6 +42,7 @@ import {
 import {
   ConvoyPeer,
   ConvoySharedRoute,
+  ConvoyJoinRequest,
   CONVOY_VEHICLE_OPTIONS,
   peerToLatLngPoint,
 } from '../utils/convoySync';
@@ -129,6 +130,9 @@ interface LeafletMapViewProps {
   stravaPointsCount?: number;
   convoySharedRoute?: ConvoySharedRoute | null;
   onLoadSharedRoute?: (route: ConvoySharedRoute) => void;
+  pendingConvoyJoinRequests?: ConvoyJoinRequest[];
+  onAcceptConvoyJoinRequest?: (peerId: string) => void;
+  onDeclineConvoyJoinRequest?: (peerId: string) => void;
   theme?: 'dark' | 'amoled' | 'light';
 }
 
@@ -562,6 +566,9 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
   stravaPointsCount = 0,
   convoySharedRoute = null,
   onLoadSharedRoute,
+  pendingConvoyJoinRequests = [],
+  onAcceptConvoyJoinRequest,
+  onDeclineConvoyJoinRequest,
   theme = 'dark',
 }) => {
   const isDark = theme !== 'light';
@@ -1798,6 +1805,55 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         </motion.div>
       )}
     </AnimatePresence>
+
+      {/* Floating Host Convoy Join Request Banner on Map */}
+      {pendingConvoyJoinRequests && pendingConvoyJoinRequests.length > 0 && onAcceptConvoyJoinRequest && (
+        <div className="absolute top-16 left-3 right-3 sm:left-auto sm:right-4 sm:max-w-md z-[425] pointer-events-auto animate-in fade-in slide-in-from-top-4">
+          <div className="p-3.5 bg-black/90 backdrop-blur-xl border-2 border-amber-500/60 rounded-2xl shadow-2xl space-y-2 text-white">
+            <div className="flex items-center justify-between">
+              <span className="mono text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span>Convoy Join Request ({pendingConvoyJoinRequests.length})</span>
+              </span>
+              <span className="mono text-[9px] text-gray-400">Host Approval</span>
+            </div>
+            {pendingConvoyJoinRequests.map((req) => (
+              <div key={req.peerId} className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-full border border-white flex items-center justify-center text-xs shadow-sm shrink-0"
+                    style={{ background: req.color }}
+                  >
+                    {CONVOY_VEHICLE_OPTIONS.find((v) => v.id === req.vehicle)?.emoji || '🏍️'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-black text-white truncate">{req.name}</div>
+                    <div className="mono text-[8.5px] text-gray-400">Wants to join your pack</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onAcceptConvoyJoinRequest(req.peerId)}
+                    className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white mono text-[9px] font-black uppercase rounded-lg shadow-xs cursor-pointer active:scale-95 transition-all"
+                  >
+                    Accept
+                  </button>
+                  {onDeclineConvoyJoinRequest && (
+                    <button
+                      type="button"
+                      onClick={() => onDeclineConvoyJoinRequest(req.peerId)}
+                      className="px-2 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 mono text-[9px] font-bold uppercase rounded-lg cursor-pointer transition-all"
+                    >
+                      Decline
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Floating Convoy Shared Route Notice on Map */}
       {convoySharedRoute && onLoadSharedRoute && !(navigationActive || isSimulating) && (

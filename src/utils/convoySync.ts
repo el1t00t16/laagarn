@@ -12,12 +12,25 @@ export interface ConvoyPeer {
   lng: number;
   heading?: number | null;
   speedKmh?: number | null;
+  accuracyMeters?: number | null;
   updatedAt: number;
   batteryLevel?: number | null;
   status: 'active' | 'idle' | 'offline';
   isSelf?: boolean;
+  isHost?: boolean;
   distanceKm?: number;
   cardinalDirection?: string;
+}
+
+export interface ConvoyJoinRequest {
+  peerId: string;
+  name: string;
+  vehicle: ConvoyVehicleType;
+  color: string;
+  lat: number;
+  lng: number;
+  accuracyMeters?: number | null;
+  timestamp: number;
 }
 
 export interface ConvoySharedRoute {
@@ -33,7 +46,15 @@ export interface ConvoySharedRoute {
 }
 
 export interface ConvoyTelemetryPacket {
-  type: 'telemetry' | 'leave' | 'ping' | 'route_share' | 'route_suggest';
+  type:
+    | 'telemetry'
+    | 'leave'
+    | 'ping'
+    | 'route_share'
+    | 'route_suggest'
+    | 'join_request'
+    | 'join_accepted'
+    | 'join_declined';
   peerId: string;
   name: string;
   vehicle: ConvoyVehicleType;
@@ -42,9 +63,12 @@ export interface ConvoyTelemetryPacket {
   lng: number;
   heading: number | null;
   speedKmh: number | null;
+  accuracyMeters?: number | null;
   updatedAt: number;
   batteryLevel?: number | null;
   route?: ConvoySharedRoute;
+  targetPeerId?: string;
+  isHost?: boolean;
 }
 
 export const CONVOY_VEHICLE_OPTIONS: { id: ConvoyVehicleType; label: string; emoji: string }[] = [
@@ -230,6 +254,19 @@ export function enrichPeerMetrics(
     cardinalDirection: cardinal,
     status,
   };
+}
+
+/**
+ * Format relative distance humanely:
+ * e.g. "Same spot (<15m)", "~45m (Same area / indoors)", "850 m away", "2.4 km away".
+ */
+export function formatConvoyDistance(distanceKm?: number): string {
+  if (distanceKm === undefined || isNaN(distanceKm)) return '--';
+  const meters = Math.round(distanceKm * 1000);
+  if (meters < 15) return 'Same spot (<15m)';
+  if (meters < 100) return `~${meters}m (Same area / indoors)`;
+  if (meters < 1000) return `${meters} m away`;
+  return `${distanceKm.toFixed(1)} km away`;
 }
 
 /**

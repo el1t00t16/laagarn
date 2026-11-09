@@ -240,6 +240,10 @@ export default function App() {
   const {
     roomCode: convoyRoomCode,
     isSharing: isConvoySharing,
+    isHost: isConvoyHost,
+    joinApprovalStatus: convoyJoinApprovalStatus,
+    pendingJoinRequests: convoyPendingJoinRequests,
+    autoAccept: convoyAutoAccept,
     myName: convoyMyName,
     myVehicle: convoyMyVehicle,
     myColor: convoyMyColor,
@@ -252,6 +256,10 @@ export default function App() {
     createConvoy,
     joinConvoy,
     leaveConvoy,
+    cancelJoinRequest: cancelConvoyJoinRequest,
+    acceptJoinRequest: acceptConvoyJoinRequest,
+    declineJoinRequest: declineConvoyJoinRequest,
+    setAutoAccept: setConvoyAutoAccept,
     updateProfile: updateConvoyProfile,
     shareRouteToConvoy,
     suggestRouteToConvoy,
@@ -1274,6 +1282,10 @@ export default function App() {
             <ConvoyPanel
               roomCode={convoyRoomCode}
               isSharing={isConvoySharing}
+              isHost={isConvoyHost}
+              joinApprovalStatus={convoyJoinApprovalStatus}
+              pendingJoinRequests={convoyPendingJoinRequests}
+              autoAccept={convoyAutoAccept}
               myName={convoyMyName}
               myVehicle={convoyMyVehicle}
               myColor={convoyMyColor}
@@ -1288,6 +1300,10 @@ export default function App() {
               onCreateConvoy={createConvoy}
               onJoinConvoy={joinConvoy}
               onLeaveConvoy={leaveConvoy}
+              onCancelJoinRequest={cancelConvoyJoinRequest}
+              onAcceptJoinRequest={acceptConvoyJoinRequest}
+              onDeclineJoinRequest={declineConvoyJoinRequest}
+              onSetAutoAccept={setConvoyAutoAccept}
               onUpdateProfile={updateConvoyProfile}
               onFocusCoordinate={handleFocusCoordinate}
               onFitBounds={handleFitConvoyBounds}
@@ -1404,6 +1420,9 @@ export default function App() {
             stravaPointsCount={stravaRecorder.trackPoints.length}
             convoySharedRoute={convoySharedRoute}
             onLoadSharedRoute={handleLoadSharedRoute}
+            pendingConvoyJoinRequests={convoyPendingJoinRequests}
+            onAcceptConvoyJoinRequest={acceptConvoyJoinRequest}
+            onDeclineConvoyJoinRequest={declineConvoyJoinRequest}
             theme={theme}
           />
         </div>
@@ -1586,6 +1605,10 @@ export default function App() {
               <ConvoyPanel
                 roomCode={convoyRoomCode}
                 isSharing={isConvoySharing}
+                isHost={isConvoyHost}
+                joinApprovalStatus={convoyJoinApprovalStatus}
+                pendingJoinRequests={convoyPendingJoinRequests}
+                autoAccept={convoyAutoAccept}
                 myName={convoyMyName}
                 myVehicle={convoyMyVehicle}
                 myColor={convoyMyColor}
@@ -1600,6 +1623,10 @@ export default function App() {
                 onCreateConvoy={createConvoy}
                 onJoinConvoy={joinConvoy}
                 onLeaveConvoy={leaveConvoy}
+                onCancelJoinRequest={cancelConvoyJoinRequest}
+                onAcceptJoinRequest={acceptConvoyJoinRequest}
+                onDeclineJoinRequest={declineConvoyJoinRequest}
+                onSetAutoAccept={setConvoyAutoAccept}
                 onUpdateProfile={updateConvoyProfile}
                 onFocusCoordinate={(lat, lng, zoom, label) => {
                   handleFocusCoordinate(lat, lng, zoom, label);

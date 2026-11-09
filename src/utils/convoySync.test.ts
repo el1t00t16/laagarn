@@ -10,6 +10,7 @@ import {
   buildConvoyShareUrl,
   buildQrCodeImageUrl,
   peerToLatLngPoint,
+  formatConvoyDistance,
   ConvoyPeer,
 } from './convoySync';
 
@@ -120,4 +121,12 @@ test('peerToLatLngPoint converts peer into router waypoint', () => {
   assert.strictEqual(pt.lng, 123.8854);
   assert.ok(pt.name.includes('Alex Rider'));
   assert.ok(pt.name.includes('🏍️'));
+});
+
+test('formatConvoyDistance handles nearby indoors, meters and km formats', () => {
+  assert.strictEqual(formatConvoyDistance(0.005), 'Same spot (<15m)');
+  assert.strictEqual(formatConvoyDistance(0.045), '~45m (Same area / indoors)');
+  assert.strictEqual(formatConvoyDistance(0.55), '550 m away');
+  assert.strictEqual(formatConvoyDistance(3.2), '3.2 km away');
+  assert.strictEqual(formatConvoyDistance(undefined), '--');
 });
