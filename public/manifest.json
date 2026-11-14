@@ -1,9 +1,12 @@
 {
-  "name": "LAAGARN — My Way, Your Travel Buddy.",
+  "id": "/",
+  "name": "LAAGARN — Mobile GPS & Dashcam",
   "short_name": "LAAGARN",
-  "description": "LAAGARN: My Way, Your Travel Buddy. Precision real-time GPS navigation, offline cached cartography, traffic intelligence, and weather forecasting for the Philippines.",
+  "description": "LAAGARN: Mobile GPS navigation, highway dashcam, live convoy tracking, offline maps, traffic & weather for the Philippines.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#090410",
   "theme_color": "#090410",
@@ -20,6 +23,32 @@
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Plan Route",
+      "short_name": "Route",
+      "url": "/?tab=routes",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Highway Dashcam",
+      "short_name": "Dashcam",
+      "url": "/?dashcam=hud",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Live Convoy",
+      "short_name": "Convoy",
+      "url": "/?tab=convoy",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Nearby Places",
+      "short_name": "Places",
+      "url": "/?tab=places",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
     }
   ]
 }

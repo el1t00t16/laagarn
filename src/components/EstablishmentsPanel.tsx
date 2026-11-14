@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Establishment,
   EstablishmentCategory,
@@ -25,7 +25,6 @@ import {
   Clock,
   Phone,
   Sparkles,
-  ArrowRight,
 } from 'lucide-react';
 
 interface EstablishmentsPanelProps {
@@ -112,31 +111,10 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
   const isLight = theme === 'light';
 
   return (
-    <div className="space-y-4">
-      {/* Panel Header */}
-      <div>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="section-label mb-0">Establishments & Places</span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] mono uppercase font-bold bg-purple-500/15 text-[#c084fc] border border-purple-500/30">
-              {establishments.length}
-            </span>
-          </div>
-          {loading && (
-            <div className="flex items-center gap-1 text-[10px] mono text-purple-400">
-              <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-              <span>Searching...</span>
-            </div>
-          )}
-        </div>
-        <p className="text-xs text-[var(--ink-dim)] mt-1">
-          Explore restaurants, gas stations, malls, 24/7 stores, and hospitals in the Philippines.
-        </p>
-      </div>
-
+    <div className="space-y-3.5 pb-4">
       {/* Search Input Bar */}
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--accent)]">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--accent)]">
           <Search className="w-4 h-4" />
         </div>
         <input
@@ -144,7 +122,7 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search Jollibee, Shell, SM Mall, Hospital, ATM..."
-          className="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-[var(--surface)] border border-[var(--border)] text-[var(--ink)] placeholder-[var(--ink-dim)] focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+          className="w-full min-h-[44px] pl-10 pr-9 py-2.5 rounded-2xl text-sm bg-[var(--surface-subcard,var(--surface-subtle))] border border-[var(--border)] text-[var(--ink)] placeholder-[var(--ink-dim)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all"
         />
         {searchQuery.length > 0 && (
           <button
@@ -153,24 +131,25 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
             className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--ink-dim)] hover:text-[var(--ink)] cursor-pointer"
             aria-label="Clear search query"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
       {/* Category Quick Filter Chips */}
       <div>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 no-scrollbar">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           <button
             type="button"
             onClick={() => setSelectedCategory('all')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs mono uppercase font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+            aria-pressed={selectedCategory === 'all'}
+            className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border ${
               selectedCategory === 'all'
-                ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white shadow-md shadow-purple-500/25'
-                : 'bg-[var(--surface)] text-[var(--ink-dim)] border border-[var(--border-subtle)] hover:border-[var(--border)]'
+                ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] border-purple-400/50 text-white shadow-md shadow-purple-500/25'
+                : 'cockpit-pill text-[var(--ink-dim)] hover:text-[var(--ink)]'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
             <span>All</span>
           </button>
 
@@ -182,17 +161,18 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs mono uppercase font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border ${
+                aria-pressed={isSelected}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border ${
                   isSelected
                     ? 'border-transparent text-white shadow-md'
-                    : 'bg-[var(--surface)] text-[var(--ink-dim)] border-[var(--border-subtle)] hover:border-[var(--border)]'
+                    : 'cockpit-pill text-[var(--ink-dim)] hover:text-[var(--ink)]'
                 }`}
                 style={{
                   backgroundColor: isSelected ? cat.color : undefined,
                   boxShadow: isSelected ? `0 4px 12px ${cat.color}40` : undefined,
                 }}
               >
-                <span>{cat.emoji}</span>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
                 <span className="whitespace-nowrap">{cat.label}</span>
               </button>
             );
@@ -201,28 +181,28 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
       </div>
 
       {/* Proximity / Location Controls */}
-      <div className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div className="p-2.5 cockpit-subcard flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2">
           {gpsState ? (
             <button
               type="button"
               onClick={() => setOnlyNearby((v) => !v)}
-              className={`px-2 py-1 rounded-md text-[10px] mono uppercase font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+              className={`px-2.5 py-1 rounded-lg text-[10px] mono uppercase font-bold flex items-center gap-1 cursor-pointer transition-colors border ${
                 onlyNearby
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  : 'bg-purple-950/30 text-zinc-400 border border-purple-500/20'
+                  ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/40'
+                  : 'cockpit-pill text-[var(--ink-dim)]'
               }`}
             >
-              <Crosshair className="w-3 h-3 text-emerald-400" />
+              <Crosshair className="w-3 h-3 text-emerald-500 shrink-0" />
               <span>{onlyNearby ? 'Near GPS' : 'All PH'}</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={onLocateUserGps}
-              className="px-2 py-1 rounded-md text-[10px] mono uppercase font-bold bg-purple-500/15 text-[#c084fc] border border-purple-500/30 flex items-center gap-1 cursor-pointer hover:bg-purple-500/25"
+              className="px-2.5 py-1 rounded-lg text-[10px] mono uppercase font-bold bg-purple-500/15 text-[var(--accent)] border border-purple-500/30 flex items-center gap-1 cursor-pointer hover:bg-purple-500/25"
             >
-              <Crosshair className="w-3 h-3 text-purple-400" />
+              <Crosshair className="w-3 h-3 shrink-0" />
               <span>Acquire GPS</span>
             </button>
           )}
@@ -234,10 +214,10 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
                   key={dist}
                   type="button"
                   onClick={() => setRadiusKm(dist)}
-                  className={`px-1.5 py-0.5 rounded text-[9.5px] mono font-bold cursor-pointer transition-colors ${
+                  className={`px-2 py-0.5 rounded-md text-[10px] mono font-bold cursor-pointer transition-colors tabular-nums ${
                     radiusKm === dist
                       ? 'bg-[var(--accent)] text-white'
-                      : 'bg-purple-500/10 text-[var(--ink-dim)] hover:text-white'
+                      : 'cockpit-pill text-[var(--ink-dim)]'
                   }`}
                 >
                   {dist}km
@@ -247,25 +227,28 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
           )}
         </div>
 
-        <span className="text-[10px] mono text-[var(--ink-dim)]">
-          {establishments.length} establishment{establishments.length === 1 ? '' : 's'} found
+        <span className="text-[10px] mono text-[var(--ink-dim)] tabular-nums inline-flex items-center gap-1.5">
+          {loading && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-ping" />}
+          <span>
+            {establishments.length} place{establishments.length === 1 ? '' : 's'}
+          </span>
         </span>
       </div>
 
       {/* Added to route notification toast */}
       {addedNotice && (
-        <div className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-200 text-xs flex items-center gap-2 animate-fadeIn">
-          <PlusCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="p-2.5 rounded-2xl bg-purple-500/15 border border-purple-500/35 text-[var(--ink)] text-xs flex items-center gap-2 animate-fadeIn">
+          <PlusCircle className="w-4 h-4 text-emerald-500 shrink-0" />
           <span className="font-semibold">{addedNotice}</span>
         </div>
       )}
 
       {/* Establishments Results List */}
-      <div className="space-y-2.5 max-h-[calc(100vh-25rem)] overflow-y-auto pr-1">
+      <div className="space-y-2.5">
         {establishments.length === 0 ? (
-          <div className="py-8 px-4 text-center rounded-2xl bg-[var(--surface)] border border-dashed border-[var(--border)]">
-            <Store className="w-8 h-8 mx-auto text-[var(--accent-light)] opacity-60 mb-2" />
-            <div className="text-xs font-bold text-[var(--ink)]">No establishments found</div>
+          <div className="py-8 px-4 text-center cockpit-subcard border-dashed">
+            <Store className="w-8 h-8 mx-auto text-[var(--accent)] opacity-70 mb-2" />
+            <div className="text-xs font-bold text-[var(--ink)]">No places matched</div>
             <p className="text-[11px] text-[var(--ink-dim)] mt-1 max-w-xs mx-auto">
               {searchQuery
                 ? `No results for "${searchQuery}". Try broader words like "Petron", "Jollibee", "SM", or "Hospital".`
@@ -275,9 +258,9 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedCategory('all')}
-                className="mt-3 px-3 py-1 rounded-lg text-xs mono uppercase font-bold bg-purple-500/20 text-[#c084fc] hover:bg-purple-500/30 cursor-pointer"
+                className="mt-3 px-3 py-1.5 rounded-xl text-[10.5px] mono uppercase font-bold bg-purple-500/15 text-[var(--accent)] border border-purple-500/30 hover:bg-purple-500/25 cursor-pointer"
               >
-                Clear Category Filter
+                Clear Filter
               </button>
             )}
           </div>
@@ -316,17 +299,17 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
             return (
               <div
                 key={est.id}
-                className={`p-3 rounded-2xl border transition-all ${
+                className={`p-3 rounded-2xl transition-all ${
                   isSelected
-                    ? 'bg-purple-500/15 border-[var(--accent)] shadow-lg shadow-purple-500/20'
-                    : 'bg-[var(--surface)] border-[var(--border-subtle)] hover:border-[var(--border)]'
+                    ? 'cockpit-card border-[var(--accent)] bg-purple-500/12 shadow-lg shadow-purple-500/15'
+                    : 'cockpit-subcard hover:border-[var(--accent)]/40'
                 }`}
               >
                 {/* Top card row: Category Pill & Distance */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <span
-                      className="px-2 py-0.5 rounded-md text-[9px] mono uppercase font-bold flex items-center gap-1"
+                      className="px-2 py-0.5 rounded-md text-[9.5px] mono uppercase font-bold flex items-center gap-1 shrink-0"
                       style={{
                         backgroundColor: pillBg,
                         color: pillColor,
@@ -338,14 +321,14 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
                     </span>
 
                     {est.brand && (
-                      <span className="text-[9.5px] mono text-[var(--ink-dim)] font-medium">
+                      <span className="text-[10px] mono text-[var(--ink-dim)] font-medium truncate">
                         &middot; {est.brand}
                       </span>
                     )}
                   </div>
 
                   {typeof est.distanceKm === 'number' && (
-                    <span className="text-[10px] mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="text-[10.5px] mono font-bold text-emerald-500 tabular-nums shrink-0">
                       {est.distanceKm < 1
                         ? `${Math.round(est.distanceKm * 1000)} m`
                         : `${est.distanceKm.toFixed(1)} km`}
@@ -359,69 +342,68 @@ export const EstablishmentsPanel: React.FC<EstablishmentsPanelProps> = ({
                 </h3>
 
                 {/* Address & Region */}
-                <div className="flex items-start gap-1 text-[11px] text-[var(--ink-dim)] mt-1">
-                  <MapPin className="w-3 h-3 shrink-0 text-purple-500 dark:text-purple-400 mt-0.5" />
+                <div className="flex items-start gap-1 text-[11.5px] text-[var(--ink-dim)] mt-1">
+                  <MapPin className="w-3.5 h-3.5 shrink-0 text-[var(--accent)] mt-0.5" />
                   <span className="line-clamp-2">{est.address || est.region}</span>
                 </div>
 
                 {/* Hours & Phone & Features */}
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  {est.openingHours && (
-                    <div className="flex items-center gap-1 text-[10px] mono font-semibold text-purple-700 dark:text-purple-300">
-                      <Clock className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                      <span>{est.openingHours}</span>
-                    </div>
-                  )}
+                {(est.openingHours || est.phone || (est.features && est.features.length > 0)) && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {est.openingHours && (
+                      <div className="flex items-center gap-1 text-[10px] mono font-semibold text-[var(--ink)] mr-1">
+                        <Clock className="w-3 h-3 text-[var(--accent)]" />
+                        <span>{est.openingHours}</span>
+                      </div>
+                    )}
 
-                  {est.phone && (
-                    <div className="flex items-center gap-1 text-[10px] mono text-[var(--ink-dim)]">
-                      <Phone className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                      <span>{est.phone}</span>
-                    </div>
-                  )}
+                    {est.phone && (
+                      <div className="flex items-center gap-1 text-[10px] mono text-[var(--ink-dim)] mr-1 tabular-nums">
+                        <Phone className="w-3 h-3 text-[var(--accent)]" />
+                        <span>{est.phone}</span>
+                      </div>
+                    )}
 
-                  {est.features?.slice(0, 3).map((feat, idx) => (
-                    <span
-                      key={idx}
-                      className="px-1.5 py-0.5 rounded text-[8.5px] mono bg-purple-100 text-purple-900 border-purple-200 dark:bg-purple-500/10 dark:text-purple-200/90 dark:border-purple-500/20 font-semibold"
-                    >
-                      {feat}
-                    </span>
-                  ))}
-                </div>
+                    {est.features?.slice(0, 3).map((feat, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-md text-[9.5px] font-semibold cockpit-pill text-[var(--ink-dim)]"
+                      >
+                        {feat}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* Quick Action Buttons */}
-                <div className="grid grid-cols-3 gap-1.5 mt-3 pt-2.5 border-t border-[var(--border-subtle)]">
-                  {/* Route / Directions */}
+                <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-[var(--border-subtle)]">
                   <button
                     type="button"
                     onClick={() => onSelectEstablishmentRoute(est)}
-                    className="py-1.5 px-2 rounded-xl bg-gradient-to-r from-[#a855f7] to-[#7c3aed] hover:from-[#c084fc] hover:to-[#a855f7] text-white text-[10.5px] mono uppercase font-bold flex items-center justify-center gap-1 shadow-sm cursor-pointer transition-all"
+                    className="min-h-[38px] py-1.5 px-2 rounded-xl bg-gradient-to-r from-[#a855f7] to-[#7c3aed] active:scale-95 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer transition-all"
                     title="Get turn-by-turn navigation directions to this establishment"
                   >
                     <Navigation className="w-3.5 h-3.5" />
                     <span>Route</span>
                   </button>
 
-                  {/* Show on Map */}
                   <button
                     type="button"
                     onClick={() => onFocusEstablishment(est)}
-                    className="py-1.5 px-2 rounded-xl bg-[var(--surface)] hover:bg-purple-500/15 border border-[var(--border)] text-[var(--ink)] text-[10.5px] mono uppercase font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                    className="min-h-[38px] py-1.5 px-2 rounded-xl cockpit-pill text-[var(--ink)] text-[11px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                     title="Center and view this establishment on the interactive map"
                   >
-                    <MapPin className="w-3.5 h-3.5 text-purple-400" />
+                    <MapPin className="w-3.5 h-3.5 text-[var(--accent)]" />
                     <span>Map</span>
                   </button>
 
-                  {/* Add as Waypoint / Stop */}
                   <button
                     type="button"
                     onClick={() => handleAddStop(est)}
-                    className="py-1.5 px-2 rounded-xl bg-[var(--surface)] hover:bg-purple-500/15 border border-[var(--border)] text-[var(--ink)] text-[10.5px] mono uppercase font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                    className="min-h-[38px] py-1.5 px-2 rounded-xl cockpit-pill text-[var(--ink)] text-[11px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                     title="Add as intermediate stop to active route planner"
                   >
-                    <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
+                    <PlusCircle className="w-3.5 h-3.5 text-emerald-500" />
                     <span>+ Stop</span>
                   </button>
                 </div>

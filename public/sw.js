@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laagarn-shell-v3';
+const CACHE_NAME = 'laagarn-shell-v5';
 const TILE_CACHE_NAME = 'laagarn-tiles-runtime-v3';
 const MAX_TILE_CACHE_ENTRIES = 2500;
 

@@ -68,11 +68,11 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-10 min-h-full">
+    <div className="flex flex-col gap-5 pb-4 min-h-full">
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <span className="section-label mono !mb-0">
-            I. Cartographic Archive
+            Offline Map Storage
           </span>
           <button
             type="button"
@@ -84,19 +84,19 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm">
+        <div className="grid grid-cols-2 gap-3 p-4 cockpit-card">
           <div>
             <div className="route-meta mono">Archived Tiles</div>
             <div
               data-testid="cached-tile-count"
-              className="text-2xl display font-extrabold text-[var(--ink)] mt-1"
+              className="text-2xl mono tabular-nums font-extrabold text-[var(--ink)] mt-1"
             >
               {stats.tileCount}
             </div>
           </div>
           <div>
             <div className="route-meta mono">IndexedDB Volume</div>
-            <div className="text-2xl display font-extrabold text-[var(--accent)] mt-1">
+            <div className="text-2xl mono tabular-nums font-extrabold text-[var(--accent)] mt-1">
               {formattedMb} MB
             </div>
           </div>
@@ -107,7 +107,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
             type="button"
             disabled={downloadingId !== null || !hasActiveRoute}
             onClick={handleCacheCorridor}
-            className="btn-primary display !mt-0 flex-1"
+            className="btn-primary !mt-0 flex-1"
           >
             {downloadingId === 'active-corridor'
               ? 'Archiving Route...'
@@ -120,7 +120,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
             onClick={handlePurge}
             disabled={stats.tileCount === 0 || downloadingId !== null}
             aria-label="Purge cached map tiles"
-            className="plot-btn !py-4 !px-4 disabled:opacity-40"
+            className="plot-btn !py-3.5 !px-4 disabled:opacity-40"
           >
             Purge
           </button>
@@ -128,13 +128,13 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
 
         {progressState && (
           <div className="mt-4">
-            <div className="flex items-center justify-between route-meta mono mb-1">
+            <div className="flex items-center justify-between route-meta mono tabular-nums mb-1.5">
               <span>WRITING TILES TO INDEXEDDB...</span>
               <span>
                 {progressState.done} / {progressState.total}
               </span>
             </div>
-            <div className="w-full h-1 bg-purple-950/40 rounded-full overflow-hidden border border-purple-500/20">
+            <div className="w-full h-1.5 bg-purple-500/15 rounded-full overflow-hidden border border-purple-500/25">
               <div
                 className="h-full bg-gradient-to-r from-[#a855f7] to-[#c084fc] transition-transform duration-150 origin-left"
                 style={{
@@ -152,7 +152,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
         {statusMessage && (
           <div
             role="status"
-            className="mt-4 p-3 bg-[#110820]/90 backdrop-blur-md border border-purple-500/30 rounded-xl route-meta mono !text-[#f8f6fc]"
+            className="mt-4 p-3 cockpit-subcard border-purple-500/35 route-meta mono text-[var(--ink)]"
           >
             {statusMessage}
           </div>
@@ -161,7 +161,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({
 
       <div>
         <span className="section-label mono">
-          II. Philippine Regional Folios
+          Philippine Region Packs
         </span>
         <div>
           {OFFLINE_REGION_PACKS.map((pack) => {

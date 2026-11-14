@@ -1,27 +1,19 @@
 import React, { useState } from 'react';
 import {
   Camera,
-  Video,
-  Disc,
-  Pause,
+  CameraOff,
   Play,
   Square,
-  Download,
   RefreshCw,
   Maximize2,
   Minimize2,
   X,
-  Gauge,
-  Clock,
-  Sparkles,
-  Layers,
-  ChevronRight,
   Navigation2,
-  Volume2,
-  VolumeX,
+  Sparkles,
+  Film,
 } from 'lucide-react';
 import { GpsPositionState } from '../utils/gpsAndGeocoding';
-import { UseCameraRecorderResult, RecordingMode } from '../hooks/useCameraRecorder';
+import { UseCameraRecorderResult } from '../hooks/useCameraRecorder';
 import { RouteStep } from '../utils/routingEngine';
 import { formatDurationSec } from '../utils/stravaRecorder';
 import { DashcamPreviewModal } from './DashcamPreviewModal';
@@ -49,11 +41,10 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
   activeRouteLabel = 'Highway Navigation',
   theme = 'dark',
 }) => {
-  const [showSettings, setShowSettings] = useState(false);
-  const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [flashActive, setFlashActive] = useState(false);
 
-  // Auto-pop preview modal as soon as a recording is finished (e.g. destination arrived or user stopped REC)
+  // Auto-pop preview modal as soon as a recording finishes
   const prevIsRecordingRef = React.useRef(recorder.isRecording);
   React.useEffect(() => {
     if (prevIsRecordingRef.current && !recorder.isRecording && recorder.recordedBlobUrl) {
@@ -64,34 +55,42 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
 
   const handleSaveRecording = () => {
     recorder.saveToDevice();
-    setDownloadSuccess(true);
-    setTimeout(() => setDownloadSuccess(false), 3500);
+  };
+
+  const handleTakeSnapshot = async () => {
+    setFlashActive(true);
+    setTimeout(() => setFlashActive(false), 180);
+    const ok = await recorder.capturePhotoSnapshot();
+    if (ok) {
+      setShowPreviewModal(true);
+    }
   };
 
   if (viewMode === 'hidden') {
     return (
       <>
-        {/* Recovery banner if a previous video was preserved from an interrupted session */}
+        {/* Recovery banner if a previous video/photo was preserved from an interrupted session */}
         {recorder.hasRecoveredRecording && recorder.recordedBlobUrl && !showPreviewModal && (
-          <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 z-[900] p-3 rounded-2xl bg-[#120824] border border-emerald-500/50 shadow-2xl flex items-center justify-between gap-3 text-white animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <div className="text-xs font-bold">
-                Restored Previous Dashcam Video ({(recorder.recordedBlobSize / (1024 * 1024)).toFixed(1)} MB)
+          <div className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] left-3 right-3 max-w-md mx-auto z-[900] p-3 rounded-2xl bg-[#120824]/95 backdrop-blur-xl border border-emerald-500/50 shadow-2xl flex items-center justify-between gap-2.5 text-white animate-fadeIn">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <div className="text-xs font-bold truncate">
+                Recovered Dashcam Clip ({(recorder.recordedBlobSize / (1024 * 1024)).toFixed(1)} MB)
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowPreviewModal(true)}
-                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white mono text-[10px] font-bold uppercase rounded-lg cursor-pointer"
+                className="px-3 py-1.5 bg-emerald-600 active:scale-95 text-white mono text-[10px] font-bold uppercase rounded-xl cursor-pointer"
               >
-                Preview & Save
+                Open
               </button>
               <button
                 type="button"
                 onClick={recorder.discardRecording}
-                className="p-1 text-gray-400 hover:text-white mono text-xs cursor-pointer"
+                className="p-1.5 text-gray-400 hover:text-white mono text-xs cursor-pointer"
+                aria-label="Dismiss recovered recording"
               >
                 ✕
               </button>
@@ -106,237 +105,303 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
           videoSize={recorder.recordedBlobSize}
           durationSeconds={recorder.recordingSeconds}
           mode={recorder.recordingMode}
+          mediaKind={recorder.capturedMediaKind}
           mimeType={recorder.videoMimeType}
           onSaveToDevice={handleSaveRecording}
           onShareToPhotos={recorder.shareToPhotosOrApps}
+          onDiscard={recorder.discardRecording}
           theme={theme}
         />
       </>
     );
   }
 
-  const isDark = theme !== 'light';
-  const speed = gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined ? gpsState.speedKmh : 0;
+  const speed =
+    gpsState?.speedKmh !== null && gpsState?.speedKmh !== undefined
+      ? Math.max(0, Math.round(gpsState.speedKmh))
+      : 0;
 
   /* =========================================================================
-   * MODE 1: PICTURE-IN-PICTURE (PiP) DOCKED OVER MAP
+   * MODE 1: MOBILE PICTURE-IN-PICTURE (PiP) FLOATING WINDOW OVER MAP
    * ========================================================================= */
   if (viewMode === 'pip') {
     return (
       <>
-        <div className="absolute top-20 right-3 z-[600] w-48 sm:w-60 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/40 bg-black/90 backdrop-blur-md animate-fadeIn transition-all">
-        {/* Video feed container */}
-        <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-          <video
-            ref={recorder.videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
+        <div className="cockpit-shell fixed top-[calc(7.1rem+env(safe-area-inset-top,0px))] lg:top-16 right-3 lg:right-4 z-[600] w-44 lg:w-56 rounded-2xl overflow-hidden animate-fadeIn select-none border-[var(--accent)]/45">
+          {/* Live Camera Preview */}
+          <div className="relative h-48 lg:h-52 bg-[#090410] flex items-center justify-center overflow-hidden">
+            <video
+              ref={recorder.videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover transition-opacity ${
+                recorder.cameraActive ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
 
-          {/* Recording Badge */}
-          {recorder.isRecording && (
-            <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-600/90 text-white mono text-[10px] font-bold shadow-md">
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              <span>{formatDurationSec(recorder.recordingSeconds)}</span>
+            {!recorder.cameraActive && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center gap-2 bg-gradient-to-b from-[#160a2a] to-[#090410]">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/35 flex items-center justify-center text-[#c084fc]">
+                  <CameraOff className="w-4.5 h-4.5" />
+                </div>
+                <p className="text-[11px] font-medium text-purple-100/85 leading-snug line-clamp-2">
+                  {recorder.cameraError ? 'Camera blocked' : 'Camera standby'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => recorder.startCamera()}
+                  className="px-2.5 py-1 rounded-lg bg-[#a855f7] hover:bg-[#9333ea] text-white text-[10px] font-semibold cursor-pointer active:scale-95 transition-all"
+                >
+                  Retry Feed
+                </button>
+              </div>
+            )}
+
+            {flashActive && <div className="absolute inset-0 bg-white/80 pointer-events-none" />}
+
+            {/* Recording Status Pill */}
+            {recorder.isRecording ? (
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-600/95 text-white mono text-[10px] font-bold shadow-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                <span>{formatDurationSec(recorder.recordingSeconds)}</span>
+              </div>
+            ) : (
+              <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-black/65 border border-purple-500/30 text-purple-200 mono text-[9px] font-bold uppercase">
+                {recorder.recordingMode === 'timelapse' ? 'TL' : 'VID'}
+              </div>
+            )}
+
+            {/* Top-Right PiP Controls */}
+            <div className="absolute top-2 right-2 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onChangeViewMode('hud')}
+                className="w-7 h-7 rounded-lg bg-black/65 active:scale-95 text-white flex items-center justify-center cursor-pointer"
+                title="Expand Fullscreen HUD"
+                aria-label="Expand Fullscreen HUD"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeViewMode('hidden')}
+                className="w-7 h-7 rounded-lg bg-black/65 active:bg-red-600 text-white flex items-center justify-center cursor-pointer"
+                title="Close Dashcam"
+                aria-label="Close Dashcam"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-          )}
 
-          {/* Speed badge */}
-          <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-black/70 border border-purple-500/30 text-white mono text-[10px] font-black">
-            {speed} <span className="text-[8px] text-[#c084fc]">KM/H</span>
+            {/* Clean Bottom Mini-HUD inside PiP */}
+            <div className="absolute inset-x-1.5 bottom-1.5 px-2 py-1 rounded-xl bg-black/75 backdrop-blur-md border border-purple-500/30 flex items-center justify-between text-white">
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-black leading-none">{speed}</span>
+                <span className="text-[8px] mono text-[#c084fc] font-bold">KM/H</span>
+              </div>
+              {recorder.facingMode === 'environment' && recorder.supportsUltraWide && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    recorder.setLensZoom(recorder.currentLens === '0.5x' ? '1x' : '0.5x')
+                  }
+                  className={`px-1.5 py-0.5 rounded text-[9px] mono font-bold cursor-pointer ${
+                    recorder.currentLens === '0.5x'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white/10 text-purple-200'
+                  }`}
+                >
+                  {recorder.currentLens}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Top-Right Quick Action Buttons */}
-          <div className="absolute top-2 right-2 flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onChangeViewMode('hud')}
-              className="p-1 rounded bg-black/60 hover:bg-black/90 text-white transition-colors cursor-pointer"
-              title="Expand to Full HUD"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeViewMode('hidden')}
-              className="p-1 rounded bg-black/60 hover:bg-red-600 text-white transition-colors cursor-pointer"
-              title="Close Dashcam"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Bottom PiP Control Bar */}
-        <div className="p-2 flex items-center justify-between text-xs mono bg-[#0e071a] border-t border-purple-500/20">
-          <div className="flex items-center gap-1.5">
+          {/* PiP Action Bar */}
+          <div className="p-1.5 flex items-center justify-between gap-1 bg-[#0e071a] border-t border-purple-500/25">
             <button
               type="button"
               onClick={recorder.toggleCamera}
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-purple-200 cursor-pointer"
-              title="Switch Front/Rear Camera"
+              className="w-8 h-8 rounded-xl bg-white/10 active:scale-95 text-purple-200 flex items-center justify-center cursor-pointer"
+              title="Flip Camera"
+              aria-label="Flip Camera"
             >
-              <RefreshCw className="w-3 h-3" />
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
 
-            {recorder.facingMode === 'environment' && recorder.supportsUltraWide && (
+            {recorder.isRecording ? (
               <button
                 type="button"
-                onClick={() =>
-                  recorder.setLensZoom(recorder.currentLens === '0.5x' ? '1x' : '0.5x')
-                }
-                className={`px-1.5 py-0.5 rounded text-[10px] mono font-bold border transition-colors cursor-pointer ${
-                  recorder.currentLens === '0.5x'
-                    ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
-                    : 'bg-black/40 border-purple-500/30 text-purple-300'
-                }`}
-                title="Toggle 0.5x Ultra-Wide / 1x Lens"
+                onClick={recorder.stopRecording}
+                className="flex-1 h-8 rounded-xl bg-red-600 active:scale-95 text-white mono font-bold flex items-center justify-center gap-1 text-[10px] cursor-pointer"
               >
-                {recorder.currentLens}
+                <Square className="w-3 h-3 fill-white" /> STOP
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={recorder.startRecording}
+                className="flex-1 h-8 rounded-xl bg-gradient-to-r from-[#a855f7] to-[#7c3aed] active:scale-95 text-white mono font-bold flex items-center justify-center gap-1 text-[10px] cursor-pointer"
+              >
+                <span className="w-2 h-2 rounded-full bg-red-400" /> REC
               </button>
             )}
 
-            <span className="text-[10px] text-purple-300 uppercase font-semibold">
-              {recorder.recordingMode === 'timelapse' ? 'Timelapse' : 'Video'}
-            </span>
+            <button
+              type="button"
+              onClick={handleTakeSnapshot}
+              className="w-8 h-8 rounded-xl bg-white/10 active:scale-95 text-white flex items-center justify-center cursor-pointer"
+              title="Take Watermarked Photo"
+              aria-label="Take Watermarked Photo"
+            >
+              <Camera className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {/* Shutter / Stop Button */}
-          {recorder.isRecording ? (
+          {recorder.recordedBlobUrl && !recorder.isRecording && (
             <button
               type="button"
-              onClick={recorder.stopRecording}
-              className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold flex items-center gap-1 text-[11px] cursor-pointer"
+              onClick={() => setShowPreviewModal(true)}
+              className="w-full py-1.5 px-2 bg-emerald-600/90 active:bg-emerald-500 text-white mono text-[10px] font-bold uppercase flex items-center justify-center gap-1 cursor-pointer"
             >
-              <Square className="w-3 h-3 fill-white" /> Stop
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={recorder.startRecording}
-              className="px-2.5 py-1 rounded-lg bg-[#a855f7] hover:bg-[#9333ea] text-white font-bold flex items-center gap-1 text-[11px] cursor-pointer shadow-md"
-            >
-              <Disc className="w-3 h-3 text-red-300" /> REC
+              <Play className="w-3 h-3 fill-white" /> View Last Capture
             </button>
           )}
         </div>
 
-        {/* Save Recording Prompt if clip ready */}
-        {recorder.recordedBlobUrl && !recorder.isRecording && (
-          <div className="p-2 bg-purple-950/90 border-t border-purple-500/40 flex items-center justify-between">
-            <span className="text-[10px] text-purple-200 truncate font-semibold">Clip Ready!</span>
-            <button
-              type="button"
-              onClick={() => setShowPreviewModal(true)}
-              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer shadow"
-            >
-              <Play className="w-3 h-3 fill-white" /> Preview
-            </button>
-          </div>
-        )}
-      </div>
-
-      <DashcamPreviewModal
-        isOpen={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        videoUrl={recorder.recordedBlobUrl}
-        videoSize={recorder.recordedBlobSize}
-        durationSeconds={recorder.recordingSeconds}
-        mode={recorder.recordingMode}
-        mimeType={recorder.videoMimeType}
-        onSaveToDevice={handleSaveRecording}
-        onShareToPhotos={recorder.shareToPhotosOrApps}
-        theme={theme}
-      />
-    </>
+        <DashcamPreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          videoUrl={recorder.recordedBlobUrl}
+          videoSize={recorder.recordedBlobSize}
+          durationSeconds={recorder.recordingSeconds}
+          mode={recorder.recordingMode}
+          mediaKind={recorder.capturedMediaKind}
+          mimeType={recorder.videoMimeType}
+          onSaveToDevice={handleSaveRecording}
+          onShareToPhotos={recorder.shareToPhotosOrApps}
+          onDiscard={recorder.discardRecording}
+          theme={theme}
+        />
+      </>
     );
   }
 
   /* =========================================================================
-   * MODE 2: FULLSCREEN HIGHWAY AR HUD (DASHBOARD OVERLAY OVER CAMERA)
+   * MODE 2: FULLSCREEN MOBILE CAMERA & AR DASHCAM HUD
    * ========================================================================= */
   return (
     <div className="fixed inset-0 z-[700] bg-black overflow-hidden flex flex-col justify-between animate-fadeIn select-none">
-      {/* Background Fullscreen Native Camera Feed */}
+      {/* Fullscreen Camera Feed */}
       <video
         ref={recorder.videoRef}
         autoPlay
         playsInline
         muted
-        className="absolute inset-0 w-full h-full object-cover z-0"
+        className={`absolute inset-0 w-full h-full object-cover z-0 transition-opacity ${
+          recorder.cameraActive ? 'opacity-100' : 'opacity-0'
+        }`}
       />
 
-      {/* Subtle Road Vignette Gradient */}
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-black/85 via-black/20 to-black/75" />
+      {!recorder.cameraActive && (
+        <div className="absolute inset-0 z-0 flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#130724] via-[#090410] to-[#05020a]">
+          <div className="cockpit-card max-w-xs p-5 flex flex-col items-center gap-3 border-purple-500/35">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-[#c084fc]">
+              <CameraOff className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Camera Feed Standby</h3>
+              <p className="text-xs text-purple-200/75 mt-1 leading-relaxed">
+                {recorder.cameraError || 'Grant camera access or connect a webcam to stream live video behind the telemetry HUD.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => recorder.startCamera()}
+              className="btn-primary py-2.5 px-4 w-auto min-h-[38px] text-xs mt-0"
+            >
+              Enable Camera
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* TOP HUD: Turn-by-turn guidance and Recording Status Bar */}
-      <div className="relative z-20 p-3 sm:p-4 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] flex flex-col gap-2.5">
-        {/* Top Control Bar: Status on left, Actions (Minimize & Close) on right */}
+      {/* Camera Shutter Flash Feedback */}
+      {flashActive && <div className="absolute inset-0 z-30 bg-white/80 pointer-events-none" />}
+
+      {/* Subtle Top & Bottom Contrast Vignette */}
+      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-b from-black/70 via-transparent to-black/85" />
+
+      {/* TOP SAFE-AREA BAR */}
+      <div className="relative z-20 px-3.5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] flex flex-col gap-2.5 max-w-lg w-full mx-auto">
         <div className="flex items-center justify-between gap-2">
-          {/* Left: Recording Status Badge or Mode Tag */}
+          {/* Recording / Mode Pill */}
           <div className="flex items-center gap-2 min-w-0">
             {recorder.isRecording ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/95 text-white mono text-xs font-bold shadow-lg shadow-red-600/40 shrink-0">
-                <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/95 text-white mono text-xs font-bold shadow-lg shadow-red-600/40">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                 <span>REC {formatDurationSec(recorder.recordingSeconds)}</span>
-                {recorder.currentLens === '0.5x' && (
-                  <span className="px-1.5 py-0.2 rounded bg-black/40 text-yellow-300 text-[10px]">
-                    0.5x
-                  </span>
-                )}
               </div>
             ) : (
-              <div className="px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-purple-500/40 text-purple-200 mono text-xs font-semibold shrink-0 flex items-center gap-1.5">
-                <span>
-                  {recorder.recordingMode === 'timelapse'
-                    ? `Timelapse (${recorder.timelapseIntervalSec}s)`
-                    : 'Standard Video'}
-                </span>
-                {recorder.currentLens === '0.5x' && (
-                  <span className="px-1.5 py-0.5 rounded bg-purple-500/40 text-purple-200 text-[10px] font-bold">
-                    0.5x
-                  </span>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => recorder.setBurnTelemetry(!recorder.burnTelemetry)}
+                className={`px-3 py-1.5 rounded-full backdrop-blur-xl border mono text-[11px] font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer ${
+                  recorder.burnTelemetry
+                    ? 'bg-purple-950/75 border-purple-400/50 text-purple-200'
+                    : 'bg-black/60 border-white/20 text-gray-400'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#c084fc]" />
+                <span>HUD Stamp: {recorder.burnTelemetry ? 'ON' : 'OFF'}</span>
+              </button>
             )}
           </div>
 
-          {/* Right: Always-Visible Quick Controls (Minimize to PiP & Close) */}
+          {/* Minimize & Exit Controls */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => onChangeViewMode('pip')}
-              className="p-2 sm:p-2.5 rounded-xl bg-black/70 backdrop-blur-xl border border-purple-500/40 text-white hover:bg-black/90 active:scale-95 transition-all cursor-pointer shadow-lg"
-              title="Minimize to Map Picture-in-Picture"
-              aria-label="Minimize to PiP"
+              className="w-10 h-10 rounded-2xl bg-black/65 backdrop-blur-xl border border-purple-500/35 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+              title="Minimize to Picture-in-Picture"
+              aria-label="Minimize to Picture-in-Picture"
             >
-              <Minimize2 className="w-5 h-5" />
+              <Minimize2 className="w-4.5 h-4.5" />
             </button>
 
             <button
               type="button"
               onClick={() => onChangeViewMode('hidden')}
-              className="p-2 sm:p-2.5 rounded-xl bg-red-600/90 hover:bg-red-600 active:scale-95 backdrop-blur-xl border border-red-400/50 text-white transition-all cursor-pointer shadow-lg shadow-red-950/40 flex items-center gap-1 font-bold mono text-xs"
-              title="Close Dashcam HUD"
+              className="h-10 px-3 rounded-2xl bg-red-600/90 active:scale-95 backdrop-blur-xl border border-red-400/50 text-white flex items-center gap-1 font-bold mono text-xs cursor-pointer shadow-lg"
+              title="Close Dashcam"
               aria-label="Close Dashcam"
             >
-              <X className="w-5 h-5 stroke-[2.5]" />
-              <span className="hidden xs:inline uppercase text-[10px] pr-0.5">Exit</span>
+              <X className="w-4.5 h-4.5 stroke-[2.5]" />
+              <span>Exit</span>
             </button>
           </div>
         </div>
 
-        {/* Turn Direction Card (if navigating) - sits cleanly below the top control bar */}
+        {/* Camera Error Notice */}
+        {recorder.cameraError && (
+          <div className="p-3 rounded-2xl bg-red-950/90 border border-red-500/50 text-red-200 text-xs font-semibold">
+            {recorder.cameraError}
+          </div>
+        )}
+
+        {/* Turn-by-Turn Guidance Card (when navigating) */}
         {currentStep && (
-          <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/40 shadow-2xl text-white w-full sm:max-w-md animate-fadeIn">
+          <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl bg-black/75 backdrop-blur-xl border border-purple-500/40 shadow-2xl text-white">
             <div className="w-9 h-9 rounded-xl bg-[#a855f7]/30 border border-[#a855f7]/60 flex items-center justify-center text-[#c084fc] shrink-0">
               <Navigation2 className="w-5 h-5 rotate-45" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[11px] mono uppercase font-bold text-[#c084fc] flex items-center gap-1.5 truncate">
-                <span className="shrink-0">{currentStep.distanceKm ? `${(currentStep.distanceKm * 1000).toFixed(0)}m` : 'Ahead'}</span>
+                <span className="shrink-0">
+                  {currentStep.distanceKm ? `${(currentStep.distanceKm * 1000).toFixed(0)}m` : 'Ahead'}
+                </span>
                 <span>&middot;</span>
                 <span className="truncate">{currentStep.instruction}</span>
               </div>
@@ -348,136 +413,173 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
         )}
       </div>
 
-      {/* BOTTOM HUD: Telemetry Speedometer, Highway Label & Dashcam Controls */}
-      <div className="relative z-20 p-3 sm:p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3">
-        {/* Speedometer & Location Badge */}
-        <div className="flex items-center gap-3">
-          <div className="px-4 py-2 sm:px-5 sm:py-3 rounded-2xl sm:rounded-3xl bg-black/75 backdrop-blur-2xl border border-purple-500/50 shadow-2xl flex items-baseline gap-2 text-white shrink-0">
-            <span className="text-4xl sm:text-6xl font-black display tracking-tight leading-none text-white drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]">
-              {speed}
-            </span>
-            <div className="flex flex-col">
-              <span className="text-xs mono font-extrabold uppercase text-[#c084fc] leading-none">
-                KM/H
-              </span>
-              <span className="text-[9px] mono uppercase text-gray-400 mt-0.5">SPEED</span>
+      {/* BOTTOM NATIVE MOBILE CAMERA CONTROLS & LIVE WATERMARK PREVIEW */}
+      <div className="relative z-20 px-3.5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] flex flex-col gap-3 max-w-lg w-full mx-auto">
+        {/* Lens Zoom (0.5x / 1x) & Recording Mode Selector Pills */}
+        <div className="flex items-center justify-between gap-2">
+          {/* 0.5x / 1x Lens Pill */}
+          {recorder.facingMode === 'environment' && recorder.supportsUltraWide ? (
+            <div className="flex items-center p-1 rounded-full bg-black/75 backdrop-blur-xl border border-purple-500/35">
+              {(['0.5x', '1x'] as const).map((z) => (
+                <button
+                  key={z}
+                  type="button"
+                  onClick={() => recorder.setLensZoom(z)}
+                  className={`px-3 py-1 rounded-full mono text-xs font-black transition-all cursor-pointer ${
+                    recorder.currentLens === z
+                      ? 'bg-[#a855f7] text-white shadow'
+                      : 'text-purple-200/80'
+                  }`}
+                >
+                  {z}
+                </button>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div />
+          )}
 
-          <div className="flex flex-col px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl bg-black/60 backdrop-blur-xl border border-purple-500/30 text-white min-w-0 flex-1 sm:flex-none">
-            <div className="text-xs font-bold truncate max-w-[200px] sm:max-w-[240px]">
-              {gpsState?.addressLabel || 'Philippine Highway'}
+          {/* Video vs Timelapse Segmented Control */}
+          <div className="flex items-center gap-1.5">
+            {!recorder.isRecording && (
+              <div className="flex items-center p-1 rounded-full bg-black/75 backdrop-blur-xl border border-purple-500/35">
+                <button
+                  type="button"
+                  onClick={() => recorder.setRecordingMode('timelapse')}
+                  className={`px-3 py-1 rounded-full mono text-[11px] font-bold uppercase transition-all cursor-pointer ${
+                    recorder.recordingMode === 'timelapse'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-300'
+                  }`}
+                >
+                  Timelapse
+                </button>
+                <button
+                  type="button"
+                  onClick={() => recorder.setRecordingMode('normal')}
+                  className={`px-3 py-1 rounded-full mono text-[11px] font-bold uppercase transition-all cursor-pointer ${
+                    recorder.recordingMode === 'normal'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-300'
+                  }`}
+                >
+                  Video
+                </button>
+              </div>
+            )}
+
+            {recorder.recordingMode === 'timelapse' && !recorder.isRecording && (
+              <select
+                value={recorder.timelapseIntervalSec}
+                onChange={(e) => recorder.setTimelapseIntervalSec(Number(e.target.value))}
+                aria-label="Timelapse frame interval"
+                className="h-8 px-2.5 rounded-full bg-black/75 backdrop-blur-xl border border-purple-500/35 text-purple-200 mono text-xs font-bold outline-none cursor-pointer"
+              >
+                <option value={0.5}>0.5s</option>
+                <option value={1}>1s</option>
+                <option value={2}>2s</option>
+                <option value={5}>5s</option>
+              </select>
+            )}
+          </div>
+        </div>
+
+        {/* Clean Live HUD Card (Matches Recorded Watermark Layout — Zero Overlap!) */}
+        <div className="p-3 rounded-2xl bg-[#10081e]/88 backdrop-blur-2xl border border-purple-500/45 shadow-2xl flex items-center gap-3 text-white">
+          <div className="w-1.5 self-stretch rounded-full bg-gradient-to-b from-[#c084fc] to-[#7c3aed] shrink-0" />
+          <div className="pr-3 border-r border-purple-500/25 text-center min-w-[68px] shrink-0">
+            <div className="text-3xl font-black mono leading-none tracking-tight tabular-nums">{speed}</div>
+            <div className="text-[9px] mono font-extrabold text-[#c084fc] mt-1 tracking-wider">KM/H</div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2 text-[9.5px] mono font-bold">
+              <span className="text-[#c084fc] flex items-center gap-1.5 min-w-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#a855f7] shrink-0" />
+                <span className="truncate">
+                  LAAGARN GPS{recorder.currentLens === '0.5x' ? ' · 0.5x' : ''}
+                  {recorder.recordingMode === 'timelapse' ? ' · TL' : ''}
+                </span>
+              </span>
+              <span className="text-purple-200/80 shrink-0 tabular-nums">
+                {recorder.isRecording ? `REC ${formatDurationSec(recorder.recordingSeconds)}` : 'LIVE HUD'}
+              </span>
             </div>
-            <div className="text-[10px] mono text-purple-300 mt-0.5 truncate">
-              {gpsState ? `${gpsState.lat.toFixed(4)}°, ${gpsState.lng.toFixed(4)}°` : 'Acquiring GPS…'}
+            <div className="text-sm font-bold text-white truncate mt-0.5 leading-snug">
+              {gpsState?.addressLabel || activeRouteLabel || 'Philippine Highway'}
+            </div>
+            <div className="text-[10.5px] mono text-indigo-200/90 truncate mt-0.5 tabular-nums">
+              {gpsState
+                ? `${Math.abs(gpsState.lat).toFixed(4)}° ${gpsState.lat >= 0 ? 'N' : 'S'}, ${Math.abs(
+                    gpsState.lng
+                  ).toFixed(4)}° ${gpsState.lng >= 0 ? 'E' : 'W'}`
+                : 'GPS satellite lock pending'}
             </div>
           </div>
         </div>
 
-        {/* Center / Right Control Panel */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Flip Camera */}
-          <button
-            type="button"
-            onClick={recorder.toggleCamera}
-            className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white hover:bg-purple-900/40 active:scale-95 transition-all cursor-pointer"
-            title="Switch Front/Rear Camera"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
-
-          {/* 0.5x Ultra-Wide / 1x Standard Lens Selector (iPhone & multi-camera phones) */}
-          {recorder.facingMode === 'environment' && recorder.supportsUltraWide && (
-            <div className="flex items-center p-1 rounded-xl sm:rounded-2xl bg-black/75 backdrop-blur-xl border border-purple-500/40 shadow-lg">
-              <button
-                type="button"
-                onClick={() => recorder.setLensZoom('0.5x')}
-                className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl mono text-xs font-black transition-all cursor-pointer ${
-                  recorder.currentLens === '0.5x'
-                    ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white shadow-md shadow-purple-900/50 scale-105'
-                    : 'text-purple-300/80 hover:text-white'
-                }`}
-                title="0.5x Ultra-Wide Highway Lens"
-              >
-                0.5x
-              </button>
-              <button
-                type="button"
-                onClick={() => recorder.setLensZoom('1x')}
-                className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl mono text-xs font-black transition-all cursor-pointer ${
-                  recorder.currentLens === '1x'
-                    ? 'bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white shadow-md shadow-purple-900/50 scale-105'
-                    : 'text-purple-300/80 hover:text-white'
-                }`}
-                title="1x Standard Wide Lens"
-              >
-                1x
-              </button>
-            </div>
-          )}
-
-          {/* Mode Selector (Timelapse vs Normal) */}
-          <button
-            type="button"
-            disabled={recorder.isRecording}
-            onClick={() =>
-              recorder.setRecordingMode(
-                recorder.recordingMode === 'timelapse' ? 'normal' : 'timelapse'
-              )
-            }
-            className="px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-xl sm:rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white mono text-xs font-bold hover:bg-purple-900/40 active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
-          >
-            {recorder.recordingMode === 'timelapse' ? 'TIMELAPSE' : 'NORMAL'}
-          </button>
-
-          {/* Interval Selector (Only in Timelapse mode) */}
-          {recorder.recordingMode === 'timelapse' && !recorder.isRecording && (
-            <select
-              value={recorder.timelapseIntervalSec}
-              onChange={(e) => recorder.setTimelapseIntervalSec(Number(e.target.value))}
-              className="px-2.5 py-2.5 sm:px-3 sm:py-3 rounded-xl sm:rounded-2xl bg-black/70 backdrop-blur-xl border border-purple-500/30 text-white mono text-xs font-bold cursor-pointer outline-none"
+        {/* Native Mobile Camera Shutter Bar */}
+        <div className="pt-1 flex items-center justify-around">
+          {/* Left: Flip Front/Back Camera OR Open Last Capture */}
+          <div className="flex items-center gap-2.5 w-24 justify-start">
+            <button
+              type="button"
+              onClick={recorder.toggleCamera}
+              className="w-12 h-12 rounded-full bg-black/70 backdrop-blur-xl border border-white/20 text-white flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              title="Flip Camera"
+              aria-label="Flip Camera"
             >
-              <option value={0.5}>0.5s / frame</option>
-              <option value={1}>1.0s / frame</option>
-              <option value={2}>2.0s / frame</option>
-              <option value={5}>5.0s / frame</option>
-            </select>
-          )}
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          </div>
 
-          {/* REC / STOP Trigger Button */}
+          {/* Center: Tactile Circular Video REC / STOP Shutter Ring */}
           {recorder.isRecording ? (
             <button
               type="button"
               onClick={recorder.stopRecording}
-              className="flex-1 sm:flex-none px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-black mono text-sm flex items-center justify-center gap-2 shadow-2xl shadow-red-600/40 transition-all cursor-pointer"
+              aria-label="Stop Recording"
+              className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center bg-black/40 active:scale-95 transition-all cursor-pointer shadow-[0_0_25px_rgba(239,68,68,0.6)]"
             >
-              <Square className="w-4 h-4 fill-white" /> STOP REC
+              <span className="w-7 h-7 rounded-lg bg-red-500 block" />
             </button>
           ) : (
             <button
               type="button"
               onClick={recorder.startRecording}
-              className="flex-1 sm:flex-none px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#a855f7] to-[#7c3aed] hover:brightness-110 active:scale-95 text-white font-black mono text-sm flex items-center justify-center gap-2 shadow-2xl shadow-purple-600/40 transition-all cursor-pointer"
+              aria-label="Start Video Recording"
+              className="w-[72px] h-[72px] rounded-full border-4 border-white p-1.5 flex items-center justify-center bg-black/30 active:scale-95 transition-all cursor-pointer shadow-[0_0_25px_rgba(168,85,247,0.5)]"
             >
-              <Disc className="w-5 h-5 text-red-300" /> START REC
+              <span className="w-full h-full rounded-full bg-gradient-to-br from-red-500 via-[#ec4899] to-[#a855f7] block" />
             </button>
           )}
 
-          {/* Preview & Save to Photos Button */}
-          {recorder.recordedBlobUrl && !recorder.isRecording && (
+          {/* Right: 1-Tap Watermarked Photo Snapshot + Last Clip Pill */}
+          <div className="flex items-center gap-2 w-24 justify-end">
+            {recorder.recordedBlobUrl && !recorder.isRecording && (
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(true)}
+                className="w-11 h-11 rounded-2xl bg-emerald-600/90 border border-emerald-400/60 text-white flex items-center justify-center active:scale-90 transition-transform cursor-pointer shadow-lg"
+                title="Preview & Save Last Capture"
+                aria-label="Preview & Save Last Capture"
+              >
+                <Film className="w-5 h-5" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setShowPreviewModal(true)}
-              className="flex-1 sm:flex-none px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:brightness-110 active:scale-95 text-white font-bold mono text-xs flex items-center justify-center gap-2 shadow-2xl shadow-emerald-600/30 transition-all cursor-pointer animate-pulse"
+              onClick={handleTakeSnapshot}
+              className="w-12 h-12 rounded-full bg-black/70 backdrop-blur-xl border border-purple-400/40 text-white flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              title="Snap Watermarked Photo"
+              aria-label="Snap Watermarked Photo"
             >
-              <Play className="w-4 h-4 fill-white" />
-              <span>Preview & Save to Photos</span>
+              <Camera className="w-5 h-5 text-[#c084fc]" />
             </button>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* In-App Preview & Native Share Modal */}
+      {/* Preview & Native Share Sheet Modal */}
       <DashcamPreviewModal
         isOpen={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
@@ -485,9 +587,11 @@ export const DashcamOverlay: React.FC<DashcamOverlayProps> = ({
         videoSize={recorder.recordedBlobSize}
         durationSeconds={recorder.recordingSeconds}
         mode={recorder.recordingMode}
+        mediaKind={recorder.capturedMediaKind}
         mimeType={recorder.videoMimeType}
         onSaveToDevice={handleSaveRecording}
         onShareToPhotos={recorder.shareToPhotosOrApps}
+        onDiscard={recorder.discardRecording}
         theme={theme}
       />
     </div>

@@ -124,10 +124,10 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
           <button
             type="button"
             onClick={onSpotWeatherOnMap}
-            className="btn-primary display mt-4 flex items-center justify-center gap-2"
+            className="btn-primary mt-4 flex items-center justify-center gap-2"
           >
             <Search className="w-4 h-4" />
-            Click Map to Spot Weather
+            <span>Click Map to Spot Weather</span>
           </button>
         </div>
       </div>
@@ -140,59 +140,56 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
   const severityBadge = (severity: HazardSeverity) => {
     switch (severity) {
       case 'severe':
-        return 'bg-red-950/80 text-red-400 border border-red-700/60';
+        return 'bg-rose-500/15 text-rose-500 border border-rose-500/35';
       case 'warning':
-        return 'bg-amber-950/80 text-amber-400 border border-amber-600/60';
+        return 'bg-amber-500/15 text-amber-500 border border-amber-500/35';
       case 'caution':
-        return 'bg-yellow-950/80 text-yellow-300 border border-yellow-600/60';
+        return 'bg-yellow-500/15 text-amber-500 border border-yellow-500/35';
       case 'nominal':
       default:
-        return 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/50';
+        return 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/35';
     }
   };
 
   return (
-    <div className="flex flex-col gap-5 pb-8">
-      {/* 1. Header with Sync Button */}
-      <div className="flex items-center justify-between shrink-0">
-        <div>
-          <span className="section-label mono !mb-0 text-[var(--accent)] font-bold">
-            Weather & Road Hazards
-          </span>
-          <div className="text-xs text-[var(--ink-dim)] mono mt-0.5 font-medium">
-            Real-time Philippine corridor forecasts & safety precautions
+    <div className="flex flex-col gap-4 pb-6">
+      {/* 1. Compact Live Sync Strip */}
+      <div className="flex items-center justify-between gap-2 shrink-0">
+        <div className="min-w-0">
+          <div className="text-xs text-[var(--ink-dim)] font-medium truncate">
+            Real-time Philippine corridor forecasts & safety alerts
           </div>
         </div>
         <button
           type="button"
           onClick={onRefreshWeather}
           disabled={loading}
-          className="flex items-center gap-1.5 mono text-[0.65rem] uppercase tracking-[0.1em] text-[var(--accent)] hover:underline transition-colors cursor-pointer py-1 px-2.5 border border-[var(--border)] bg-[var(--surface)] rounded-lg font-bold shrink-0"
+          className="flex items-center gap-1.5 mono text-[10px] uppercase tracking-[0.08em] text-[var(--accent)] hover:border-[var(--accent)] transition-colors cursor-pointer py-1.5 px-3 cockpit-pill rounded-xl font-bold shrink-0"
         >
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Syncing...' : 'Sync Now'}
+          <span>{loading ? 'Syncing...' : 'Sync Now'}</span>
         </button>
       </div>
 
       {/* 2. Destination Arrival Weather Forecast Banner (if route active) */}
       {destinationStation && (
-        <div className="shrink-0 p-4 bg-[var(--surface)] backdrop-blur-xl border border-[var(--border)] rounded-xl shadow-md relative overflow-hidden">
+        <div className="shrink-0 p-4 cockpit-card relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--accent)]/10 rounded-bl-full pointer-events-none" />
           <div className="flex items-center justify-between mb-2 gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <Navigation className="w-4 h-4 text-[var(--accent)] shrink-0" />
-              <span className="mono text-[0.7rem] uppercase tracking-wider text-[var(--ink-dim)] font-bold truncate">
+              <span className="mono text-[10px] uppercase tracking-wider text-[var(--ink-dim)] font-bold truncate">
                 Destination Arrival Weather
               </span>
             </div>
-            <span className="mono text-[0.65rem] text-[var(--accent)] bg-[var(--accent)]/15 px-2 py-0.5 rounded-lg border border-[var(--border)] font-bold shrink-0 whitespace-nowrap">
+            <span className="mono tabular-nums text-[10px] text-[var(--accent)] bg-[var(--accent)]/15 px-2 py-0.5 rounded-lg border border-purple-500/30 font-bold shrink-0 whitespace-nowrap">
               ETA: {destinationStation.predictedAtEta.timeLabel}
             </span>
           </div>
 
           <div className="flex items-baseline justify-between mt-1 gap-2">
             <div className="min-w-0">
-              <div className="text-xl display font-extrabold text-[var(--ink)] truncate">
+              <div className="text-lg font-extrabold tracking-tight text-[var(--ink)] truncate">
                 {destinationName || destinationStation.name}
               </div>
               <div className="text-xs text-[var(--ink-dim)] mt-0.5 font-medium truncate">
@@ -200,25 +197,25 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
               </div>
             </div>
             <div className="text-right shrink-0">
-              <span className="text-3xl display font-black text-[var(--ink)] leading-none">
+              <span className="text-3xl mono tabular-nums font-black text-[var(--ink)] leading-none">
                 {destinationStation.predictedAtEta.tempC}°C
               </span>
-              <div className="mono text-[0.65rem] text-[var(--ink-dim)] mt-0.5">
+              <div className="mono tabular-nums text-[10px] text-[var(--ink-dim)] mt-0.5">
                 Rain: <span className="text-[var(--accent)] font-bold">{destinationStation.predictedAtEta.precipProbPct}%</span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-[var(--border)] text-center mono text-[0.65rem]">
-            <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-[var(--border-subtle)] text-center mono tabular-nums text-[10px]">
+            <div className="cockpit-subcard p-2">
               <div className="text-[var(--ink-dim)] font-bold text-[9px]">WIND</div>
               <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.windKmh} KM/H</div>
             </div>
-            <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
+            <div className="cockpit-subcard p-2">
               <div className="text-[var(--ink-dim)] font-bold text-[9px]">VISIBILITY</div>
               <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.visibilityKm} KM</div>
             </div>
-            <div className="bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-lg shadow-sm">
+            <div className="cockpit-subcard p-2">
               <div className="text-[var(--ink-dim)] font-bold text-[9px]">FEELS LIKE</div>
               <div className="text-[var(--ink)] font-bold mt-0.5">{destinationStation.predictedAtEta.feelsLikeC}°C</div>
             </div>
@@ -227,7 +224,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
       )}
 
       {/* 3. Navigation View Switcher Tabs */}
-      <div className="flex border-b border-[var(--border)] gap-2 shrink-0 overflow-x-auto pb-0.5">
+      <div className="flex border-b border-[var(--border)] gap-2 shrink-0 overflow-x-auto no-scrollbar pb-0.5">
         <button
           type="button"
           onClick={() => setActiveTab('corridor')}
@@ -392,13 +389,13 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
         <div className="space-y-5">
           {/* Overall Route Safety Score Card */}
           {hazardReport ? (
-            <div className="p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm">
+            <div className="p-4 cockpit-card">
               <div className="flex items-center justify-between mb-3">
                 <span className="section-label mono !mb-0 text-[var(--accent)] font-bold">
                   Route Safety Assessment
                 </span>
                 <span
-                  className={`mono text-[0.65rem] font-bold uppercase px-2.5 py-1 rounded ${severityBadge(
+                  className={`mono text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg ${severityBadge(
                     hazardReport.overallLevel
                   )}`}
                 >
@@ -409,9 +406,9 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
               </div>
 
               <div className="flex items-center gap-4 mb-3">
-                <div className="text-3xl font-black display text-[var(--ink)]">
+                <div className="text-3xl font-black mono tabular-nums text-[var(--ink)]">
                   {hazardReport.safetyScore}
-                  <span className="text-xs text-[var(--ink-dim)] mono font-normal">/100</span>
+                  <span className="text-xs text-[var(--ink-dim)] font-normal">/100</span>
                 </div>
                 <div className="flex-1">
                   <div className="h-2 w-full bg-[var(--border)] rounded-full overflow-hidden">
@@ -663,7 +660,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
               </button>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
               {activeStations.map((station, idx) => (
                 <button
                   key={station.id}
@@ -689,10 +686,10 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
           <div className="route-card cursor-default">
             <div className="route-card-header">
               <div>
-                <span className="text-4xl display font-black text-[var(--ink)]">
+                <span className="text-4xl mono tabular-nums font-black text-[var(--ink)] leading-none">
                   {currentSnapshot.tempC}°C
                 </span>
-                <div className="route-meta mono text-xs mt-1">
+                <div className="route-meta mono tabular-nums text-xs mt-1.5">
                   FEELS LIKE {currentSnapshot.feelsLikeC}°C · {currentSnapshot.condition.toUpperCase()}
                 </div>
               </div>
@@ -706,36 +703,36 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-[var(--border)] text-center">
-              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded-lg shadow-sm">
-                <div className="text-[0.65rem] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
+            <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-[var(--border-subtle)] text-center">
+              <div className="cockpit-subcard p-2">
+                <div className="text-[10px] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
                   <Wind className="w-3 h-3" /> Wind
                 </div>
-                <div className="mono text-xs text-[var(--ink)] font-bold mt-1">
+                <div className="mono tabular-nums text-xs text-[var(--ink)] font-bold mt-1">
                   {currentSnapshot.windKmh} KM/H
                 </div>
               </div>
-              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded-lg shadow-sm">
-                <div className="text-[0.65rem] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
+              <div className="cockpit-subcard p-2">
+                <div className="text-[10px] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
                   <Droplets className="w-3 h-3" /> Rain
                 </div>
-                <div className="mono text-xs text-[var(--accent)] font-bold mt-1">
+                <div className="mono tabular-nums text-xs text-[var(--accent)] font-bold mt-1">
                   {currentSnapshot.precipProbPct}%
                 </div>
               </div>
-              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded-lg shadow-sm">
-                <div className="text-[0.65rem] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
+              <div className="cockpit-subcard p-2">
+                <div className="text-[10px] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
                   <Eye className="w-3 h-3" /> Vis
                 </div>
-                <div className="mono text-xs text-[var(--ink)] font-bold mt-1">
+                <div className="mono tabular-nums text-xs text-[var(--ink)] font-bold mt-1">
                   {currentSnapshot.visibilityKm} KM
                 </div>
               </div>
-              <div className="bg-[var(--surface)] border border-[var(--border)] p-2 rounded-lg shadow-sm">
-                <div className="text-[0.65rem] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
+              <div className="cockpit-subcard p-2">
+                <div className="text-[10px] text-[var(--ink-dim)] mono font-bold flex items-center justify-center gap-1">
                   <Sun className="w-3 h-3" /> UV
                 </div>
-                <div className="mono text-xs text-[var(--ink)] font-bold mt-1">
+                <div className="mono tabular-nums text-xs text-[var(--ink)] font-bold mt-1">
                   {currentSnapshot.uvIndex}
                 </div>
               </div>
@@ -757,7 +754,7 @@ export const WeatherForecastPanel: React.FC<WeatherForecastPanelProps> = ({
           {/* Hourly Horizon Outlook */}
           <div>
             <span className="section-label mono">Hourly Horizon Outlook</span>
-            <div className="grid grid-cols-6 gap-1 mb-4">
+            <div className="grid grid-cols-3 xs:grid-cols-6 gap-1.5 mb-4">
               {currentSnapshot.hourly.map((hr) => (
                 <div
                   key={hr.timeLabel}

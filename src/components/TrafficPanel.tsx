@@ -26,6 +26,8 @@ import {
   Crosshair,
   Timer,
   Zap,
+  Bike,
+  X,
 } from 'lucide-react';
 
 interface TrafficPanelProps {
@@ -180,57 +182,79 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
     }
   };
 
+  const renderSignalGlyph = (className = 'w-4 h-4') => (
+    <span
+      className={`inline-flex items-center justify-center rounded-md bg-emerald-500/15 border border-emerald-500/35 text-emerald-500 shrink-0 p-0.5 ${className}`}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 16 16" className="w-full h-full" fill="currentColor">
+        <rect x="5" y="1.5" width="6" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        <circle cx="8" cy="4.5" r="1.1" fill="#fb7185" />
+        <circle cx="8" cy="8" r="1.1" fill="#fbbf24" />
+        <circle cx="8" cy="11.5" r="1.1" fill="#34d399" />
+      </svg>
+    </span>
+  );
+
   return (
-    <div className="flex flex-col gap-6 min-h-full">
+    <div className="flex flex-col gap-4 pb-4 min-h-full">
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <span className="section-label mono !mb-0">I. Corridor & Signal Dispatch</span>
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="section-label mono !mb-0">Dispatch Telemetry</span>
           <button
             type="button"
             onClick={() => setShowReportForm((v) => !v)}
-            className="mono text-[0.6rem] uppercase tracking-[0.1em] text-[var(--accent)] hover:underline cursor-pointer"
+            className="min-h-[32px] px-3 rounded-xl bg-purple-500/15 border border-purple-500/35 mono text-[10px] uppercase tracking-[0.08em] text-[var(--accent)] font-bold active:scale-95 transition-transform cursor-pointer"
           >
-            {showReportForm ? 'Close' : '+ Log Incident'}
+            {showReportForm ? 'Close' : '+ Report Hazard'}
           </button>
         </div>
 
         {/* Dispatch Metrics Overview */}
-        <div className="grid grid-cols-4 gap-2.5 p-3.5 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-xs">
-          <div>
-            <div className="route-meta mono text-[9px]">Alerts</div>
-            <div className="text-lg display font-extrabold text-[var(--ink)] mt-0.5">
+        <div className="grid grid-cols-4 gap-2 p-3 cockpit-card">
+          <div className="flex flex-col justify-between min-w-0">
+            <div className="mono text-[9.5px] uppercase tracking-wider text-[var(--ink-dim)] truncate">
+              Alerts
+            </div>
+            <div className="text-xl mono tabular-nums font-extrabold text-[var(--ink)] mt-1 leading-none">
               {activeCount}
             </div>
           </div>
-          <div>
-            <div className="route-meta mono text-[9px] text-rose-500 font-bold">Heavy Bottlenecks</div>
-            <div className="text-lg display font-extrabold text-rose-500 mt-0.5">
+          <div className="flex flex-col justify-between min-w-0">
+            <div className="mono text-[9.5px] uppercase tracking-wider text-rose-500 font-bold truncate">
+              Heavy
+            </div>
+            <div className="text-xl mono tabular-nums font-extrabold text-rose-500 mt-1 leading-none">
               {heavyCount}
             </div>
           </div>
-          <div>
-            <div className="route-meta mono text-[9px] text-emerald-500 font-bold">Traffic Lights</div>
-            <div className="text-lg display font-extrabold text-emerald-500 mt-0.5">
+          <div className="flex flex-col justify-between min-w-0">
+            <div className="mono text-[9.5px] uppercase tracking-wider text-emerald-500 font-bold truncate">
+              Signals
+            </div>
+            <div className="text-xl mono tabular-nums font-extrabold text-emerald-500 mt-1 leading-none">
               {trafficLights.length}
             </div>
           </div>
-          <div>
-            <div className="route-meta mono text-[9px]">Avg Speed</div>
-            <div className="text-lg display font-extrabold text-[var(--ink)] mt-0.5">
-              {averageCorridorSpeed}
-              <span className="text-[0.55rem] ml-0.5 mono">KM/H</span>
+          <div className="flex flex-col justify-between min-w-0">
+            <div className="mono text-[9.5px] uppercase tracking-wider text-[var(--ink-dim)] truncate">
+              Avg Spd
+            </div>
+            <div className="text-xl mono tabular-nums font-extrabold text-[var(--ink)] mt-1 leading-none flex items-baseline gap-0.5">
+              <span>{averageCorridorSpeed}</span>
+              <span className="text-[9px] font-bold text-[var(--ink-dim)]">KM/H</span>
             </div>
           </div>
         </div>
 
-        {/* 🏍️ 1-Tap Rider Quick Hazard Drops */}
-        <div className="mt-4 p-3 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-xs">
+        {/* 1-Tap Rider Quick Hazard Drops */}
+        <div className="mt-3.5 p-3 cockpit-subcard">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 mono text-[0.62rem] uppercase tracking-wider font-bold text-[var(--accent)]">
-              <span>🏍️</span>
+            <div className="flex items-center gap-1.5 mono text-[10px] uppercase tracking-wider font-bold text-[var(--accent)]">
+              <Bike className="w-3.5 h-3.5 shrink-0" />
               <span>1-Tap Rider Hazard Drop</span>
             </div>
-            <span className="mono text-[9px] text-[var(--ink-dim)]">No typing needed</span>
+            <span className="mono text-[9.5px] text-[var(--ink-dim)]">Instant pin</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -239,11 +263,13 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                 key={preset.id}
                 type="button"
                 onClick={() => handleQuickDropHazard(preset.id)}
-                className="p-2.5 bg-[var(--surface)] hover:bg-[var(--accent)]/15 border border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-left transition-all active:scale-95 cursor-pointer flex flex-col justify-between group shadow-xs"
+                className="p-2.5 cockpit-pill rounded-xl text-left transition-all active:scale-95 cursor-pointer flex flex-col justify-between group"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between w-full">
                   {getPresetIcon(preset.iconName)}
-                  <span className="mono text-[9px] font-bold text-[var(--accent)]">+{preset.delayMinutes}m</span>
+                  <span className="mono tabular-nums text-[9.5px] font-bold text-[var(--accent)]">
+                    +{preset.delayMinutes}m
+                  </span>
                 </div>
                 <div className="text-[11px] font-bold text-[var(--ink)] mt-2 leading-tight group-hover:text-[var(--accent)] transition-colors">
                   {preset.label}
@@ -253,8 +279,8 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
           </div>
 
           {toastMessage && (
-            <div className="mt-2.5 p-2 bg-emerald-500/15 border border-emerald-500/40 rounded-lg flex items-center gap-2 text-emerald-600 dark:text-emerald-300 mono text-xs font-bold">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
+            <div className="mt-2.5 p-2 bg-emerald-500/15 border border-emerald-500/35 rounded-xl flex items-center gap-2 text-emerald-500 mono text-xs font-bold">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{toastMessage}</span>
             </div>
           )}
@@ -264,7 +290,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
         {showReportForm && (
           <form
             onSubmit={handleCreateReport}
-            className="mt-4 p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-xl shadow-sm"
+            className="mt-3.5 p-4 cockpit-card"
             noValidate
           >
             <div className="input-group">
@@ -358,19 +384,19 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
               </div>
             )}
 
-            <button type="submit" className="btn-primary display">
+            <button type="submit" className="btn-primary">
               Publish Traffic Report
             </button>
           </form>
         )}
       </div>
 
-      {/* II. Ledger & Locator Section */}
+      {/* Ledger & Locator Section */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <span className="section-label mono !mb-0">II. Traffic & Signal Locator</span>
+          <span className="section-label mono !mb-0">Traffic & Signal Locator</span>
           {activeRouteDelayMinutes > 0 && (
-            <span className="mono text-[10px] text-rose-500 font-bold bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+            <span className="mono tabular-nums text-[10px] text-rose-500 font-bold bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/25">
               +{activeRouteDelayMinutes}m En-Route Delay
             </span>
           )}
@@ -383,16 +409,17 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search EDSA, C5, Alabang, Ayala, Shaw, Cebu..."
-            className="editorial-input !pl-8"
+            className="editorial-input !pl-8 !pr-8"
           />
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-dim)] pointer-events-none" />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs mono text-[var(--ink-dim)] hover:text-[var(--ink)]"
+              aria-label="Clear traffic search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-dim)] hover:text-[var(--ink)] cursor-pointer"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -415,7 +442,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
             onClick={() => setFilterType('heavy')}
             className={`flex items-center justify-center gap-1 ${filterType === 'heavy' ? 'active' : ''}`}
           >
-            <span>🛑</span>
+            <AlertOctagon className="w-3 h-3 shrink-0" />
             <span>Heavy ({heavyCount})</span>
           </button>
           <button
@@ -423,7 +450,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
             onClick={() => setFilterType('lights')}
             className={`flex items-center justify-center gap-1 ${filterType === 'lights' ? 'active' : ''}`}
           >
-            <span>🚦</span>
+            <Timer className="w-3 h-3 shrink-0" />
             <span>Signals ({trafficLights.length})</span>
           </button>
           <button
@@ -438,9 +465,9 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
         {/* VIEW 1: Traffic Lights View */}
         {filterType === 'lights' ? (
           <div>
-            <div className="p-3 mb-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🚦</span>
+            <div className="p-3 mb-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                {renderSignalGlyph('w-7 h-7')}
                 <div>
                   <div className="text-xs font-bold text-[var(--ink)]">
                     Signalized Intersections ({filteredTrafficLights.length})
@@ -463,7 +490,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm">🚦</span>
+                          {renderSignalGlyph('w-5 h-5')}
                           <span className="route-title text-[13px] font-bold text-[var(--ink)]">
                             {tl.name}
                           </span>
@@ -479,13 +506,13 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                       {/* Distance / Cycle badge */}
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {tl.cycleSeconds && (
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 mono text-[9px] font-bold flex items-center gap-1">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 mono tabular-nums text-[9px] font-bold flex items-center gap-1">
                             <Timer className="w-2.5 h-2.5" />
                             {tl.cycleSeconds}s Cycle
                           </span>
                         )}
                         {tl.distanceKm !== undefined && (
-                          <span className="mono text-[9px] text-[var(--ink-dim)] font-medium">
+                          <span className="mono tabular-nums text-[9px] text-[var(--ink-dim)] font-medium">
                             {tl.distanceKm.toFixed(1)} km away
                           </span>
                         )}
@@ -495,13 +522,13 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                     {/* Features list */}
                     {tl.features && tl.features.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2.5">
-                        <span className="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)] text-[var(--ink-dim)] mono text-[8.5px] uppercase font-bold">
+                        <span className="px-1.5 py-0.5 rounded cockpit-pill text-[var(--ink-dim)] mono text-[8.5px] uppercase font-bold">
                           {tl.junctionType}
                         </span>
                         {tl.features.map((feat) => (
                           <span
                             key={feat}
-                            className="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border-subtle)] text-[var(--ink)] mono text-[8.5px]"
+                            className="px-1.5 py-0.5 rounded cockpit-pill text-[var(--ink)] mono text-[8.5px]"
                           >
                             {feat}
                           </span>
@@ -552,9 +579,11 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
           /* VIEW 2: Incidents View (All, Heavy, Roadwork) */
           <div>
             {filterType === 'heavy' && (
-              <div className="p-3 mb-3 bg-rose-500/10 border border-rose-500/25 rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">🛑</span>
+              <div className="p-3 mb-3 bg-rose-500/10 border border-rose-500/25 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0">
+                    <AlertOctagon className="w-4 h-4" />
+                  </span>
                   <div>
                     <div className="text-xs font-bold text-rose-500">
                       Heavy Bottlenecks & Gridlocks ({filteredIncidents.length})
@@ -576,7 +605,7 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                     onClick={() => setShowReportForm(true)}
                     className="text-[var(--accent)] underline cursor-pointer font-bold"
                   >
-                    + LOG INCIDENT
+                    + Report Hazard
                   </button>{' '}
                   above to report live roadwork or congestion.
                 </div>
@@ -594,15 +623,17 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                     >
                       <div className="route-card-header">
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                          {isHeavy && <span className="text-sm shrink-0">🛑</span>}
+                          {isHeavy && (
+                            <AlertOctagon className="w-4 h-4 text-rose-500 shrink-0" />
+                          )}
                           <span className="route-title truncate font-bold text-[var(--ink)]">
                             {inc.title}
                           </span>
                         </div>
                         <span
-                          className={`route-time mono shrink-0 px-2 py-0.5 rounded text-[11px] font-extrabold ${
+                          className={`route-time mono tabular-nums shrink-0 px-2 py-0.5 rounded text-[11px] font-extrabold ${
                             isHeavy
-                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                              ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
                               : 'text-[var(--accent)]'
                           }`}
                         >
@@ -614,13 +645,13 @@ export const TrafficPanel: React.FC<TrafficPanelProps> = ({
                         {inc.corridor}
                       </div>
 
-                      <div className="flex items-center gap-2 mt-1 mono text-[9.5px]">
-                        <span className="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)] text-[var(--ink)] font-bold flex items-center gap-1">
+                      <div className="flex items-center gap-2 mt-1.5 mono tabular-nums text-[9.5px]">
+                        <span className="px-2 py-0.5 rounded cockpit-pill text-[var(--ink)] font-bold flex items-center gap-1">
                           <Zap className="w-2.5 h-2.5 text-amber-500" />
                           {inc.speedKmh} KM/H
                         </span>
                         {isHeavy && (
-                          <span className="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-300 font-bold uppercase">
+                          <span className="px-2 py-0.5 rounded bg-rose-500/15 text-rose-500 font-bold uppercase">
                             Severe Crawl
                           </span>
                         )}

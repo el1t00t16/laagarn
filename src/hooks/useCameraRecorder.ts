@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { GpsPositionState } from '../utils/gpsAndGeocoding';
+import { drawDashcamWatermark } from '../utils/dashcamWatermark';
 
 export type CameraFacingMode = 'environment' | 'user';
 export type RecordingMode = 'normal' | 'timelapse';
 export type LensZoom = '0.5x' | '1x';
+export type CapturedMediaKind = 'video' | 'photo';
 
 export interface UseCameraRecorderOptions {
   effectiveGps?: GpsPositionState | null;
@@ -29,6 +31,7 @@ export interface UseCameraRecorderResult {
   recordedBlob: Blob | null;
   recordedBlobSize: number;
   videoMimeType: string;
+  capturedMediaKind: CapturedMediaKind;
   hasRecoveredRecording: boolean;
   startCamera: (mode?: CameraFacingMode) => Promise<boolean>;
   stopCamera: () => void;
@@ -40,6 +43,7 @@ export interface UseCameraRecorderResult {
   pauseRecording: () => void;
   resumeRecording: () => void;
   stopRecording: () => void;
+  capturePhotoSnapshot: () => Promise<boolean>;
   discardRecording: () => void;
   saveToDevice: (filenamePrefix?: string) => void;
   shareToPhotosOrApps: (filenamePrefix?: string) => Promise<boolean>;
@@ -124,6 +128,50 @@ function deleteBackupRecording(): Promise<void> {
   });
 }
 
+/**
+ * Waits briefly for <video> intrinsic dimensions so portrait vs landscape frame size is accurate.
+ */
+async function resolveVideoDimensions(
+  video: HTMLVideoElement,
+  stream: MediaStream | null
+): Promise<{ rawW: number; rawH: number }> {
+  if (video.videoWidth > 0 && video.videoHeight > 0) {
+    return { rawW: video.videoWidth, rawH: video.videoHeight };
+  }
+
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    };
+    const timer = window.setTimeout(finish, 450);
+    video.addEventListener(
+      'loadedmetadata',
+      () => {
+        clearTimeout(timer);
+        finish();
+      },
+      { once: true }
+    );
+  });
+
+  if (video.videoWidth > 0 && video.videoHeight > 0) {
+    return { rawW: video.videoWidth, rawH: video.videoHeight };
+  }
+
+  const settings = stream?.getVideoTracks()[0]?.getSettings();
+  if (settings?.width && settings?.height) {
+    return { rawW: settings.width, rawH: settings.height };
+  }
+
+  const screenPortrait =
+    typeof window !== 'undefined' && window.innerHeight > window.innerWidth;
+  return screenPortrait ? { rawW: 720, rawH: 1280 } : { rawW: 1280, rawH: 720 };
+}
+
 export function useCameraRecorder({
   effectiveGps = null,
   currentRoadName = '',
@@ -145,23 +193,34 @@ export function useCameraRecorder({
   const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedBlobSize, setRecordedBlobSize] = useState<number>(0);
+  const [capturedMediaKind, setCapturedMediaKind] = useState<CapturedMediaKind>('video');
   const [hasRecoveredRecording, setHasRecoveredRecording] = useState<boolean>(false);
   const recordedBlobRef = useRef<Blob | null>(null);
   const [videoMimeType, setVideoMimeType] = useState<string>(isIOS ? 'video/mp4' : 'video/webm');
   const selectedMimeRef = useRef<string>(isIOS ? 'video/mp4' : 'video/webm');
+  const recordingModeRef = useRef<RecordingMode>('timelapse');
 
-  // Attempt to recover previously recorded video from IndexedDB in case of unexpected tab reload/close
   useEffect(() => {
-    loadBackupRecording().then((blob) => {
-      if (blob && blob.size > 0 && !recordedBlobRef.current) {
-        const url = URL.createObjectURL(blob);
-        setRecordedBlob(blob);
-        recordedBlobRef.current = blob;
-        setRecordedBlobUrl(url);
-        setRecordedBlobSize(blob.size);
-        setHasRecoveredRecording(true);
-      }
-    }).catch(() => {});
+    recordingModeRef.current = recordingMode;
+  }, [recordingMode]);
+
+  // Attempt to recover previously recorded media from IndexedDB in case of unexpected tab reload/close
+  useEffect(() => {
+    loadBackupRecording()
+      .then((blob) => {
+        if (blob && blob.size > 0 && !recordedBlobRef.current) {
+          const url = URL.createObjectURL(blob);
+          const isImage = (blob.type || '').startsWith('image/');
+          setRecordedBlob(blob);
+          recordedBlobRef.current = blob;
+          setRecordedBlobUrl(url);
+          setRecordedBlobSize(blob.size);
+          setCapturedMediaKind(isImage ? 'photo' : 'video');
+          if (blob.type) setVideoMimeType(blob.type);
+          setHasRecoveredRecording(true);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Prevent accidental tab closure while actively recording
@@ -244,8 +303,6 @@ export function useCameraRecorder({
         }
       });
 
-      // If ultra-wide was not matched by keyword, dual camera phones (e.g. iPhone 11/12/13/14)
-      // expose standard wide as camera 0 and ultra-wide as camera 1
       if (!foundUltraWideId && backCams.length >= 2) {
         foundWideId = foundWideId || backCams[0].deviceId;
         foundUltraWideId = backCams[1].deviceId;
@@ -254,7 +311,6 @@ export function useCameraRecorder({
       if (foundWideId) wideDeviceIdRef.current = foundWideId;
       if (foundUltraWideId) ultraWideDeviceIdRef.current = foundUltraWideId;
 
-      // Also check track zoom capabilities if supported
       const track = (activeStream || mediaStreamRef.current)?.getVideoTracks()[0];
       let hasZoomCap = false;
       if (track && typeof track.getCapabilities === 'function') {
@@ -285,7 +341,6 @@ export function useCameraRecorder({
         return false;
       }
 
-      // Stop any existing tracks
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       }
@@ -324,7 +379,6 @@ export function useCameraRecorder({
           videoRef.current.play().catch(() => {});
         }
 
-        // Detect cameras once stream permission is granted
         detectAndCategorizeCameras(stream);
         return true;
       } catch (err: any) {
@@ -349,7 +403,6 @@ export function useCameraRecorder({
         return false;
       }
 
-      // 1. Try track hardware zoom constraint if supported
       const currentTrack = mediaStreamRef.current?.getVideoTracks()[0];
       if (currentTrack && typeof currentTrack.getCapabilities === 'function') {
         const caps: any = currentTrack.getCapabilities();
@@ -364,12 +417,12 @@ export function useCameraRecorder({
         }
       }
 
-      // 2. Multi-camera deviceId switch (iOS Safari ultra-wide camera)
       if (!ultraWideDeviceIdRef.current || !wideDeviceIdRef.current) {
         await detectAndCategorizeCameras();
       }
 
-      const targetDeviceId = zoom === '0.5x' ? ultraWideDeviceIdRef.current : wideDeviceIdRef.current;
+      const targetDeviceId =
+        zoom === '0.5x' ? ultraWideDeviceIdRef.current : wideDeviceIdRef.current;
 
       try {
         const streamConstraints: MediaStreamConstraints = {
@@ -432,88 +485,84 @@ export function useCameraRecorder({
   }, [facingMode, startCamera]);
 
   /**
-   * Draws prominent, high-contrast, social-ready telemetry overlay on canvas:
-   * Extra-Large Speedometer with neon purple glow, destination/highway banner,
-   * GPS coordinates, live timestamp, and prominent LAAGARN GPS DASHCAM badge.
+   * Renders clean, collision-free HUD telemetry watermark onto canvas.
    */
   const drawTelemetryOverlay = useCallback(
-    (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-      const gps = gpsRef.current;
-      const road = roadNameRef.current || 'Philippine Highway';
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const dateStr = now.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-
-      ctx.save();
-
-      // Dynamic scaling factor relative to canvas height (optimized for 720p / 1080p social sharing)
-      const scale = Math.max(1.3, height / 500);
-
-      // Deep, vibrant contrast bottom banner with gradient
-      const barHeight = Math.max(120, Math.round(105 * scale));
-      const gradient = ctx.createLinearGradient(0, height - barHeight - 40, 0, height);
-      gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      gradient.addColorStop(0.3, 'rgba(10, 4, 22, 0.75)');
-      gradient.addColorStop(1, 'rgba(6, 2, 14, 0.95)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, height - barHeight - 40, width, barHeight + 40);
-
-      // 1. EXTRA-LARGE SPEEDOMETER BADGE (Bottom Left - Social Ready!)
-      const speedKmh = gps?.speedKmh !== null && gps?.speedKmh !== undefined ? gps.speedKmh : 0;
-      const speedStr = `${speedKmh}`;
-
-      ctx.shadowColor = 'rgba(168, 85, 247, 0.9)';
-      ctx.shadowBlur = Math.round(14 * scale);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `900 ${Math.round(54 * scale)}px "Space Grotesk", sans-serif`;
-      const leftMargin = Math.round(24 * scale);
-      ctx.fillText(speedStr, leftMargin, height - Math.round(40 * scale));
-
-      // Reset shadow for subsequent clean rendering
-      ctx.shadowBlur = 0;
-
-      // "KM/H" unit tag
-      ctx.fillStyle = '#c084fc';
-      ctx.font = `900 ${Math.round(16 * scale)}px "JetBrains Mono", monospace`;
-      const speedWidth = ctx.measureText(speedStr).width;
-      ctx.fillText('KM/H', leftMargin + speedWidth + Math.round(8 * scale), height - Math.round(46 * scale));
-
-      // 2. ROAD NAME & DESTINATION
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `700 ${Math.round(18 * scale)}px sans-serif`;
-      const displayRoad = road.length > 36 ? road.slice(0, 36) + '…' : road;
-      ctx.fillText(displayRoad, leftMargin, height - Math.round(15 * scale));
-
-      // 3. GPS COORDINATES
-      if (gps) {
-        ctx.fillStyle = '#a5b4fc';
-        ctx.font = `600 ${Math.round(13 * scale)}px "JetBrains Mono", monospace`;
-        const coordsText = `${gps.lat.toFixed(4)}°, ${gps.lng.toFixed(4)}°`;
-        ctx.fillText(coordsText, leftMargin + speedWidth + Math.round(80 * scale), height - Math.round(46 * scale));
-      }
-
-      // 4. PROMINENT LAAGARN GPS DASHCAM BADGE (Bottom Right - High Social Flex!)
-      ctx.textAlign = 'right';
-      const rightMargin = width - Math.round(24 * scale);
-      const lensSuffix = currentLensRef.current === '0.5x' ? ' · 0.5x ULTRA' : '';
-      const brandHeading = `LAAGARN GPS · DASHCAM${lensSuffix}`;
-
-      // Glowing brand text
-      ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
-      ctx.shadowBlur = Math.round(10 * scale);
-      ctx.fillStyle = '#c084fc';
-      ctx.font = `900 ${Math.round(18 * scale)}px "JetBrains Mono", monospace`;
-      ctx.fillText(brandHeading, rightMargin, height - Math.round(40 * scale));
-
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#e2e8f0';
-      ctx.font = `700 ${Math.round(14 * scale)}px "JetBrains Mono", monospace`;
-      ctx.fillText(`${dateStr} ${timeStr}`, rightMargin, height - Math.round(16 * scale));
-
-      ctx.restore();
+    (ctx: CanvasRenderingContext2D, width: number, height: number, modeOverride?: RecordingMode) => {
+      drawDashcamWatermark(ctx, width, height, {
+        gps: gpsRef.current,
+        roadName: roadNameRef.current,
+        lens: currentLensRef.current,
+        recordingMode: modeOverride || recordingModeRef.current,
+      });
     },
     []
   );
+
+  /**
+   * Captures a high-resolution GPS watermarked JPEG snapshot from the live camera feed.
+   */
+  const capturePhotoSnapshot = useCallback(async (): Promise<boolean> => {
+    if (!mediaStreamRef.current || !videoRef.current) {
+      const ok = await startCamera();
+      if (!ok || !videoRef.current) return false;
+    }
+
+    const video = videoRef.current;
+    const { rawW, rawH } = await resolveVideoDimensions(video, mediaStreamRef.current);
+    const aspect = rawW / Math.max(1, rawH);
+
+    // Cap photo long-edge at 1920px for crisp social/gallery quality
+    let width = rawW;
+    let height = rawH;
+    if (rawW >= rawH && rawW > 1920) {
+      width = 1920;
+      height = Math.round(width / aspect);
+    } else if (rawH > rawW && rawH > 1920) {
+      height = 1920;
+      width = Math.round(height * aspect);
+    }
+
+    const snapCanvas = document.createElement('canvas');
+    snapCanvas.width = width;
+    snapCanvas.height = height;
+    const ctx = snapCanvas.getContext('2d');
+    if (!ctx) return false;
+
+    ctx.drawImage(video, 0, 0, width, height);
+    if (burnTelemetry) {
+      drawTelemetryOverlay(ctx, width, height, 'normal');
+    }
+
+    return new Promise((resolve) => {
+      snapCanvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(false);
+            return;
+          }
+          if (recordedBlobUrl) {
+            URL.revokeObjectURL(recordedBlobUrl);
+          }
+          const url = URL.createObjectURL(blob);
+          setRecordedBlob(blob);
+          recordedBlobRef.current = blob;
+          setRecordedBlobUrl(url);
+          setRecordedBlobSize(blob.size);
+          setCapturedMediaKind('photo');
+          setVideoMimeType('image/jpeg');
+          setHasRecoveredRecording(false);
+          saveBackupRecording(blob);
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(15);
+          }
+          resolve(true);
+        },
+        'image/jpeg',
+        0.93
+      );
+    });
+  }, [burnTelemetry, drawTelemetryOverlay, recordedBlobUrl, startCamera]);
 
   /**
    * Starts video recording (standard or timelapse).
@@ -526,138 +575,149 @@ export function useCameraRecorder({
       return;
     }
 
-    recordedChunksRef.current = [];
-    setRecordedBlobUrl(null);
-    setRecordedBlobSize(0);
-    setRecordingSeconds(0);
-    setIsPaused(false);
+    const launch = async () => {
+      const video = videoRef.current;
+      if (!video || !mediaStreamRef.current) return;
 
-    // Prioritize MP4 (H.264) for iOS Photos (Camera Roll), WhatsApp, and universal compatibility.
-    // iOS and Apple Photos strictly reject WebM video files.
-    const mimeCandidates = [
-      'video/mp4;codecs=avc1',
-      'video/mp4;codecs=h264',
-      'video/mp4',
-      'video/webm;codecs=h264',
-      'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp8',
-      'video/webm',
-    ];
-    let selectedMime = '';
-    for (const mime of mimeCandidates) {
-      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
-        selectedMime = mime;
-        break;
+      recordedChunksRef.current = [];
+      if (recordedBlobUrl) {
+        URL.revokeObjectURL(recordedBlobUrl);
       }
-    }
-    if (!selectedMime && isIOS) {
-      selectedMime = 'video/mp4';
-    }
-    selectedMimeRef.current = selectedMime || (isIOS ? 'video/mp4' : 'video/webm');
-    setVideoMimeType(selectedMimeRef.current);
+      setRecordedBlobUrl(null);
+      setRecordedBlobSize(0);
+      setRecordingSeconds(0);
+      setIsPaused(false);
+      setCapturedMediaKind('video');
 
-    // Set up canvas with safe capped dimensions (max 1280x720) to prevent WebProcess OOM crashes on mobile Safari
-    const video = videoRef.current;
-    const rawW = video.videoWidth || 1280;
-    const rawH = video.videoHeight || 720;
-    const aspect = rawW / Math.max(1, rawH);
-
-    let width = 1280;
-    let height = 720;
-    if (rawW > rawH) {
-      width = Math.min(1280, rawW);
-      height = Math.round(width / aspect);
-    } else {
-      height = Math.min(1280, rawH);
-      width = Math.round(height * aspect);
-    }
-
-    const canvas = document.createElement('canvas');
-    canvasRef.current = canvas;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    canvas.width = width;
-    canvas.height = height;
-
-    let recordingStream: MediaStream;
-
-    if (recordingMode === 'timelapse') {
-      // Timelapse mode: capture at 10 fps stream with controlled bitrate to prevent RAM saturation
-      recordingStream = canvas.captureStream(10);
-
-      // Render initial frame
-      ctx.drawImage(video, 0, 0, width, height);
-      if (burnTelemetry) {
-        drawTelemetryOverlay(ctx, width, height);
+      const mimeCandidates = [
+        'video/mp4;codecs=avc1',
+        'video/mp4;codecs=h264',
+        'video/mp4',
+        'video/webm;codecs=h264',
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8',
+        'video/webm',
+      ];
+      let selectedMime = '';
+      for (const mime of mimeCandidates) {
+        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
+          selectedMime = mime;
+          break;
+        }
       }
+      if (!selectedMime && isIOS) {
+        selectedMime = 'video/mp4';
+      }
+      selectedMimeRef.current = selectedMime || (isIOS ? 'video/mp4' : 'video/webm');
+      setVideoMimeType(selectedMimeRef.current);
 
-      // Frame sampler timer
-      const intervalMs = Math.max(250, timelapseIntervalSec * 1000);
-      timelapseIntervalTimerRef.current = window.setInterval(() => {
-        if (!video || video.paused || video.ended) return;
+      // Resolve accurate live camera dimensions (preserving portrait 9:16 vs landscape 16:9)
+      const { rawW, rawH } = await resolveVideoDimensions(video, mediaStreamRef.current);
+      const aspect = rawW / Math.max(1, rawH);
+
+      let width = 1280;
+      let height = 720;
+      if (rawW >= rawH) {
+        width = Math.min(1280, rawW);
+        height = Math.round(width / aspect);
+      } else {
+        height = Math.min(1280, rawH);
+        width = Math.round(height * aspect);
+      }
+      // Ensure even dimensions for H.264 hardware encoders on mobile chipsets
+      width = Math.max(2, width - (width % 2));
+      height = Math.max(2, height - (height % 2));
+
+      const canvas = document.createElement('canvas');
+      canvasRef.current = canvas;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      canvas.width = width;
+      canvas.height = height;
+
+      let recordingStream: MediaStream;
+
+      if (recordingMode === 'timelapse') {
+        recordingStream = canvas.captureStream(10);
+
         ctx.drawImage(video, 0, 0, width, height);
         if (burnTelemetry) {
-          drawTelemetryOverlay(ctx, width, height);
+          drawTelemetryOverlay(ctx, width, height, 'timelapse');
         }
-      }, intervalMs);
-    } else {
-      // Normal video mode
-      if (burnTelemetry) {
+
+        const intervalMs = Math.max(250, timelapseIntervalSec * 1000);
+        timelapseIntervalTimerRef.current = window.setInterval(() => {
+          if (!video || video.paused || video.ended) return;
+          ctx.drawImage(video, 0, 0, width, height);
+          if (burnTelemetry) {
+            drawTelemetryOverlay(ctx, width, height, 'timelapse');
+          }
+        }, intervalMs);
+      } else if (burnTelemetry) {
         recordingStream = canvas.captureStream(30);
         const loop = () => {
           if (!video || video.paused || video.ended) return;
           ctx.drawImage(video, 0, 0, width, height);
-          drawTelemetryOverlay(ctx, width, height);
+          drawTelemetryOverlay(ctx, width, height, 'normal');
           renderAnimFrameRef.current = requestAnimationFrame(loop);
         };
         renderAnimFrameRef.current = requestAnimationFrame(loop);
       } else {
         recordingStream = mediaStreamRef.current;
       }
-    }
 
-    try {
-      const recorder = new MediaRecorder(
-        recordingStream,
-        {
+      try {
+        const recorder = new MediaRecorder(recordingStream, {
           mimeType: selectedMime ? selectedMime : undefined,
-          videoBitsPerSecond: recordingMode === 'timelapse' ? 1_500_000 : 2_500_000,
-        }
-      );
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const mime = selectedMimeRef.current || (isIOS ? 'video/mp4' : 'video/webm');
-        const blob = new Blob(recordedChunksRef.current, {
-          type: mime,
+          videoBitsPerSecond: recordingMode === 'timelapse' ? 1_800_000 : 2_800_000,
         });
-        const url = URL.createObjectURL(blob);
-        setRecordedBlob(blob);
-        recordedBlobRef.current = blob;
-        setRecordedBlobUrl(url);
-        setRecordedBlobSize(blob.size);
-        setHasRecoveredRecording(false);
-        saveBackupRecording(blob);
-      };
 
-      recorder.start(1000); // 1-second chunks
-      mediaRecorderRef.current = recorder;
-      setIsRecording(true);
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
+          }
+        };
 
-      // Elapsed seconds timer
-      timerIntervalRef.current = window.setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
-      }, 1000);
-    } catch (err: any) {
-      console.error('Failed to start MediaRecorder:', err);
-      setCameraError('Failed to initialize video recording.');
-    }
-  }, [burnTelemetry, recordingMode, timelapseIntervalSec, startCamera, drawTelemetryOverlay]);
+        recorder.onstop = () => {
+          const mime = selectedMimeRef.current || (isIOS ? 'video/mp4' : 'video/webm');
+          const blob = new Blob(recordedChunksRef.current, {
+            type: mime,
+          });
+          const url = URL.createObjectURL(blob);
+          setRecordedBlob(blob);
+          recordedBlobRef.current = blob;
+          setRecordedBlobUrl(url);
+          setRecordedBlobSize(blob.size);
+          setCapturedMediaKind('video');
+          setHasRecoveredRecording(false);
+          saveBackupRecording(blob);
+        };
+
+        recorder.start(1000);
+        mediaRecorderRef.current = recorder;
+        setIsRecording(true);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(20);
+        }
+
+        timerIntervalRef.current = window.setInterval(() => {
+          setRecordingSeconds((prev) => prev + 1);
+        }, 1000);
+      } catch (err: any) {
+        console.error('Failed to start MediaRecorder:', err);
+        setCameraError('Failed to initialize video recording.');
+      }
+    };
+
+    launch();
+  }, [
+    burnTelemetry,
+    recordingMode,
+    timelapseIntervalSec,
+    recordedBlobUrl,
+    startCamera,
+    drawTelemetryOverlay,
+  ]);
 
   const pauseRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -686,6 +746,9 @@ export function useCameraRecorder({
     }
     setIsRecording(false);
     setIsPaused(false);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([15, 30, 15]);
+    }
 
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -715,22 +778,29 @@ export function useCameraRecorder({
   }, [recordedBlobUrl]);
 
   /**
-   * Downloads the recorded clip to the phone's storage.
+   * Downloads the recorded clip or photo to the phone's storage.
    */
   const saveToDevice = useCallback(
     (filenamePrefix: string = 'laagarn_dashcam') => {
-      if (!recordedBlobUrl || recordedChunksRef.current.length === 0) return;
+      if (!recordedBlobUrl || !recordedBlob) return;
 
       const now = new Date();
       const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
       const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
-      const modeTag = recordingMode === 'timelapse' ? 'timelapse' : 'clip';
-      const isMp4 =
-        (recordedBlob?.type || selectedMimeRef.current || '').toLowerCase().includes('mp4') ||
-        isIOS;
-      const extension = isMp4 ? 'mp4' : 'webm';
-      const filename = `${filenamePrefix}_${modeTag}_${datePart}_${timePart}.${extension}`;
 
+      let extension = 'webm';
+      let modeTag: string = recordingMode === 'timelapse' ? 'timelapse' : 'clip';
+      if (capturedMediaKind === 'photo' || (recordedBlob.type || '').startsWith('image/')) {
+        extension = 'jpg';
+        modeTag = 'photo';
+      } else {
+        const isMp4 =
+          (recordedBlob.type || selectedMimeRef.current || '').toLowerCase().includes('mp4') ||
+          isIOS;
+        extension = isMp4 ? 'mp4' : 'webm';
+      }
+
+      const filename = `${filenamePrefix}_${modeTag}_${datePart}_${timePart}.${extension}`;
       const a = document.createElement('a');
       a.href = recordedBlobUrl;
       a.download = filename;
@@ -738,12 +808,11 @@ export function useCameraRecorder({
       a.click();
       document.body.removeChild(a);
     },
-    [recordedBlobUrl, recordingMode, recordedBlob]
+    [recordedBlobUrl, recordingMode, recordedBlob, capturedMediaKind]
   );
 
   /**
-   * Triggers the native iOS / Android Web Share Sheet with the video file.
-   * On iPhone (Safari), this opens the native sheet with "Save Video" to Camera Roll!
+   * Triggers the native iOS / Android Web Share Sheet with the video or photo file.
    */
   const shareToPhotosOrApps = useCallback(
     async (filenamePrefix: string = 'laagarn_dashcam'): Promise<boolean> => {
@@ -755,12 +824,25 @@ export function useCameraRecorder({
       const now = new Date();
       const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
       const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
-      const modeTag = recordingMode === 'timelapse' ? 'timelapse' : 'clip';
-      const isMp4 =
-        (recordedBlob?.type || selectedMimeRef.current || '').toLowerCase().includes('mp4') ||
-        isIOS;
-      const extension = isMp4 ? 'mp4' : 'webm';
-      const mimeType = isMp4 ? 'video/mp4' : (recordedBlob?.type || 'video/webm');
+
+      const isPhoto =
+        capturedMediaKind === 'photo' || (recordedBlob.type || '').startsWith('image/');
+      let extension = 'webm';
+      let mimeType = recordedBlob.type || 'video/webm';
+      let modeTag: string = recordingMode === 'timelapse' ? 'timelapse' : 'clip';
+
+      if (isPhoto) {
+        extension = 'jpg';
+        mimeType = 'image/jpeg';
+        modeTag = 'photo';
+      } else {
+        const isMp4 =
+          (recordedBlob.type || selectedMimeRef.current || '').toLowerCase().includes('mp4') ||
+          isIOS;
+        extension = isMp4 ? 'mp4' : 'webm';
+        mimeType = isMp4 ? 'video/mp4' : recordedBlob.type || 'video/webm';
+      }
+
       const filename = `${filenamePrefix}_${modeTag}_${datePart}_${timePart}.${extension}`;
 
       try {
@@ -772,24 +854,22 @@ export function useCameraRecorder({
         ) {
           await navigator.share({
             files: [file],
-            title: 'LAAGARN Highway Recording',
-            text: 'Highway recording from LAAGARN GPS Navigation',
+            title: isPhoto ? 'LAAGARN GPS Photo' : 'LAAGARN Highway Recording',
+            text: 'Captured with LAAGARN GPS Navigation',
           });
           return true;
         }
       } catch (err: any) {
         if (err?.name === 'AbortError') {
-          // User dismissed the share sheet
           return false;
         }
         console.warn('Native share failed, falling back to download:', err);
       }
 
-      // Fallback to regular file download
       saveToDevice(filenamePrefix);
       return true;
     },
-    [recordedBlob, recordingMode, saveToDevice]
+    [recordedBlob, recordingMode, capturedMediaKind, saveToDevice]
   );
 
   // Clean up timers and streams on unmount
@@ -800,9 +880,6 @@ export function useCameraRecorder({
       if (renderAnimFrameRef.current) cancelAnimationFrame(renderAnimFrameRef.current);
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (recordedBlobUrl) {
-        URL.revokeObjectURL(recordedBlobUrl);
       }
     };
   }, []);
@@ -825,6 +902,7 @@ export function useCameraRecorder({
     recordedBlob,
     recordedBlobSize,
     videoMimeType,
+    capturedMediaKind,
     hasRecoveredRecording,
     startCamera,
     stopCamera,
@@ -836,6 +914,7 @@ export function useCameraRecorder({
     pauseRecording,
     resumeRecording,
     stopRecording,
+    capturePhotoSnapshot,
     discardRecording,
     saveToDevice,
     shareToPhotosOrApps,

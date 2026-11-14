@@ -82,13 +82,29 @@ import {
   Moon,
   Zap,
   Users,
-  Radio,
   Store,
+  Search,
+  Crosshair,
+  Share,
+  PlusSquare,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 export type AppTheme = 'dark' | 'amoled' | 'light';
 type ActiveTab = 'routes' | 'places' | 'traffic' | 'convoy' | 'weather' | 'offline';
 type MobileSheetState = 'peek' | 'half' | 'full';
+
+function triggerLightHaptic(ms = 8): void {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    try {
+      navigator.vibrate(ms);
+    } catch {
+      // Ignore unsupported environments
+    }
+  }
+}
 
 export default function App() {
   const [theme, setTheme] = useState<AppTheme>(() => {
@@ -100,7 +116,24 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('routes');
-  const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>('half');
+  const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>('peek');
+  const [isShortLandscape, setIsShortLandscape] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerHeight < 520 : false
+  );
+  const [isDesktop, setIsDesktop] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
+  );
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState<boolean>(true);
+
+  // Track short landscape & desktop split viewport breakpoints
+  useEffect(() => {
+    const onResize = () => {
+      setIsShortLandscape(window.innerHeight < 520);
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', onResize, { passive: true });
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Synchronize theme with DOM root and PWA theme-color
   useEffect(() => {
@@ -150,13 +183,13 @@ export default function App() {
   // Traffic incidents & Traffic Lights state
   const [incidents, setIncidents] = useState<TrafficIncident[]>(INITIAL_TRAFFIC_INCIDENTS);
   const [showTrafficLayer, setShowTrafficLayer] = useState<boolean>(true);
-  const [trafficLights, setTrafficLights] = useState<TrafficLight[]>(KNOWN_TRAFFIC_LIGHTS);
+  const [trafficLights] = useState<TrafficLight[]>(KNOWN_TRAFFIC_LIGHTS);
   const [showTrafficLightsLayer, setShowTrafficLightsLayer] = useState<boolean>(true);
   const [showWeatherLayer, setShowWeatherLayer] = useState<boolean>(true);
   const [showConvoyLayer, setShowConvoyLayer] = useState<boolean>(true);
 
   // Establishments state
-  const [establishments, setEstablishments] = useState<Establishment[]>(KNOWN_ESTABLISHMENTS);
+  const [establishments] = useState<Establishment[]>(KNOWN_ESTABLISHMENTS);
   const [showEstablishmentsLayer, setShowEstablishmentsLayer] = useState<boolean>(true);
   const [selectedEstablishmentId, setSelectedEstablishmentId] = useState<string | null>(null);
 
@@ -179,6 +212,7 @@ export default function App() {
   });
 
   const handleToggleTheme = () => {
+    triggerLightHaptic();
     setTheme((prev) => {
       let next: AppTheme = 'dark';
       if (prev === 'dark') next = 'amoled';
@@ -210,11 +244,20 @@ export default function App() {
   const [voiceGuidance, setVoiceGuidance] = useState<boolean>(true);
   const [followGps, setFollowGps] = useState<boolean>(true);
 
-  // PWA install prompt handler
+  // PWA install prompt & iOS standalone detection
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-
-  // Prevent phone screen from dimming/sleeping during active navigation
-  useWakeLock(navigationActive);
+  const [showIosInstallGuide, setShowIosInstallGuide] = useState<boolean>(false);
+  const isStandalone = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      (window.navigator as any)?.standalone === true
+    );
+  }, []);
+  const isIosDevice = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  }, []);
 
   // Turn-by-turn Speech Guidance
   const { speak: speakGuidance } = useSpeechGuidance(voiceGuidance && navigationActive);
@@ -263,15 +306,18 @@ export default function App() {
     updateProfile: updateConvoyProfile,
     shareRouteToConvoy,
     suggestRouteToConvoy,
-    clearSharedRoute,
     dismissRouteSuggestion,
   } = useConvoy(effectiveGps);
 
   // Highway Dashcam & Timelapse recorder hook
   const [dashcamViewMode, setDashcamViewMode] = useState<DashcamViewMode>('hidden');
+  useWakeLock(navigationActive || isSimulating || dashcamViewMode !== 'hidden');
   const cameraRecorder = useCameraRecorder({
     effectiveGps,
-    currentRoadName: activeRoute?.steps[activeStepIndex]?.instruction || activeRoute?.label,
+    currentRoadName:
+      activeRoute?.steps[activeStepIndex]?.instruction ||
+      activeRoute?.label ||
+      effectiveGps?.addressLabel,
   });
 
   // Strava Simulation Track Recorder hook
@@ -282,11 +328,99 @@ export default function App() {
     activeRoute?.label || 'Philippine Highway Simulation'
   );
 
+  // Swipeable Bottom Sheet Gesture State
+  const [dragOffsetY, setDragOffsetY] = useState<number>(0);
+  const [isDraggingSheet, setIsDraggingSheet] = useState<boolean>(false);
+  const dragMetaRef = useRef<{
+    active: boolean;
+    startY: number;
+    lastY: number;
+    startTime: number;
+    moved: boolean;
+  }>({
+    active: false,
+    startY: 0,
+    lastY: 0,
+    startTime: 0,
+    moved: false,
+  });
+
+  const handleSheetPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Ignore taps on nested quick action buttons inside the peek bar
+    if ((e.target as HTMLElement).closest('[data-peek-action]')) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragMetaRef.current = {
+      active: true,
+      startY: e.clientY,
+      lastY: e.clientY,
+      startTime: performance.now(),
+      moved: false,
+    };
+    setIsDraggingSheet(true);
+    setDragOffsetY(0);
+  };
+
+  const handleSheetPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragMetaRef.current.active) return;
+    const dy = e.clientY - dragMetaRef.current.startY;
+    dragMetaRef.current.lastY = e.clientY;
+    if (Math.abs(dy) > 6) {
+      dragMetaRef.current.moved = true;
+    }
+    // Apply gentle rubber-band resistance at extremes
+    if (mobileSheetState === 'full' && dy < 0) {
+      setDragOffsetY(dy * 0.25);
+    } else if (mobileSheetState === 'peek' && dy > 0) {
+      setDragOffsetY(dy * 0.2);
+    } else {
+      setDragOffsetY(dy);
+    }
+  };
+
+  const finishSheetGesture = () => {
+    if (!dragMetaRef.current.active) return;
+    const { startY, lastY, startTime, moved } = dragMetaRef.current;
+    dragMetaRef.current.active = false;
+    setIsDraggingSheet(false);
+    setDragOffsetY(0);
+
+    const dy = lastY - startY;
+    const dt = Math.max(16, performance.now() - startTime);
+    const velocityY = dy / dt; // px/ms (negative = swipe up, positive = swipe down)
+
+    if (!moved) {
+      // Simple tap on handle toggles intuitively
+      triggerLightHaptic(6);
+      setMobileSheetState((curr) =>
+        curr === 'peek' ? 'half' : curr === 'half' ? 'peek' : 'half'
+      );
+      return;
+    }
+
+    const fastUp = velocityY < -0.55;
+    const fastDown = velocityY > 0.55;
+
+    if (dy < -55 || fastUp) {
+      triggerLightHaptic(8);
+      setMobileSheetState((curr) => {
+        if (curr === 'peek') return fastUp && dy < -140 ? 'full' : 'half';
+        return 'full';
+      });
+    } else if (dy > 55 || fastDown) {
+      triggerLightHaptic(8);
+      setMobileSheetState((curr) => {
+        if (curr === 'full') return fastDown && dy > 150 ? 'peek' : 'half';
+        return 'peek';
+      });
+    }
+  };
+
   const handleLoadSharedRoute = useCallback(
     (route: ConvoySharedRoute) => {
       if (route.stops && route.stops.length >= 2) {
         setStops(route.stops);
         setActiveTab('routes');
+        setMobileSheetState('half');
         speakGuidance(`Loaded convoy route: ${route.label}`);
       }
     },
@@ -327,6 +461,7 @@ export default function App() {
   }, [activeRoute, convoyMyName, suggestRouteToConvoy, speakGuidance]);
 
   const handleToggleDashcam = () => {
+    triggerLightHaptic(10);
     if (dashcamViewMode === 'hidden') {
       setDashcamViewMode('pip');
       cameraRecorder.startCamera();
@@ -337,17 +472,30 @@ export default function App() {
     }
   };
 
-  // Auto-switch to convoy tab if ?convoy=CODE is present in URL
+  // Handle PWA deep-link URL params (?convoy=CODE, ?tab=..., ?dashcam=hud|pip)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlCode = new URLSearchParams(window.location.search).get('convoy');
-      if (urlCode) {
-        setActiveTab('convoy');
-        if (window.innerWidth < 1024) {
-          setMobileSheetState('half');
-        }
-      }
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const urlCode = params.get('convoy');
+    const urlTab = params.get('tab') as ActiveTab | null;
+    const urlDashcam = params.get('dashcam');
+
+    if (urlCode) {
+      setActiveTab('convoy');
+      setMobileSheetState('half');
+    } else if (
+      urlTab &&
+      ['routes', 'places', 'traffic', 'convoy', 'weather', 'offline'].includes(urlTab)
+    ) {
+      setActiveTab(urlTab);
+      setMobileSheetState('half');
     }
+
+    if (urlDashcam === 'hud' || urlDashcam === 'pip') {
+      setDashcamViewMode(urlDashcam);
+      cameraRecorder.startCamera();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Route Index for fast on-device geometry calculations
@@ -367,10 +515,7 @@ export default function App() {
     };
   }, []);
 
-  // 🏍️ Anti-Vibration & Touch-Outside Blur (Suppresses iOS WebKit "Undo Typing" dialog)
-  // Motorcycle engine vibration and road bumps cause iPhone 13 accelerometer oscillations.
-  // In iOS Safari, if an input field is active when the phone shakes, iOS triggers native "Undo Typing".
-  // Auto-blurring inputs on touch-outside and dampening on vehicle motion completely eliminates this modal.
+  // Anti-Vibration & Touch-Outside Blur (Suppresses iOS WebKit "Undo Typing" dialog)
   useEffect(() => {
     const blurActiveInput = () => {
       if (
@@ -397,7 +542,6 @@ export default function App() {
       const y = acc.y ?? 0;
       const z = acc.z ?? 0;
       const magnitude = Math.sqrt(x * x + y * y + z * z);
-      // Motorcycle vibration spikes or bumps
       if (magnitude > 13.5 || magnitude < 6.0) {
         blurActiveInput();
       }
@@ -532,7 +676,6 @@ export default function App() {
     );
     prevAlongKmRef.current = progress.alongKm;
 
-    // Auto-advance step when approaching within 40m of next maneuver
     if (progress.nextStepIndex !== activeStepIndex) {
       setActiveStepIndex(progress.nextStepIndex);
       const nextStep = activeRoute.steps[progress.nextStepIndex];
@@ -541,7 +684,6 @@ export default function App() {
       }
     }
 
-    // Voice announcement and Dashcam auto-save if user arrives at destination
     if (progress.arrived) {
       speakGuidance('You have arrived at your destination.');
       if (cameraRecorder.isRecording) {
@@ -554,6 +696,7 @@ export default function App() {
   // Handle GPS Locate button
   const handleLocateUserGps = useCallback(
     async (setAsOrigin = true) => {
+      triggerLightHaptic(8);
       startTracking();
       const pos = await locateOnce();
       if (pos && setAsOrigin) {
@@ -591,10 +734,7 @@ export default function App() {
         zoom: 13,
       });
     }
-    // On mobile, collapse sheet to peek when a route is computed so map is clearly visible
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('peek');
-    }
+    setMobileSheetState('half');
   };
 
   const handleClearRoute = () => {
@@ -606,14 +746,13 @@ export default function App() {
   };
 
   const handleToggleSimulation = () => {
+    triggerLightHaptic(10);
     if (isSimulating) {
       pauseSimulation();
     } else {
       startSimulation();
       setFollowGps(true);
-      if (window.innerWidth < 1024) {
-        setMobileSheetState('peek');
-      }
+      setMobileSheetState('peek');
     }
   };
 
@@ -641,6 +780,7 @@ export default function App() {
         prev.length >= 2 ? [customPoint, ...prev.slice(1)] : [customPoint]
       );
       setMapClickAction('none');
+      setMobileSheetState('half');
     } else if (action === 'destination') {
       setStops((prev) => {
         if (prev.length === 0 && gpsState) {
@@ -659,18 +799,20 @@ export default function App() {
         return [...prev.slice(0, -1), customPoint];
       });
       setMapClickAction('none');
+      setMobileSheetState('half');
     } else if (action === 'waypoint') {
       setStops((prev) => {
         if (prev.length < 2) return [...prev, customPoint];
         return [...prev.slice(0, -1), customPoint, prev[prev.length - 1]];
       });
       setMapClickAction('none');
+      setMobileSheetState('half');
     } else if (action === 'weather') {
       const snap = await fetchLocationWeather(customPoint, isOfflineMode);
       setWeatherSnapshots((prev) => [snap, ...prev.slice(0, 4)]);
       setActiveTab('weather');
       setMapClickAction('none');
-      if (window.innerWidth < 1024) setMobileSheetState('half');
+      setMobileSheetState('half');
     }
   };
 
@@ -713,10 +855,7 @@ export default function App() {
     setActiveRouteIndex(0);
     setActiveStepIndex(0);
     setFocusedCoord({ lat: est.lat, lng: est.lng, zoom: 15 });
-
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('peek');
-    }
+    setMobileSheetState('half');
   };
 
   const handleAddEstablishmentStop = (est: Establishment) => {
@@ -765,9 +904,7 @@ export default function App() {
     }
     setFocusedCoord({ lat: tl.lat, lng: tl.lng, zoom: 16, label: tl.name });
     setActiveTab('routes');
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('half');
-    }
+    setMobileSheetState('half');
   };
 
   const handleAddTrafficLightStop = (tl: TrafficLight) => {
@@ -795,9 +932,7 @@ export default function App() {
     }
     setFocusedCoord({ lat: tl.lat, lng: tl.lng, zoom: 16, label: tl.name });
     setActiveTab('routes');
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('half');
-    }
+    setMobileSheetState('half');
   };
 
   const handleRouteToPeer = (point: LatLngPoint) => {
@@ -816,9 +951,7 @@ export default function App() {
     }
     setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
     setActiveTab('routes');
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('half');
-    }
+    setMobileSheetState('half');
   };
 
   const handleAddPeerStop = (point: LatLngPoint) => {
@@ -845,9 +978,7 @@ export default function App() {
     }
     setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
     setActiveTab('routes');
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('half');
-    }
+    setMobileSheetState('half');
   };
 
   const handleFitConvoyBounds = (points: { lat: number; lng: number }[]) => {
@@ -870,14 +1001,13 @@ export default function App() {
     const maxDiff = Math.max(latDiff, lngDiff);
     const zoom = maxDiff > 2 ? 8 : maxDiff > 0.8 ? 10 : maxDiff > 0.3 ? 12 : maxDiff > 0.08 ? 14 : 15;
     setFocusedCoord({ lat: centerLat, lng: centerLng, zoom });
+    setMobileSheetState('peek');
   };
 
   const handleFocusEstablishment = (est: Establishment) => {
     setSelectedEstablishmentId(est.id);
     setFocusedCoord({ lat: est.lat, lng: est.lng, zoom: 16 });
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('peek');
-    }
+    setMobileSheetState('peek');
   };
 
   const handleDownloadRegionPack = async (
@@ -925,13 +1055,12 @@ export default function App() {
   };
 
   const handleStartNavigation = () => {
+    triggerLightHaptic(14);
     setNavigationActive(true);
     setActiveStepIndex(0);
     setFollowGps(true);
     startTracking();
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('peek');
-    }
+    setMobileSheetState('peek');
     if (activeRoute?.steps[0]) {
       handleFocusCoordinate(activeRoute.steps[0].lat, activeRoute.steps[0].lng, 16);
       speakGuidance(`Starting navigation to ${activeRoute.stops[activeRoute.stops.length - 1].name}.`);
@@ -939,42 +1068,45 @@ export default function App() {
   };
 
   const handleInstallPwa = async () => {
+    triggerLightHaptic(8);
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
       if (choice.outcome === 'accepted') {
         setDeferredPrompt(null);
       }
+    } else if (isIosDevice && !isStandalone) {
+      setShowIosInstallGuide(true);
     }
   };
 
-  // Brand Logo Click: Return to Home (Planner) or Refresh
+  const handleOpenWhereToSearch = () => {
+    triggerLightHaptic(8);
+    setActiveTab('routes');
+    if (isDesktop) {
+      setDesktopSidebarOpen(true);
+    } else {
+      setMobileSheetState((curr) => (curr === 'peek' ? 'half' : 'full'));
+    }
+    setTimeout(() => {
+      const destEl = document.getElementById('destination-location-input');
+      if (destEl && !activeRoute) {
+        destEl.focus();
+      }
+    }, 180);
+  };
+
+  // Brand Logo Tap: Return to Home Map / Reset
   const handleHomeOrRefresh = (e?: React.MouseEvent) => {
     e?.preventDefault();
+    triggerLightHaptic(8);
 
-    // If already on Home (Planner) with no sub-selection and not in navigation, perform a clean page refresh
-    if (activeTab === 'routes' && !selectedEstablishmentId && !navigationActive) {
-      if (typeof window !== 'undefined') {
-        if (window.location.search) {
-          window.location.href = window.location.pathname || '/';
-        } else {
-          window.location.reload();
-        }
-      }
-      return;
-    }
-
-    // Otherwise, smoothly reset to Home dashboard view
     setActiveTab('routes');
     setSelectedEstablishmentId(null);
     setNavigationActive(false);
     resetSimulation();
+    setMobileSheetState('peek');
 
-    if (window.innerWidth < 1024) {
-      setMobileSheetState('half');
-    }
-
-    // Recenter map camera to live GPS if available, else route or default Philippine center
     if (gpsState) {
       setFocusedCoord({ lat: gpsState.lat, lng: gpsState.lng, zoom: 15 });
     } else if (activeRoute && activeRoute.coordinates.length > 0) {
@@ -987,195 +1119,517 @@ export default function App() {
       setFocusedCoord({ lat: 14.5995, lng: 120.9842, zoom: 12 });
     }
 
-    // Clean any query string in the address bar
     if (typeof window !== 'undefined' && window.location.search) {
       window.history.replaceState({}, '', window.location.pathname || '/');
     }
   };
 
+  // Compute responsive sheet CSS height (with live finger-drag offset)
+  const baseSheetHeightVh =
+    mobileSheetState === 'peek'
+      ? 0
+      : mobileSheetState === 'half'
+      ? isShortLandscape
+        ? 64
+        : 54
+      : isShortLandscape
+      ? 92
+      : 88;
+
+  const sheetDynamicStyle: React.CSSProperties | undefined = isDesktop
+    ? undefined
+    : mobileSheetState === 'peek' && dragOffsetY >= 0
+    ? {}
+    : {
+        height:
+          mobileSheetState === 'peek'
+            ? `calc(6.75rem + env(safe-area-inset-bottom, 0px) + ${Math.max(0, -dragOffsetY)}px)`
+            : `clamp(110px, calc(${baseSheetHeightVh}dvh - ${dragOffsetY}px), 94dvh)`,
+      };
+
+  const activeIncidentsCount = incidents.filter((i) => i.active).length;
+
+  const navTabs: {
+    id: ActiveTab;
+    label: string;
+    icon: any;
+    badge?: number;
+    alertDot?: boolean;
+  }[] = [
+    { id: 'routes', label: 'Route', icon: Navigation },
+    { id: 'places', label: 'Places', icon: Store },
+    {
+      id: 'traffic',
+      label: 'Traffic',
+      icon: AlertTriangle,
+      badge: activeIncidentsCount,
+    },
+    {
+      id: 'convoy',
+      label: 'Convoy',
+      icon: Users,
+      badge:
+        isConvoySharing && convoyActivePeersCount > 0
+          ? convoyActivePeersCount + 1
+          : undefined,
+      alertDot: isConvoySharing && convoyActivePeersCount === 0,
+    },
+    {
+      id: 'weather',
+      label: 'Weather',
+      icon: CloudRain,
+      alertDot: Boolean(hazardReport && hazardReport.overallLevel !== 'nominal'),
+    },
+    {
+      id: 'offline',
+      label: 'Offline',
+      icon: HardDriveDownload,
+      alertDot: isOfflineMode,
+    },
+  ];
+
+  const peekSummaryLabel =
+    activeTab === 'routes'
+      ? activeRoute
+        ? `${activeRoute.totalDurationMinutes} min · ${activeRoute.totalDistanceKm} km`
+        : 'Plan Your Ride or Drive'
+      : activeTab === 'places'
+      ? `Places Nearby (${establishments.length})`
+      : activeTab === 'traffic'
+      ? `Road & Hazard Alerts (${activeIncidentsCount})`
+      : activeTab === 'convoy'
+      ? isConvoySharing
+        ? `Convoy ${convoyRoomCode} · ${convoyActivePeersCount + 1} Riders`
+        : 'Live Convoy Pack'
+      : activeTab === 'weather'
+      ? 'Corridor Weather & Grade'
+      : `Offline Maps (${tileStats.tileCount} tiles)`;
+
+  const destinationShortName =
+    activeRoute && activeRoute.stops.length >= 2
+      ? activeRoute.stops[activeRoute.stops.length - 1].name.split(',')[0]
+      : null;
+
   return (
-    <div className={`h-full h-[100dvh] w-full flex flex-col overflow-hidden select-none font-sans transition-colors duration-200 ${
-      theme === 'amoled' ? 'bg-[#000000] text-white' : theme === 'dark' ? 'bg-[#090410] text-[#f8f6fc]' : 'bg-[#f8f6fc] text-[#160a2c]'
-    }`}>
-      {/* Top Header / App Bar (Glassy Purple with mobile notch safe-area padding) */}
-      <header className={`app-header shrink-0 flex items-center px-3 sm:px-6 border-b transition-colors z-50 shadow-lg backdrop-blur-xl ${
+    <div
+      className={`relative h-full h-[100dvh] w-full overflow-hidden select-none font-sans transition-colors duration-200 ${
         theme === 'amoled'
-          ? 'bg-[#000000]/95 border-purple-500/30 text-white shadow-black/80'
+          ? 'bg-[#000000] text-white'
           : theme === 'dark'
-          ? 'bg-[#0d0717]/85 border-purple-500/20 text-[#f8f6fc] shadow-black/40'
-          : 'bg-white/85 border-purple-300/40 text-[#160a2c] shadow-purple-900/5'
-      }`}>
-        <div className="w-full flex items-center justify-between gap-2 sm:gap-3 py-1.5">
-          {/* Left: Brand Identity with Glowing Compass & Subtitle (Click to Return Home or Refresh) */}
-          <button
-            type="button"
-            onClick={handleHomeOrRefresh}
-            title={activeTab === 'routes' && !selectedEstablishmentId ? 'Click to refresh page' : 'Click to return to Home (Planner)'}
-            aria-label="LAAGARN Home - Return to Planner or Refresh"
-            className="flex items-center gap-2 sm:gap-2.5 min-w-0 text-left cursor-pointer group select-none transition-transform hover:opacity-95 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60 rounded-xl py-0.5 px-1 -ml-1"
-          >
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-lg shadow-purple-500/35 shrink-0 group-hover:scale-105 group-active:scale-95 group-hover:shadow-purple-500/50 transition-all">
-              <Compass className="w-4.5 h-4.5 sm:w-5 sm:h-5 animate-[spin_12s_linear_infinite] group-hover:rotate-180 transition-transform duration-500" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h1 className={`logo display text-sm sm:text-lg font-black tracking-wider leading-none transition-colors ${
-                  theme !== 'light' ? 'text-white group-hover:text-purple-200' : 'text-[#160a2c] group-hover:text-purple-800'
-                }`}>
-                  LAAGARN
-                </h1>
-                <span className={`px-1.5 py-0.5 text-[8px] font-extrabold mono uppercase tracking-wider rounded-md shrink-0 transition-colors ${
-                  theme !== 'light'
-                    ? 'bg-purple-500/20 text-[#c084fc] border border-purple-500/30 group-hover:bg-purple-500/30'
-                    : 'bg-purple-100 text-[#7c3aed] border border-purple-200 group-hover:bg-purple-200'
-                }`}>
-                  GPS
-                </span>
-              </div>
-              <div className={`mono text-[8px] sm:text-[9.5px] uppercase tracking-wider mt-0.5 truncate max-w-[160px] xs:max-w-[210px] sm:max-w-none transition-colors ${
-                theme !== 'light' ? 'text-purple-300/60 group-hover:text-purple-300/90' : 'text-purple-700/70 group-hover:text-purple-900'
-              }`}>
-                My Way, Your Travel Buddy.
-              </div>
-            </div>
-          </button>
+          ? 'bg-[#090410] text-[#f8f6fc]'
+          : 'bg-[#f8f6fc] text-[#160a2c]'
+      }`}
+    >
+      {/* 1. Full-Bleed Edge-to-Edge Interactive Map Canvas */}
+      <main className="absolute inset-0 w-full h-full z-0">
+        <LeafletMapView
+          stops={stops}
+          routes={computedRoutes}
+          activeRouteIndex={activeRouteIndex}
+          onSelectRouteIndex={setActiveRouteIndex}
+          gpsState={effectiveGps}
+          gpsLoading={gpsStatus === 'locating'}
+          gpsCompassHeading={compassHeading}
+          onLocateUserGps={() => handleLocateUserGps(true)}
+          incidents={incidents}
+          showTrafficLayer={showTrafficLayer}
+          onToggleTrafficLayer={() => setShowTrafficLayer((v) => !v)}
+          weatherSnapshots={weatherSnapshots}
+          corridorStations={corridorStations}
+          hazardReport={hazardReport}
+          showWeatherLayer={showWeatherLayer}
+          onToggleWeatherLayer={() => setShowWeatherLayer((v) => !v)}
+          establishments={establishments}
+          showEstablishmentsLayer={showEstablishmentsLayer}
+          onToggleEstablishmentsLayer={() => setShowEstablishmentsLayer((v) => !v)}
+          selectedEstablishmentId={selectedEstablishmentId}
+          onSelectEstablishmentRoute={handleSelectEstablishmentRoute}
+          onAddEstablishmentStop={handleAddEstablishmentStop}
+          onSelectEstablishment={handleFocusEstablishment}
+          trafficLights={trafficLights}
+          showTrafficLightsLayer={showTrafficLightsLayer}
+          onToggleTrafficLightsLayer={() => setShowTrafficLightsLayer((v) => !v)}
+          onSelectTrafficLightRoute={handleSelectTrafficLightRoute}
+          onAddTrafficLightStop={handleAddTrafficLightStop}
+          convoyPeers={convoyPeers}
+          showConvoyLayer={showConvoyLayer}
+          onToggleConvoyLayer={() => setShowConvoyLayer((v) => !v)}
+          onRouteToPeer={handleRouteToPeer}
+          onAddPeerStop={handleAddPeerStop}
+          isOfflineMode={isOfflineMode}
+          mapStyle={mapStyle}
+          onChangeMapStyle={setMapStyle}
+          mapClickAction={mapClickAction}
+          onChangeMapClickAction={setMapClickAction}
+          onMapPickLocation={handleMapPickLocation}
+          onCacheViewport={async (sw, ne) => {
+            setActiveTab('offline');
+            setMobileSheetState('half');
+            const res = await cacheBoundingBoxTiles(sw, ne, [11, 12]);
+            setTileStats(res.stats);
+          }}
+          focusedCoord={focusedCoord}
+          navigationActive={navigationActive}
+          activeStepIndex={activeStepIndex}
+          onStepChange={handleStepChange}
+          onExitNavigation={() => {
+            setNavigationActive(false);
+            pauseSimulation();
+          }}
+          voiceGuidance={voiceGuidance}
+          onToggleVoiceGuidance={() => setVoiceGuidance((v) => !v)}
+          followGps={followGps}
+          onToggleFollowGps={() => setFollowGps((v) => !v)}
+          isSimulating={isSimulating}
+          onToggleSimulation={handleToggleSimulation}
+          onResetSimulation={resetSimulation}
+          simulationProgress={simProgressPercent}
+          simSpeedMultiplier={simSpeedMultiplier}
+          onChangeSimSpeed={setSimSpeedMultiplier}
+          onToggleDashcam={handleToggleDashcam}
+          dashcamActive={dashcamViewMode !== 'hidden'}
+          isRecordingVideo={cameraRecorder.isRecording}
+          mobileSheetOpen={!isDesktop && mobileSheetState !== 'peek'}
+          desktopSidebarOpen={isDesktop && desktopSidebarOpen}
+          onOpenStravaModal={() => setStravaModalOpen(true)}
+          stravaRecordingActive={stravaRecorder.isRecording}
+          stravaPointsCount={stravaRecorder.trackPoints.length}
+          convoySharedRoute={convoySharedRoute}
+          onLoadSharedRoute={handleLoadSharedRoute}
+          pendingConvoyJoinRequests={convoyPendingJoinRequests}
+          onAcceptConvoyJoinRequest={acceptConvoyJoinRequest}
+          onDeclineConvoyJoinRequest={declineConvoyJoinRequest}
+          theme={theme}
+        />
+      </main>
 
-          {/* Desktop View Navigation */}
-          <nav
-            aria-label="Workspace Tabs"
-            className="hidden lg:flex items-center gap-6"
-          >
-            {(
-              [
-                { id: 'routes', label: 'Planner' },
-                { id: 'places', label: 'Places' },
-                { id: 'traffic', label: 'Traffic' },
-                {
-                  id: 'convoy',
-                  label: isConvoySharing
-                    ? `Convoy (${convoyActivePeersCount + 1})`
-                    : 'Convoy 👥',
-                },
-                { id: 'weather', label: 'Weather' },
-                { id: 'offline', label: 'Offline Cartography' },
-              ] as { id: ActiveTab; label: string }[]
-            ).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveTab(item.id)}
-                className={`mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                  activeTab === item.id
-                    ? theme !== 'light'
-                      ? 'text-[#c084fc] border-b-2 border-[#a855f7] pb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
-                      : 'text-[#7c3aed] border-b-2 border-[#9333ea] pb-1 drop-shadow-[0_0_8px_rgba(147,51,234,0.3)]'
-                    : theme !== 'light'
-                    ? 'text-gray-400 hover:text-white'
-                    : 'text-purple-900/60 hover:text-purple-950'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Right Header: Theme Toggle, Install PWA & Status Badges */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Live Convoy Status Badge */}
-            {isConvoySharing && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('convoy');
-                  if (window.innerWidth < 1024) setMobileSheetState('half');
-                }}
-                className="h-8 px-2 sm:px-2.5 bg-cyan-500/15 border border-cyan-500/40 text-cyan-600 dark:text-cyan-300 mono text-[10px] uppercase font-bold rounded-xl flex items-center gap-1.5 cursor-pointer hover:border-cyan-400"
-                title={`Convoy ${convoyRoomCode} · ${convoyActivePeersCount + 1} Members`}
-              >
-                <Users className="w-3.5 h-3.5 text-cyan-500 animate-pulse" />
-                <span>Convoy {convoyActivePeersCount + 1}</span>
-              </button>
-            )}
-            {/* Theme Toggle Button: Purple -> OLED Black -> Light */}
+      {/* 2. Floating Mobile Top Search & Status Capsule (Hidden on Desktop where Left Rail integrates it) */}
+      {!(navigationActive || isSimulating) && (
+        <header className="lg:hidden absolute top-0 left-0 right-0 z-[500] pt-[max(0.45rem,env(safe-area-inset-top))] px-3 pointer-events-none">
+          <div className="cockpit-shell pointer-events-auto max-w-[480px] mx-auto h-12 px-2 flex items-center justify-between gap-1.5 rounded-2xl transition-colors text-[var(--ink)]">
+            {/* Brand Home Pill */}
             <button
               type="button"
-              onClick={handleToggleTheme}
-              aria-label={`Current theme: ${theme}. Click to switch theme`}
-              title={
-                theme === 'dark'
-                  ? 'Switch to OLED Black (Battery Saver)'
-                  : theme === 'amoled'
-                  ? 'Switch to Light Mode'
-                  : 'Switch to Glassy Purple Dark Mode'
-              }
-              className={`h-8 px-2 sm:px-2.5 rounded-xl border transition-all flex items-center gap-1.5 mono text-[10px] font-bold uppercase cursor-pointer ${
-                theme === 'amoled'
-                  ? 'bg-black border-purple-500/50 text-[#c084fc] shadow-[0_0_12px_rgba(168,85,247,0.3)]'
-                  : theme === 'dark'
-                  ? 'bg-purple-950/40 border-purple-500/30 text-purple-200 hover:text-white hover:border-[#a855f7]'
-                  : 'bg-purple-100/80 border-purple-300/60 text-purple-900 hover:border-purple-500 shadow-sm'
-              }`}
+              onClick={handleHomeOrRefresh}
+              aria-label="LAAGARN Home"
+              className="flex items-center gap-1.5 pl-0.5 pr-1.5 py-1 rounded-xl active:scale-95 transition-transform cursor-pointer shrink-0"
             >
-              {theme === 'dark' ? (
-                <>
-                  <Zap className="w-3.5 h-3.5 text-purple-300" />
-                  <span className="hidden sm:inline">OLED</span>
-                </>
-              ) : theme === 'amoled' ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-300" />
-                  <span className="hidden sm:inline">Light</span>
-                </>
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-md shadow-purple-500/35">
+                <Compass className="w-4.5 h-4.5 animate-[spin_14s_linear_infinite]" />
+              </div>
+              <span className="display text-xs font-black tracking-wider hidden xs:inline">
+                LAAGARN
+              </span>
+            </button>
+
+            {/* Interactive "Where to?" / Active Route Search Pill */}
+            <button
+              type="button"
+              onClick={handleOpenWhereToSearch}
+              className="flex-1 min-w-0 h-8 px-2.5 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)] flex items-center gap-2 text-left active:scale-[0.98] transition-all cursor-pointer text-[var(--ink)]"
+            >
+              <Search className="w-3.5 h-3.5 text-[var(--accent-light)] shrink-0" />
+              {destinationShortName ? (
+                <div className="min-w-0 flex items-center gap-1.5 text-xs truncate">
+                  <span className="font-semibold truncate">{destinationShortName}</span>
+                  <span className="mono text-[10px] text-[var(--accent-light)] font-bold shrink-0">
+                    · {activeRoute?.totalDurationMinutes}m
+                  </span>
+                </div>
               ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-purple-700" />
-                  <span className="hidden sm:inline">Dark</span>
-                </>
+                <span className="text-xs font-medium truncate text-[var(--ink-dim)]">
+                  Where to?
+                </span>
               )}
             </button>
 
-            {deferredPrompt && (
+            {/* Right Compact Status & Actions */}
+            <div className="flex items-center gap-1 shrink-0">
+              {isConvoySharing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerLightHaptic(8);
+                    setActiveTab('convoy');
+                    setMobileSheetState('half');
+                  }}
+                  aria-label="Open Active Convoy"
+                  className="h-8 px-2 bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 mono text-[10px] font-bold rounded-xl flex items-center gap-1 active:scale-95 cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5 animate-pulse" />
+                  <span>{convoyActivePeersCount + 1}</span>
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={handleInstallPwa}
-                className="h-8 px-2.5 bg-gradient-to-r from-[#a855f7] to-[#9333ea] hover:from-[#c084fc] hover:to-[#a855f7] text-white mono text-[10px] font-bold uppercase flex items-center gap-1 shadow-lg shadow-purple-500/30 rounded-xl cursor-pointer"
+                onClick={handleToggleTheme}
+                aria-label={`Switch theme (current: ${theme})`}
+                className="w-8 h-8 rounded-xl bg-[var(--surface-pill)] border border-[var(--border-subtle)] text-[var(--ink)] flex items-center justify-center active:scale-95 transition-all cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Install</span>
+                {theme === 'dark' ? (
+                  <Zap className="w-3.5 h-3.5 text-[#c084fc]" />
+                ) : theme === 'amoled' ? (
+                  <Sun className="w-3.5 h-3.5 text-amber-300" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 text-[#7c3aed]" />
+                )}
               </button>
-            )}
 
-            {/* Online / Offline Status Badge (Always shows legible text, never truncated to an empty dot) */}
-            {isOfflineMode ? (
-              <div className="h-8 px-2 sm:px-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 mono text-[10px] uppercase font-bold rounded-xl flex items-center gap-1.5">
-                <WifiOff className="w-3 h-3 text-amber-400" />
-                <span>Offline</span>
+              {!isStandalone && (deferredPrompt || isIosDevice) && (
+                <button
+                  type="button"
+                  onClick={handleInstallPwa}
+                  aria-label="Install Mobile App"
+                  title="Install LAAGARN App"
+                  className="h-8 px-2 bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white flex items-center gap-1 shadow-md shadow-purple-500/30 rounded-xl active:scale-95 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {isOfflineMode ? (
+                <div
+                  title="Offline Mode Active"
+                  className="h-8 px-2 bg-amber-500/15 border border-amber-500/35 text-amber-400 rounded-xl flex items-center"
+                >
+                  <WifiOff className="w-3 h-3" />
+                </div>
+              ) : (
+                <div
+                  title="Live Network Connected"
+                  className="h-8 px-2 bg-[var(--surface-pill)] border border-[var(--border-subtle)] rounded-xl flex items-center"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* Desktop Reopen Cockpit Pill when Sidebar is Collapsed */}
+      {isDesktop && !desktopSidebarOpen && (
+        <div className="hidden lg:flex fixed top-4 left-4 z-[510] items-center gap-2 cockpit-shell px-2.5 py-2 rounded-2xl text-[var(--ink)]">
+          <button
+            type="button"
+            onClick={() => setDesktopSidebarOpen(true)}
+            aria-label="Open LAAGARN Cockpit Panel"
+            className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-[var(--surface-pill)] transition-colors cursor-pointer"
+          >
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-sm">
+              <Compass className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-bold tracking-tight">Open Panel</span>
+            <PanelLeftOpen className="w-4 h-4 text-[var(--accent-light)]" />
+          </button>
+        </div>
+      )}
+
+      {/* 3. Unified Responsive Command Surface: Desktop Left Glass Cockpit Rail + Mobile Bottom Sheet */}
+      <div
+        style={sheetDynamicStyle}
+        className={`fixed left-0 right-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-full sm:max-w-[480px] bottom-0 lg:left-4 lg:right-auto lg:top-4 lg:bottom-4 lg:translate-x-0 lg:w-[404px] lg:max-w-[404px] z-[500] cockpit-shell border-t sm:border rounded-t-3xl lg:rounded-3xl flex flex-col overflow-hidden ${
+          isDraggingSheet
+            ? 'transition-none'
+            : 'transition-[height,transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'
+        } ${
+          isDesktop && !desktopSidebarOpen ? 'lg:hidden' : ''
+        } ${
+          !isDesktop && mobileSheetState === 'peek' && dragOffsetY >= 0 ? 'h-auto' : ''
+        }`}
+      >
+        {/* Desktop Brand Capsule & Segmented Navigation Bar */}
+        <div className="hidden lg:flex flex-col shrink-0 border-b border-[var(--border-subtle)]">
+          <div className="px-3.5 pt-3 pb-2.5 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={handleHomeOrRefresh}
+              className="flex items-center gap-2 rounded-xl pr-2 py-0.5 active:scale-95 transition-transform cursor-pointer shrink-0"
+              title="Reset to Philippines Map Overview"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-md shadow-purple-500/35">
+                <Compass className="w-4.5 h-4.5 animate-[spin_14s_linear_infinite]" />
               </div>
-            ) : (
-              <div className={`h-8 px-2 sm:px-2.5 border mono text-[10px] uppercase font-bold rounded-xl flex items-center gap-1.5 ${
-                theme !== 'light'
-                  ? 'bg-purple-950/40 border-purple-500/30 text-purple-200'
-                  : 'bg-purple-100/80 border-purple-300/60 text-purple-900'
-              }`}>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span>Live</span>
+              <div className="text-left">
+                <div className="display text-xs font-black tracking-wider text-[var(--ink)] leading-none">
+                  LAAGARN
+                </div>
+                <div className="mono text-[9.5px] text-[var(--accent-light)] font-semibold mt-0.5">
+                  PH Cockpit
+                </div>
               </div>
-            )}
+            </button>
+
+            <div className="flex items-center gap-1">
+              {isConvoySharing && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('convoy')}
+                  aria-label="Open Active Convoy"
+                  className="h-8 px-2 bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 mono text-[10px] font-bold rounded-xl flex items-center gap-1 cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>{convoyActivePeersCount + 1}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleToggleTheme}
+                aria-label={`Switch theme (current: ${theme})`}
+                title={`Theme: ${theme}`}
+                className="w-8 h-8 rounded-xl bg-[var(--surface-pill)] border border-[var(--border-subtle)] flex items-center justify-center hover:border-[var(--accent)] transition-all cursor-pointer"
+              >
+                {theme === 'dark' ? (
+                  <Zap className="w-3.5 h-3.5 text-[#c084fc]" />
+                ) : theme === 'amoled' ? (
+                  <Sun className="w-3.5 h-3.5 text-amber-300" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 text-[#7c3aed]" />
+                )}
+              </button>
+
+              {!isStandalone && (deferredPrompt || isIosDevice) && (
+                <button
+                  type="button"
+                  onClick={handleInstallPwa}
+                  aria-label="Install App"
+                  title="Install LAAGARN App"
+                  className="h-8 px-2 bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white rounded-xl flex items-center cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setDesktopSidebarOpen(false)}
+                aria-label="Collapse Sidebar"
+                title="Collapse Left Panel"
+                className="w-8 h-8 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)] text-[var(--ink-dim)] hover:text-[var(--ink)] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop 6-Module Navigation Tabs */}
+          <nav aria-label="Desktop Navigation Tabs" className="px-2.5 pb-2.5 grid grid-cols-6 gap-1">
+            {navTabs.map((tab) => {
+              const isCurrent = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    triggerLightHaptic(8);
+                    setActiveTab(tab.id);
+                  }}
+                  className={`relative py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer select-none ${
+                    isCurrent
+                      ? 'bg-[var(--surface-pill)] border border-[var(--accent)]/50 text-[var(--ink)] shadow-sm'
+                      : 'text-[var(--ink-dim)] hover:bg-[var(--surface-subtle)] hover:text-[var(--ink)] border border-transparent'
+                  }`}
+                >
+                  <div className="relative flex items-center justify-center">
+                    <Icon
+                      className={`w-4 h-4 ${
+                        isCurrent ? 'text-[var(--accent-light)]' : ''
+                      }`}
+                    />
+                    {typeof tab.badge === 'number' && tab.badge > 0 && (
+                      <span className="absolute -top-1.5 -right-2 px-1 min-w-[14px] h-[14px] bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
+                        {tab.badge}
+                      </span>
+                    )}
+                    {tab.alertDot && (
+                      <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-amber-400" />
+                    )}
+                  </div>
+                  <span className="text-[10px] font-semibold tracking-tight leading-none">
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Mobile Touch-Draggable Sheet Grabber & Actionable Peek Summary Bar */}
+        <div
+          onPointerDown={handleSheetPointerDown}
+          onPointerMove={handleSheetPointerMove}
+          onPointerUp={finishSheetGesture}
+          onPointerCancel={finishSheetGesture}
+          className="lg:hidden w-full pt-2 pb-2 px-4 flex flex-col cursor-grab active:cursor-grabbing touch-none select-none border-b border-[var(--border-subtle)]"
+        >
+          {/* Centered Pill Grabber */}
+          <div className="w-10 h-1 rounded-full mx-auto mb-2 bg-purple-400/40" />
+
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex items-center gap-2">
+              <span className="text-xs font-bold tracking-tight truncate text-[var(--ink)]">
+                {peekSummaryLabel}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* 1-Tap Quick Action right inside Peek Strip */}
+              {activeRoute && !navigationActive ? (
+                <button
+                  type="button"
+                  data-peek-action
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartNavigation();
+                  }}
+                  className="h-7 px-3 rounded-full bg-emerald-500 active:scale-95 text-slate-950 text-[11px] font-bold flex items-center gap-1 shadow-md shadow-emerald-500/25 cursor-pointer"
+                >
+                  <Navigation className="w-3 h-3 fill-current" />
+                  <span>Start</span>
+                </button>
+              ) : !navigationActive ? (
+                <button
+                  type="button"
+                  data-peek-action
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLocateUserGps(true);
+                  }}
+                  className="h-7 px-2.5 rounded-full bg-[var(--surface-pill)] border border-[var(--border)] active:scale-95 text-[var(--accent-light)] mono text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer"
+                >
+                  <Crosshair className="w-3 h-3" />
+                  <span>GPS</span>
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                aria-label={mobileSheetState === 'peek' ? 'Expand sheet panel' : 'Collapse sheet panel'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMobileSheetState((curr) => (curr === 'peek' ? 'half' : 'peek'));
+                }}
+                className="p-1 text-[var(--ink-dim)] hover:text-[var(--ink)] cursor-pointer"
+              >
+                {mobileSheetState === 'peek' ? (
+                  <ChevronUp className="w-4.5 h-4.5" />
+                ) : (
+                  <ChevronDown className="w-4.5 h-4.5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* Main Container: Split Desktop layout & Mobile Drawer layout */}
-      <main className="flex-1 relative w-full min-h-0 overflow-hidden flex flex-col lg:flex-row">
-        {/* Desktop Sidebar (Left side, Glassy Purple) */}
-        <aside
-          aria-label="Travel Planning Controls"
-          className={`hidden lg:flex flex-col w-[390px] shrink-0 backdrop-blur-2xl border-r p-6 overflow-y-auto transition-colors ${
-            theme === 'amoled'
-              ? 'bg-black/95 border-purple-500/25 shadow-2xl'
-              : theme === 'dark'
-              ? 'bg-[#0e0719]/80 border-purple-500/20 shadow-2xl'
-              : 'bg-white/80 border-purple-200/60 shadow-xl shadow-purple-900/5'
+        {/* Scrollable Panel Body */}
+        <div
+          className={`${
+            !isDesktop && mobileSheetState === 'peek' && dragOffsetY >= 0
+              ? 'hidden lg:block lg:flex-1 lg:min-h-0 lg:overflow-y-auto px-4 pt-3.5 pb-6'
+              : 'flex-1 min-h-0 overflow-y-auto mobile-scroll px-4 pt-3.5 pb-6 overscroll-contain'
           }`}
         >
           {activeTab === 'routes' && (
@@ -1191,13 +1645,19 @@ export default function App() {
               gpsWatchActive={gpsWatchActive}
               onLocateUserGps={handleLocateUserGps}
               onToggleGpsWatch={handleToggleGpsWatch}
-              onPickOnMap={(mode) => setMapClickAction(mode)}
+              onPickOnMap={(mode) => {
+                setMapClickAction(mode);
+                if (mode !== 'none') setMobileSheetState('peek');
+              }}
               mapClickAction={mapClickAction}
               onSelectRouteIndex={setActiveRouteIndex}
               onChangeTravelMode={setTravelMode}
               onApplyStops={handleApplyStops}
               onClearRoute={handleClearRoute}
-              onFocusCoordinate={handleFocusCoordinate}
+              onFocusCoordinate={(lat, lng, zoom) => {
+                handleFocusCoordinate(lat, lng, zoom);
+                setMobileSheetState('peek');
+              }}
               onStartNavigation={handleStartNavigation}
               onStartSimulation={handleToggleSimulation}
               isSimulating={isSimulating}
@@ -1227,7 +1687,10 @@ export default function App() {
               incidents={incidents}
               onToggleIncidentActive={handleToggleIncidentActive}
               onAddIncident={handleAddIncident}
-              onFocusCoordinate={handleFocusCoordinate}
+              onFocusCoordinate={(lat, lng, zoom, label) => {
+                handleFocusCoordinate(lat, lng, zoom, label);
+                setMobileSheetState('peek');
+              }}
               activeRouteDelayMinutes={activeRoute?.trafficDelayMinutes || 0}
               gpsState={effectiveGps}
               trafficLights={trafficLights}
@@ -1249,6 +1712,7 @@ export default function App() {
                 }
                 setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
                 setActiveTab('routes');
+                setMobileSheetState('half');
               }}
               onAddStop={(point) => {
                 if (stops.length === 0) {
@@ -1274,6 +1738,7 @@ export default function App() {
                 }
                 setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
                 setActiveTab('routes');
+                setMobileSheetState('half');
               }}
             />
           )}
@@ -1305,7 +1770,10 @@ export default function App() {
               onDeclineJoinRequest={declineConvoyJoinRequest}
               onSetAutoAccept={setConvoyAutoAccept}
               onUpdateProfile={updateConvoyProfile}
-              onFocusCoordinate={handleFocusCoordinate}
+              onFocusCoordinate={(lat, lng, zoom, label) => {
+                handleFocusCoordinate(lat, lng, zoom, label);
+                setMobileSheetState('peek');
+              }}
               onFitBounds={handleFitConvoyBounds}
               onRouteToPeer={handleRouteToPeer}
               onAddPeerStop={handleAddPeerStop}
@@ -1324,9 +1792,15 @@ export default function App() {
               hazardReport={hazardReport}
               destinationName={activeRoute?.stops[activeRoute.stops.length - 1]?.name}
               loading={weatherLoading}
-              onFocusCoordinate={handleFocusCoordinate}
+              onFocusCoordinate={(lat, lng, zoom) => {
+                handleFocusCoordinate(lat, lng, zoom);
+                setMobileSheetState('peek');
+              }}
               onRefreshWeather={syncEnRouteWeather}
-              onSpotWeatherOnMap={() => setMapClickAction('weather')}
+              onSpotWeatherOnMap={() => {
+                setMapClickAction('weather');
+                setMobileSheetState('peek');
+              }}
               activeRoute={activeRoute}
             />
           )}
@@ -1339,470 +1813,147 @@ export default function App() {
               onDownloadRegionPack={handleDownloadRegionPack}
               onCacheActiveRouteCorridor={handleCacheActiveRouteCorridor}
               onClearCache={handleClearCache}
-              onFocusCoordinate={handleFocusCoordinate}
+              onFocusCoordinate={(lat, lng, zoom) => {
+                handleFocusCoordinate(lat, lng, zoom);
+                setMobileSheetState('peek');
+              }}
               hasActiveRoute={Boolean(activeRoute && activeRoute.coordinates.length > 0)}
             />
           )}
-        </aside>
-
-        {/* Map Viewport Canvas */}
-        <div className="flex-1 w-full h-full relative z-0">
-          <LeafletMapView
-            stops={stops}
-            routes={computedRoutes}
-            activeRouteIndex={activeRouteIndex}
-            onSelectRouteIndex={setActiveRouteIndex}
-            gpsState={effectiveGps}
-            gpsLoading={gpsStatus === 'locating'}
-            gpsCompassHeading={compassHeading}
-            onLocateUserGps={() => handleLocateUserGps(true)}
-            incidents={incidents}
-            showTrafficLayer={showTrafficLayer}
-            onToggleTrafficLayer={() => setShowTrafficLayer((v) => !v)}
-            weatherSnapshots={weatherSnapshots}
-            corridorStations={corridorStations}
-            hazardReport={hazardReport}
-            showWeatherLayer={showWeatherLayer}
-            onToggleWeatherLayer={() => setShowWeatherLayer((v) => !v)}
-            establishments={establishments}
-            showEstablishmentsLayer={showEstablishmentsLayer}
-            onToggleEstablishmentsLayer={() => setShowEstablishmentsLayer((v) => !v)}
-            selectedEstablishmentId={selectedEstablishmentId}
-            onSelectEstablishmentRoute={handleSelectEstablishmentRoute}
-            onAddEstablishmentStop={handleAddEstablishmentStop}
-            onSelectEstablishment={handleFocusEstablishment}
-            trafficLights={trafficLights}
-            showTrafficLightsLayer={showTrafficLightsLayer}
-            onToggleTrafficLightsLayer={() => setShowTrafficLightsLayer((v) => !v)}
-            onSelectTrafficLightRoute={handleSelectTrafficLightRoute}
-            onAddTrafficLightStop={handleAddTrafficLightStop}
-            convoyPeers={convoyPeers}
-            showConvoyLayer={showConvoyLayer}
-            onToggleConvoyLayer={() => setShowConvoyLayer((v) => !v)}
-            onRouteToPeer={handleRouteToPeer}
-            onAddPeerStop={handleAddPeerStop}
-            isOfflineMode={isOfflineMode}
-            mapStyle={mapStyle}
-            onChangeMapStyle={setMapStyle}
-            mapClickAction={mapClickAction}
-            onChangeMapClickAction={setMapClickAction}
-            onMapPickLocation={handleMapPickLocation}
-            onCacheViewport={async (sw, ne) => {
-              setActiveTab('offline');
-              if (window.innerWidth < 1024) setMobileSheetState('half');
-              const res = await cacheBoundingBoxTiles(sw, ne, [11, 12]);
-              setTileStats(res.stats);
-            }}
-            focusedCoord={focusedCoord}
-            navigationActive={navigationActive}
-            activeStepIndex={activeStepIndex}
-            onStepChange={handleStepChange}
-            onExitNavigation={() => {
-              setNavigationActive(false);
-              pauseSimulation();
-            }}
-            voiceGuidance={voiceGuidance}
-            onToggleVoiceGuidance={() => setVoiceGuidance((v) => !v)}
-            followGps={followGps}
-            onToggleFollowGps={() => setFollowGps((v) => !v)}
-            isSimulating={isSimulating}
-            onToggleSimulation={handleToggleSimulation}
-            onResetSimulation={resetSimulation}
-            simulationProgress={simProgressPercent}
-            simSpeedMultiplier={simSpeedMultiplier}
-            onChangeSimSpeed={setSimSpeedMultiplier}
-            onToggleDashcam={handleToggleDashcam}
-            dashcamActive={dashcamViewMode !== 'hidden'}
-            isRecordingVideo={cameraRecorder.isRecording}
-            mobileSheetOpen={mobileSheetState !== 'peek'}
-            onOpenStravaModal={() => setStravaModalOpen(true)}
-            stravaRecordingActive={stravaRecorder.isRecording}
-            stravaPointsCount={stravaRecorder.trackPoints.length}
-            convoySharedRoute={convoySharedRoute}
-            onLoadSharedRoute={handleLoadSharedRoute}
-            pendingConvoyJoinRequests={convoyPendingJoinRequests}
-            onAcceptConvoyJoinRequest={acceptConvoyJoinRequest}
-            onDeclineConvoyJoinRequest={declineConvoyJoinRequest}
-            theme={theme}
-          />
         </div>
 
-        {/* Mobile Interactive Bottom Sheet Drawer (Shown on screens < 1024px) */}
-        <div
-          className={`lg:hidden absolute left-0 right-0 bottom-0 z-[500] backdrop-blur-2xl border-t transition-all duration-300 flex flex-col ${
-            theme === 'amoled'
-              ? 'bg-black/95 border-purple-500/30 shadow-[0_-12px_36px_rgba(0,0,0,0.95)]'
-              : theme === 'dark'
-              ? 'bg-[#110820]/90 border-purple-500/25 shadow-[0_-12px_36px_rgba(5,2,14,0.85)]'
-              : 'bg-white/95 border-purple-200/80 shadow-[0_-12px_36px_rgba(100,50,150,0.12)]'
-          } ${
-            mobileSheetState === 'peek'
-              ? 'h-auto'
-              : mobileSheetState === 'half'
-              ? 'h-[50dvh]'
-              : 'h-[86dvh]'
-          }`}
+        {/* Bottom Navigation Tab Dock (Mobile Only — Desktop uses Top Rail Tabs) */}
+        <nav
+          aria-label="Mobile Navigation Dock"
+          className="lg:hidden mobile-bottom-bar shrink-0 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-1.5 xs:px-2.5 flex items-center justify-around gap-0.5 z-30"
         >
-          {/* Drawer Handle & Quick Route Summary Bar */}
-          <div
-            onClick={() => {
-              setMobileSheetState((curr) =>
-                curr === 'peek' ? 'half' : curr === 'half' ? 'full' : 'peek'
-              );
-            }}
-            className={`w-full pt-2 pb-1.5 px-4 flex items-center justify-between cursor-pointer border-b active:bg-purple-500/5 ${
-              theme !== 'light' ? 'border-purple-500/15' : 'border-purple-200/60'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-1 rounded-full mx-auto ${
-                theme !== 'light' ? 'bg-purple-400/40' : 'bg-purple-400/60'
-              }`} />
-              <span className={`mono text-[10px] uppercase tracking-wider ${
-                theme !== 'light' ? 'text-purple-200/70' : 'text-purple-900/80 font-semibold'
-              }`}>
-                {activeTab === 'routes'
-                  ? activeRoute
-                    ? `${activeRoute.totalDurationMinutes}m · ${activeRoute.totalDistanceKm} km`
-                    : 'Route Planner'
-                  : activeTab === 'places'
-                  ? `Places & Establishments (${establishments.length})`
-                  : activeTab === 'traffic'
-                  ? `Traffic Alerts (${incidents.filter((i) => i.active).length})`
-                  : activeTab === 'weather'
-                  ? 'En-Route Weather'
-                  : 'Offline Cache'}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              className={`p-1 hover:opacity-100 ${theme !== 'light' ? 'text-gray-400' : 'text-purple-900/60'}`}
-              aria-label="Toggle Drawer Height"
-            >
-              {mobileSheetState === 'peek' ? (
-                <ChevronUp className={`w-5 h-5 ${theme !== 'light' ? 'text-[#c084fc]' : 'text-[#7c3aed]'}`} />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-
-          {/* Drawer Scrollable Content (Hidden when drawer is in peek mode to prevent squashed content) */}
-          <div className={`${mobileSheetState === 'peek' ? 'hidden' : 'flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-24 overscroll-contain'}`}>
-            {activeTab === 'routes' && (
-              <RoutePlannerPanel
-                stops={stops}
-                travelMode={travelMode}
-                routes={computedRoutes}
-                routeLoading={routeLoading}
-                activeRouteIndex={activeRouteIndex}
-                gpsState={gpsState}
-                gpsLoading={gpsStatus === 'locating'}
-                gpsError={gpsError}
-                gpsWatchActive={gpsWatchActive}
-                onLocateUserGps={handleLocateUserGps}
-                onToggleGpsWatch={handleToggleGpsWatch}
-                onPickOnMap={(mode) => {
-                  setMapClickAction(mode);
-                  setMobileSheetState('peek');
-                }}
-                mapClickAction={mapClickAction}
-                onSelectRouteIndex={setActiveRouteIndex}
-                onChangeTravelMode={setTravelMode}
-                onApplyStops={handleApplyStops}
-                onClearRoute={handleClearRoute}
-                onFocusCoordinate={(lat, lng, zoom) => {
-                  handleFocusCoordinate(lat, lng, zoom);
-                  setMobileSheetState('peek');
-                }}
-                onStartNavigation={handleStartNavigation}
-                onStartSimulation={handleToggleSimulation}
-                isSimulating={isSimulating}
-                onOpenStravaModal={() => setStravaModalOpen(true)}
-                stravaRecordingActive={stravaRecorder.isRecording}
-                stravaPointsCount={stravaRecorder.trackPoints.length}
-                isConvoySharing={isConvoySharing}
-                convoyRoomCode={convoyRoomCode}
-                onShareRouteToConvoy={handleShareCurrentRouteToConvoy}
-              />
-            )}
-
-            {activeTab === 'places' && (
-              <EstablishmentsPanel
-                gpsState={effectiveGps}
-                onLocateUserGps={() => handleLocateUserGps(false)}
-                onSelectEstablishmentRoute={handleSelectEstablishmentRoute}
-                onFocusEstablishment={handleFocusEstablishment}
-                onAddEstablishmentStop={handleAddEstablishmentStop}
-                selectedEstablishmentId={selectedEstablishmentId}
-                theme={theme}
-              />
-            )}
-
-            {activeTab === 'traffic' && (
-              <TrafficPanel
-                incidents={incidents}
-                onToggleIncidentActive={handleToggleIncidentActive}
-                onAddIncident={handleAddIncident}
-                onFocusCoordinate={(lat, lng, zoom, label) => {
-                  handleFocusCoordinate(lat, lng, zoom, label);
-                  setMobileSheetState('peek');
-                }}
-                activeRouteDelayMinutes={activeRoute?.trafficDelayMinutes || 0}
-                gpsState={effectiveGps}
-                trafficLights={trafficLights}
-                onSelectDestination={(point) => {
-                  if (gpsState) {
-                    setStops([
-                      {
-                        name: gpsState.addressLabel || 'Current GPS Location',
-                        region: 'Live GPS',
-                        lat: gpsState.lat,
-                        lng: gpsState.lng,
-                      },
-                      point,
-                    ]);
-                  } else if (stops.length >= 1) {
-                    setStops([stops[0], point]);
+          {navTabs.map((tab) => {
+            const isCurrent = activeTab === tab.id;
+            const isExpandedActive = isCurrent && mobileSheetState !== 'peek';
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  triggerLightHaptic(8);
+                  if (isCurrent && mobileSheetState !== 'peek') {
+                    setMobileSheetState('peek');
                   } else {
-                    setStops([point]);
-                  }
-                  setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
-                  setActiveTab('routes');
-                  setMobileSheetState('half');
-                }}
-                onAddStop={(point) => {
-                  if (stops.length === 0) {
-                    if (gpsState) {
-                      setStops([
-                        {
-                          name: gpsState.addressLabel || 'Current GPS Location',
-                          region: 'Live GPS',
-                          lat: gpsState.lat,
-                          lng: gpsState.lng,
-                        },
-                        point,
-                      ]);
-                    } else {
-                      setStops([point]);
-                    }
-                  } else if (stops.length === 1) {
-                    setStops([...stops, point]);
-                  } else {
-                    const prev = [...stops];
-                    prev.splice(prev.length - 1, 0, point);
-                    setStops(prev);
-                  }
-                  setFocusedCoord({ lat: point.lat, lng: point.lng, zoom: 16, label: point.name });
-                  setActiveTab('routes');
-                  setMobileSheetState('half');
-                }}
-              />
-            )}
-
-            {activeTab === 'convoy' && (
-              <ConvoyPanel
-                roomCode={convoyRoomCode}
-                isSharing={isConvoySharing}
-                isHost={isConvoyHost}
-                joinApprovalStatus={convoyJoinApprovalStatus}
-                pendingJoinRequests={convoyPendingJoinRequests}
-                autoAccept={convoyAutoAccept}
-                myName={convoyMyName}
-                myVehicle={convoyMyVehicle}
-                myColor={convoyMyColor}
-                peers={convoyPeers}
-                activePeersCount={convoyActivePeersCount}
-                connectionStatus={convoyConnectionStatus}
-                lastBroadcastAt={convoyLastBroadcastAt}
-                gpsState={effectiveGps}
-                currentRoute={activeRoute}
-                sharedRoute={convoySharedRoute}
-                routeSuggestions={convoyRouteSuggestions}
-                onCreateConvoy={createConvoy}
-                onJoinConvoy={joinConvoy}
-                onLeaveConvoy={leaveConvoy}
-                onCancelJoinRequest={cancelConvoyJoinRequest}
-                onAcceptJoinRequest={acceptConvoyJoinRequest}
-                onDeclineJoinRequest={declineConvoyJoinRequest}
-                onSetAutoAccept={setConvoyAutoAccept}
-                onUpdateProfile={updateConvoyProfile}
-                onFocusCoordinate={(lat, lng, zoom, label) => {
-                  handleFocusCoordinate(lat, lng, zoom, label);
-                  setMobileSheetState('peek');
-                }}
-                onFitBounds={handleFitConvoyBounds}
-                onRouteToPeer={handleRouteToPeer}
-                onAddPeerStop={handleAddPeerStop}
-                onShareRouteToConvoy={handleShareCurrentRouteToConvoy}
-                onSuggestRouteToConvoy={handleSuggestCurrentRouteToConvoy}
-                onLoadSharedRoute={handleLoadSharedRoute}
-                onDismissRouteSuggestion={dismissRouteSuggestion}
-                theme={theme}
-              />
-            )}
-
-            {activeTab === 'weather' && (
-              <WeatherForecastPanel
-                snapshots={weatherSnapshots}
-                corridorStations={corridorStations}
-                hazardReport={hazardReport}
-                destinationName={activeRoute?.stops[activeRoute.stops.length - 1]?.name}
-                loading={weatherLoading}
-                onFocusCoordinate={(lat, lng, zoom) => {
-                  handleFocusCoordinate(lat, lng, zoom);
-                  setMobileSheetState('peek');
-                }}
-                onRefreshWeather={syncEnRouteWeather}
-                onSpotWeatherOnMap={() => {
-                  setMapClickAction('weather');
-                  setMobileSheetState('peek');
-                }}
-                activeRoute={activeRoute}
-              />
-            )}
-
-            {activeTab === 'offline' && (
-              <OfflineCachePanel
-                stats={tileStats}
-                isOfflineMode={isOfflineMode}
-                onToggleOfflineMode={() => setIsOfflineMode((v) => !v)}
-                onDownloadRegionPack={handleDownloadRegionPack}
-                onCacheActiveRouteCorridor={handleCacheActiveRouteCorridor}
-                onClearCache={handleClearCache}
-                onFocusCoordinate={(lat, lng, zoom) => {
-                  handleFocusCoordinate(lat, lng, zoom);
-                  setMobileSheetState('peek');
-                }}
-                hasActiveRoute={Boolean(activeRoute && activeRoute.coordinates.length > 0)}
-              />
-            )}
-          </div>
-
-          {/* Mobile Bottom Navigation Dock (Thumb Accessible with safe-area padding & Tactile Framer Motion Active Indicator) */}
-          <nav
-            aria-label="Mobile Navigation Dock"
-            className={`mobile-bottom-bar shrink-0 backdrop-blur-2xl border-t px-1.5 xs:px-2.5 sm:px-3 flex items-center justify-around gap-0.5 xs:gap-1 z-30 ${
-              theme === 'amoled'
-                ? 'bg-black/98 border-purple-500/25 shadow-[0_-10px_30px_rgba(0,0,0,0.9)]'
-                : theme === 'dark'
-                ? 'bg-[#0a0414]/95 border-purple-500/25 shadow-[0_-10px_30px_rgba(5,2,14,0.7)]'
-                : 'bg-white/95 border-purple-200/80 shadow-[0_-10px_30px_rgba(100,50,150,0.08)]'
-            }`}
-          >
-            {(
-              [
-                { id: 'routes', label: 'Planner', icon: Navigation },
-                { id: 'places', label: 'Places', icon: Store, badge: establishments.length },
-                {
-                  id: 'traffic',
-                  label: 'Traffic',
-                  icon: AlertTriangle,
-                  badge: incidents.filter((i) => i.active).length,
-                },
-                {
-                  id: 'convoy',
-                  label: 'Convoy',
-                  icon: Users,
-                  badge: isConvoySharing && convoyActivePeersCount > 0 ? convoyActivePeersCount : undefined,
-                  alertDot: isConvoySharing && convoyActivePeersCount === 0,
-                },
-                {
-                  id: 'weather',
-                  label: 'Weather',
-                  icon: CloudRain,
-                  alertDot: Boolean(hazardReport && hazardReport.overallLevel !== 'nominal'),
-                },
-                {
-                  id: 'offline',
-                  label: 'Offline',
-                  icon: HardDriveDownload,
-                  alertDot: isOfflineMode,
-                },
-              ] as {
-                id: ActiveTab;
-                label: string;
-                icon: any;
-                badge?: number;
-                alertDot?: boolean;
-              }[]
-            ).map((tab) => {
-              const isCurrent = activeTab === tab.id;
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
                     setActiveTab(tab.id);
                     if (mobileSheetState === 'peek') {
                       setMobileSheetState('half');
                     }
-                  }}
-                  className="relative flex-1 min-w-0 py-1 flex flex-col items-center justify-center rounded-xl transition-all cursor-pointer select-none"
-                >
-                  {isCurrent && (
-                    <motion.div
-                      layoutId="activeMobileTabPill"
-                      className={`absolute inset-0 rounded-xl border ${
-                        theme !== 'light'
-                          ? 'bg-gradient-to-b from-[#a855f7]/25 to-[#7c3aed]/15 border-purple-400/40 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
-                          : 'bg-purple-100 border-purple-300 shadow-sm'
-                      }`}
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                    />
-                  )}
+                  }
+                }}
+                className="relative flex-1 min-w-0 py-1.5 flex flex-col items-center justify-center rounded-2xl transition-all cursor-pointer select-none"
+              >
+                {isExpandedActive && (
+                  <motion.div
+                    layoutId="activeMobileTabPill"
+                    className="absolute inset-0 rounded-2xl border bg-[var(--surface-pill)] border-[var(--accent)]/45 shadow-[0_0_12px_var(--accent-glow)]"
+                    transition={{ type: 'spring', stiffness: 520, damping: 36 }}
+                  />
+                )}
 
-                  <div className="relative z-10 flex flex-col items-center justify-center w-full px-0.5">
-                    <div className="relative flex items-center justify-center">
-                      <Icon
-                        className={`w-4.5 h-4.5 xs:w-5 xs:h-5 transition-transform duration-200 ${
-                          isCurrent
-                            ? theme !== 'light'
-                              ? 'text-[#c084fc] scale-105 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]'
-                              : 'text-[#7c3aed] scale-105'
-                            : theme !== 'light'
-                            ? 'text-zinc-400'
-                            : 'text-zinc-500'
-                        }`}
-                      />
-                      {/* Badge count for Traffic / Places */}
-                      {typeof tab.badge === 'number' && tab.badge > 0 && (
-                        <span className="absolute -top-1 -right-2 px-1 min-w-[13px] h-[13px] bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-md leading-none">
-                          {tab.badge}
-                        </span>
-                      )}
-                      {/* Alert dot for Weather Hazards / Offline */}
-                      {tab.alertDot && (
-                        <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                      )}
-                      {tab.alertDot && (
-                        <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-[#0a0414]" />
-                      )}
-                    </div>
-                    <span
-                      className={`mono text-[8px] xs:text-[9.5px] uppercase tracking-tight xs:tracking-wider font-extrabold transition-colors truncate max-w-full text-center leading-none mt-1 ${
+                <div className="relative z-10 flex flex-col items-center justify-center w-full px-0.5">
+                  <div className="relative flex items-center justify-center">
+                    <Icon
+                      className={`w-5 h-5 transition-transform duration-200 ${
                         isCurrent
-                          ? theme !== 'light'
-                            ? 'text-[#f8f6fc]'
-                            : 'text-[#160a2c]'
-                          : theme !== 'light'
-                          ? 'text-zinc-400'
-                          : 'text-zinc-500'
+                          ? 'text-[var(--accent-light)] scale-105'
+                          : 'text-[var(--ink-dim)]'
                       }`}
-                    >
-                      {tab.label}
-                    </span>
+                    />
+                    {typeof tab.badge === 'number' && tab.badge > 0 && (
+                      <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-[14px] bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md leading-none">
+                        {tab.badge}
+                      </span>
+                    )}
+                    {tab.alertDot && (
+                      <>
+                        <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                        <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-amber-400" />
+                      </>
+                    )}
                   </div>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </main>
+                  <span
+                    className={`text-[10px] tracking-tight font-semibold transition-colors truncate max-w-full text-center leading-none mt-1 ${
+                      isCurrent ? 'text-[var(--ink)]' : 'text-[var(--ink-dim)]'
+                    }`}
+                  >
+                    {tab.label}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-      {/* Highway Dashcam & Timelapse Overlay (PiP or Fullscreen AR HUD) */}
+      {/* 4. iOS Safari "Add to Home Screen" Guide Bottom Sheet */}
+      {showIosInstallGuide && (
+        <div
+          className="fixed inset-0 z-[1300] bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setShowIosInstallGuide(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-sm rounded-t-3xl sm:rounded-3xl border-t sm:border p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-4 shadow-2xl ${
+              theme !== 'light'
+                ? 'bg-[#120824] border-purple-500/35 text-white'
+                : 'bg-white border-purple-200 text-[#160a2c]'
+            }`}
+          >
+            <div className="w-10 h-1 rounded-full bg-purple-400/35 mx-auto sm:hidden" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#a855f7] to-[#7c3aed] flex items-center justify-center text-white shadow-md">
+                  <Compass className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="mono text-[10px] uppercase font-bold text-[#c084fc]">
+                    Full-Screen Mobile App
+                  </div>
+                  <h3 className="text-sm font-black">Install LAAGARN on iPhone</h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIosInstallGuide(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center opacity-75 hover:opacity-100 cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center gap-3">
+                <Share className="w-5 h-5 text-[#c084fc] shrink-0" />
+                <span>
+                  1. Tap the <strong>Share</strong> button in Safari&apos;s bottom bar.
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center gap-3">
+                <PlusSquare className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span>
+                  2. Scroll down and tap <strong>Add to Home Screen</strong> for fullscreen offline GPS &amp; Dashcam.
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowIosInstallGuide(false)}
+              className="w-full min-h-[44px] rounded-2xl bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white mono text-xs uppercase font-bold cursor-pointer"
+            >
+              Got It
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Highway Dashcam & Timelapse Overlay (PiP or Fullscreen AR HUD) */}
       <DashcamOverlay
         recorder={cameraRecorder}
         viewMode={dashcamViewMode}
@@ -1814,7 +1965,7 @@ export default function App() {
         theme={theme}
       />
 
-      {/* Strava Simulation Activity Summary Modal */}
+      {/* 6. Strava Simulation Activity Summary Modal */}
       <StravaActivityModal
         isOpen={stravaModalOpen}
         onClose={() => setStravaModalOpen(false)}

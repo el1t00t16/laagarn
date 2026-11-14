@@ -36,7 +36,31 @@ import {
   UserX,
   Clock,
   ShieldCheck,
+  Bike,
+  Car,
+  Bus,
+  Footprints,
+  Bell,
+  Lightbulb,
+  X,
+  XCircle,
 } from 'lucide-react';
+
+function renderVehicleIcon(vehicle: ConvoyVehicleType | undefined, className = 'w-4 h-4') {
+  switch (vehicle) {
+    case 'car':
+      return <Car className={className} />;
+    case 'van':
+      return <Bus className={className} />;
+    case 'bicycle':
+      return <Bike className={className} />;
+    case 'pedestrian':
+      return <Footprints className={className} />;
+    case 'motorcycle':
+    default:
+      return <Bike className={className} />;
+  }
+}
 
 interface ConvoyPanelProps {
   roomCode: string | null;
@@ -190,46 +214,41 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
   const closeBuddies = peers.filter((p) => p.distanceKm !== undefined && p.distanceKm <= 0.2);
 
   return (
-    <div className="flex flex-col gap-6 min-h-full">
-      {/* Section I: Room Header & Status */}
+    <div className="flex flex-col gap-4 pb-4 min-h-full">
+      {/* Room Header & Status */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="section-label mono !mb-0">I. Live Convoy & Share</span>
-            {isSharing && (
-              <span className="px-2 py-0.5 rounded text-[9.5px] mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Broadcasting
-              </span>
-            )}
-          </div>
-          {isSharing && (
+        {isSharing && (
+          <div className="flex items-center justify-between mb-3">
+            <span className="px-2.5 py-1 rounded-full text-[10px] mono font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/35 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Broadcast</span>
+            </span>
             <button
               type="button"
               onClick={onLeaveConvoy}
-              className="mono text-[0.6rem] uppercase tracking-wider text-rose-500 hover:underline cursor-pointer flex items-center gap-1 font-bold"
+              className="min-h-[30px] px-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 mono text-[10px] uppercase tracking-wider text-rose-500 hover:bg-rose-500/20 cursor-pointer flex items-center gap-1 font-bold"
             >
               <LogOut className="w-3 h-3" />
               <span>Leave</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* NOT SHARING: Creation & Join Form */}
         {!isSharing ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3.5">
             {/* Host Section: Start a room */}
-            <div className="p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-2xl shadow-xs">
+            <div className="p-4 cockpit-card">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center shrink-0 text-xl">
-                  📡
+                <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/35 text-[var(--accent)] flex items-center justify-center shrink-0">
+                  <Radio className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-[var(--ink)]">
                     Host a Convoy Pack
                   </h3>
                   <p className="text-xs text-[var(--ink-dim)] mt-1 leading-relaxed">
-                    Start a convoy session as Host. You will get a 4-digit PIN you can share with your riding or driving buddies.
+                    Start a convoy session as Host. You will get a 4-digit PIN to share with your riding or driving group.
                   </p>
                 </div>
               </div>
@@ -238,14 +257,14 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div
-                    className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-sm shadow-sm shrink-0"
+                    className="w-8 h-8 rounded-full border-2 border-white/80 text-white flex items-center justify-center shadow-sm shrink-0"
                     style={{ background: myColor }}
                   >
-                    {CONVOY_VEHICLE_OPTIONS.find((v) => v.id === myVehicle)?.emoji || '🏍️'}
+                    {renderVehicleIcon(myVehicle, 'w-4 h-4')}
                   </div>
                   <div>
                     <div className="text-xs font-bold text-[var(--ink)]">{myName}</div>
-                    <div className="mono text-[9px] text-[var(--ink-dim)] capitalize">
+                    <div className="mono text-[9.5px] text-[var(--ink-dim)] capitalize">
                       {myVehicle} &middot; Your Avatar
                     </div>
                   </div>
@@ -289,14 +308,14 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                           key={veh.id}
                           type="button"
                           onClick={() => setVehicleInput(veh.id)}
-                          className={`p-2 rounded-lg border text-center transition-all cursor-pointer ${
+                          className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                             vehicleInput === veh.id
-                              ? 'border-[var(--accent)] bg-[var(--accent)]/15 font-bold'
-                              : 'border-[var(--border)] bg-[var(--surface)] text-[var(--ink-dim)] hover:border-[var(--accent)]/50'
+                              ? 'border-[var(--accent)] bg-purple-500/15 text-[var(--ink)] font-bold'
+                              : 'cockpit-pill text-[var(--ink-dim)] hover:border-[var(--accent)]/50'
                           }`}
                         >
-                          <div className="text-base">{veh.emoji}</div>
-                          <div className="text-[8px] mono mt-1 truncate">{veh.label.split(' ')[0]}</div>
+                          {renderVehicleIcon(veh.id, 'w-4 h-4')}
+                          <div className="text-[8.5px] mono mt-1 truncate max-w-full">{veh.label.split(' ')[0]}</div>
                         </button>
                       ))}
                     </div>
@@ -334,7 +353,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               <button
                 type="button"
                 onClick={() => onCreateConvoy()}
-                className="btn-primary display mt-4 !w-full flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                className="btn-primary mt-4 !w-full flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
                 <Radio className="w-4 h-4" />
                 <span>Start New Convoy Room</span>
@@ -342,7 +361,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
             </div>
 
             {/* Join an existing room */}
-            <div className="p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-2xl shadow-xs">
+            <div className="p-4 cockpit-card">
               <div className="text-xs font-bold text-[var(--ink)] mb-1">
                 Have a Friend&apos;s Room Code?
               </div>
@@ -381,14 +400,14 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                           setVehicleInput(veh.id);
                           onUpdateProfile(nameInput, veh.id, colorInput);
                         }}
-                        className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                        className={`p-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                           vehicleInput === veh.id
-                            ? 'border-[var(--accent)] bg-[var(--accent)]/15 font-bold'
-                            : 'border-[var(--border)] bg-[var(--surface)] text-[var(--ink-dim)] hover:border-[var(--accent)]/50'
+                            ? 'border-[var(--accent)] bg-purple-500/15 text-[var(--ink)] font-bold'
+                            : 'cockpit-pill text-[var(--ink-dim)] hover:border-[var(--accent)]/50'
                         }`}
                       >
-                        <div className="text-sm">{veh.emoji}</div>
-                        <div className="text-[7.5px] mono truncate">{veh.label.split(' ')[0]}</div>
+                        {renderVehicleIcon(veh.id, 'w-3.5 h-3.5')}
+                        <div className="text-[8px] mono mt-1 truncate max-w-full">{veh.label.split(' ')[0]}</div>
                       </button>
                     ))}
                   </div>
@@ -424,11 +443,11 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
           </div>
         ) : isSharing && !isHost && joinApprovalStatus === 'pending' ? (
           /* WAITING FOR HOST ACCEPTANCE VIEW */
-          <div className="p-6 bg-[var(--surface)] backdrop-blur-md border border-purple-500/30 rounded-2xl shadow-md text-center space-y-4">
+          <div className="p-6 cockpit-card border-purple-500/35 text-center space-y-4">
             <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
               <span className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" />
-              <span className="relative w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center text-2xl shadow-lg">
-                ⏳
+              <span className="relative w-12 h-12 rounded-full bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white flex items-center justify-center shadow-lg">
+                <Clock className="w-6 h-6" />
               </span>
             </div>
 
@@ -440,7 +459,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                 Waiting for Host Approval
               </h3>
               <p className="text-xs text-[var(--ink-dim)] mt-1.5 max-w-sm mx-auto leading-relaxed">
-                You requested to join convoy room <span className="font-extrabold text-[var(--accent)]">{roomCode}</span> as <span className="font-bold text-[var(--ink)]">{myName}</span> ({CONVOY_VEHICLE_OPTIONS.find((v) => v.id === myVehicle)?.emoji}). The host will accept your request on their screen.
+                You requested to join convoy room <span className="font-extrabold text-[var(--accent)] tabular-nums">{roomCode}</span> as <span className="font-bold text-[var(--ink)]">{myName}</span> ({CONVOY_VEHICLE_OPTIONS.find((v) => v.id === myVehicle)?.label || myVehicle}). The host will accept your request on their screen.
               </p>
             </div>
 
@@ -448,7 +467,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               <button
                 type="button"
                 onClick={onCancelJoinRequest || onLeaveConvoy}
-                className="py-2 px-4 bg-[var(--surface)] hover:bg-rose-500/10 text-rose-500 border border-rose-500/30 rounded-xl mono text-xs uppercase font-bold cursor-pointer transition-colors"
+                className="py-2 px-4 cockpit-pill hover:bg-rose-500/10 text-rose-500 border-rose-500/30 rounded-xl mono text-xs uppercase font-bold cursor-pointer transition-colors"
               >
                 Cancel Request
               </button>
@@ -456,9 +475,9 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
           </div>
         ) : isSharing && !isHost && joinApprovalStatus === 'declined' ? (
           /* JOIN REQUEST DECLINED */
-          <div className="p-6 bg-[var(--surface)] backdrop-blur-md border border-rose-500/30 rounded-2xl shadow-md text-center space-y-4">
-            <div className="w-12 h-12 mx-auto rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-500 flex items-center justify-center text-2xl">
-              ❌
+          <div className="p-6 cockpit-card border-rose-500/35 text-center space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-full bg-rose-500/15 border border-rose-500/35 text-rose-500 flex items-center justify-center">
+              <XCircle className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-base font-black text-[var(--ink)]">
@@ -479,7 +498,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               <button
                 type="button"
                 onClick={onLeaveConvoy}
-                className="py-2 px-4 bg-[var(--surface)] border border-[var(--border)] text-[var(--ink-dim)] rounded-xl mono text-xs uppercase font-bold cursor-pointer"
+                className="py-2 px-4 cockpit-pill text-[var(--ink-dim)] rounded-xl mono text-xs uppercase font-bold cursor-pointer"
               >
                 Exit
               </button>
@@ -493,7 +512,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               <div className="p-3.5 bg-gradient-to-r from-amber-500/15 to-purple-500/15 border-2 border-amber-500/40 rounded-2xl shadow-md space-y-2.5 animate-pulse">
                 <div className="flex items-center justify-between">
                   <div className="mono text-[10px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
-                    <span>🔔</span>
+                    <Bell className="w-3.5 h-3.5 shrink-0" />
                     <span>Join Requests ({pendingJoinRequests.length})</span>
                   </div>
                   <span className="mono text-[9px] text-[var(--ink-dim)]">
@@ -505,14 +524,14 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                   {pendingJoinRequests.map((req) => (
                     <div
                       key={req.peerId}
-                      className="p-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-xl flex items-center justify-between gap-2 shadow-xs"
+                      className="p-2.5 cockpit-subcard flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <div
-                          className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-sm shadow-sm shrink-0"
+                          className="w-8 h-8 rounded-full border-2 border-white/80 text-white flex items-center justify-center shadow-sm shrink-0"
                           style={{ background: req.color }}
                         >
-                          {CONVOY_VEHICLE_OPTIONS.find((v) => v.id === req.vehicle)?.emoji || '🏍️'}
+                          {renderVehicleIcon(req.vehicle, 'w-4 h-4')}
                         </div>
                         <div className="min-w-0">
                           <div className="text-xs font-black text-[var(--ink)] truncate">
@@ -547,18 +566,18 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
             )}
 
             {/* Room Pass & Share Card */}
-            <div className="p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-2xl shadow-xs">
+            <div className="p-4 cockpit-card">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="mono text-[9px] uppercase tracking-wider text-[var(--ink-dim)]">
+                  <div className="mono text-[9.5px] uppercase tracking-wider text-[var(--ink-dim)]">
                     Active Convoy Room
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xl font-extrabold display text-[var(--accent)] tracking-wider">
+                    <span className="text-xl font-extrabold mono tabular-nums text-[var(--accent)] tracking-wider">
                       {roomCode}
                     </span>
                     {roomCode && (
-                      <span className="px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-[var(--accent)] mono text-[10px] font-black">
+                      <span className="px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-[var(--accent)] mono tabular-nums text-[10px] font-bold">
                         PIN: {roomCode.replace(/[^0-9]/g, '') || roomCode}
                       </span>
                     )}
@@ -570,7 +589,8 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                     type="button"
                     onClick={handleCopyLink}
                     title="Copy Share Link"
-                    className="p-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] text-[var(--ink)] transition-colors cursor-pointer"
+                    aria-label="Copy convoy share link"
+                    className="p-2 rounded-xl cockpit-pill hover:border-[var(--accent)] text-[var(--ink)] transition-colors cursor-pointer"
                   >
                     {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                   </button>
@@ -578,6 +598,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                     type="button"
                     onClick={handleNativeShare}
                     title="Share with Friends (Messenger/WhatsApp/SMS)"
+                    aria-label="Share convoy invite"
                     className="p-2 rounded-xl bg-[var(--accent)] text-white shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
                   >
                     <Share2 className="w-4 h-4" />
@@ -589,7 +610,8 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                       setShowQrModal(true);
                     }}
                     title="Show QR Code for Camera Scan"
-                    className="p-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] text-[var(--ink)] transition-colors cursor-pointer"
+                    aria-label="Show convoy QR code"
+                    className="p-2 rounded-xl cockpit-pill hover:border-[var(--accent)] text-[var(--ink)] transition-colors cursor-pointer"
                   >
                     <QrCode className="w-4 h-4" />
                   </button>
@@ -597,14 +619,15 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               </div>
 
               {copied && (
-                <div className="mt-2 text-emerald-500 mono text-[10px] font-bold">
-                  ✓ Link copied! Send it to your friend to join.
+                <div className="mt-2 text-emerald-500 mono text-[10px] font-bold inline-flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  <span>Link copied! Send it to your friend to join.</span>
                 </div>
               )}
 
               {/* Host Auto-Accept Toggle */}
               {isHost && onSetAutoAccept && (
-                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--border-subtle)] mono text-[9px] text-[var(--ink-dim)]">
+                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--border-subtle)] mono text-[9.5px] text-[var(--ink-dim)]">
                   <span>Auto-accept riders with PIN</span>
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -619,7 +642,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               )}
 
               {/* My Telemetry Broadcast Stats */}
-              <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-[var(--border-subtle)] mono text-[9px]">
+              <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-[var(--border-subtle)] mono tabular-nums text-[9.5px]">
                 <div>
                   <div className="text-[var(--ink-dim)]">Pals Online</div>
                   <div className="text-xs font-bold text-[var(--ink)] mt-0.5">
@@ -644,7 +667,7 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
             </div>
 
             {/* Convoy Route Plan & Member Proposals */}
-            <div className="p-4 bg-[var(--surface)] backdrop-blur-md border border-[var(--border)] rounded-2xl shadow-xs space-y-3">
+            <div className="p-4 cockpit-card space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="mono text-[10px] font-extrabold uppercase tracking-wider text-[var(--ink-dim)]">
@@ -776,10 +799,11 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                           <button
                             type="button"
                             onClick={() => onDismissRouteSuggestion(sug.id)}
-                            className="px-2 py-1 bg-[var(--surface)] border border-[var(--border)] text-[var(--ink-dim)] hover:text-rose-500 mono text-[9px] rounded-lg cursor-pointer"
+                            className="p-1.5 cockpit-pill text-[var(--ink-dim)] hover:text-rose-500 rounded-lg cursor-pointer flex items-center justify-center"
                             title="Dismiss suggestion"
+                            aria-label="Dismiss route suggestion"
                           >
-                            ✕
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -825,12 +849,12 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
         )}
       </div>
 
-      {/* Section II: Active Members Ledger */}
+      {/* Active Members Ledger */}
       {isSharing && (isHost || joinApprovalStatus === 'accepted') && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <span className="section-label mono !mb-0">
-              II. Convoy Pals ({peers.length + 1})
+              Convoy Members ({peers.length + 1})
             </span>
             {peers.length > 0 && onFitBounds && (
               <button
@@ -849,25 +873,25 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div
-                  className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-sm shadow-sm shrink-0"
+                  className="w-8 h-8 rounded-full border-2 border-white/80 text-white flex items-center justify-center shadow-sm shrink-0"
                   style={{ background: myColor }}
                 >
-                  {CONVOY_VEHICLE_OPTIONS.find((v) => v.id === myVehicle)?.emoji || '🏍️'}
+                  {renderVehicleIcon(myVehicle, 'w-4 h-4')}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-bold text-xs text-[var(--ink)]">{myName}</span>
                     <span
-                      className={`px-1.5 py-0.2 rounded mono text-[8px] font-extrabold uppercase ${
+                      className={`px-1.5 py-0.5 rounded mono text-[8.5px] font-bold uppercase ${
                         isHost
                           ? 'bg-purple-500/15 text-[var(--accent)] border border-purple-500/30'
-                          : 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30'
+                          : 'bg-cyan-500/15 text-cyan-500 border border-cyan-500/30'
                       }`}
                     >
                       {isHost ? 'You (Host)' : 'You (Member)'}
                     </span>
                   </div>
-                  <div className="mono text-[9px] text-[var(--ink-dim)] mt-0.5">
+                  <div className="mono tabular-nums text-[9.5px] text-[var(--ink-dim)] mt-0.5">
                     {gpsState?.addressLabel || 'Current GPS Location'}
                     {gpsState?.accuracyMeters ? ` · ±${gpsState.accuracyMeters}m` : ''}
                   </div>
@@ -991,10 +1015,10 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5">
                         <div
-                          className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-sm shadow-sm shrink-0"
+                          className="w-8 h-8 rounded-full border-2 border-white/80 text-white flex items-center justify-center shadow-sm shrink-0"
                           style={{ background: peer.color }}
                         >
-                          {CONVOY_VEHICLE_OPTIONS.find((v) => v.id === peer.vehicle)?.emoji || '👤'}
+                          {renderVehicleIcon(peer.vehicle, 'w-4 h-4')}
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
@@ -1002,10 +1026,10 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
                               {peer.name}
                             </span>
                             <span
-                              className={`px-1 py-0.1 rounded mono text-[7px] font-extrabold uppercase ${
+                              className={`px-1.5 py-0.5 rounded mono text-[8px] font-bold uppercase ${
                                 peer.isHost
                                   ? 'bg-purple-500/15 text-[var(--accent)] border border-purple-500/30'
-                                  : 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30'
+                                  : 'bg-cyan-500/15 text-cyan-500 border border-cyan-500/30'
                               }`}
                             >
                               {peer.isHost ? 'Host' : 'Member'}
@@ -1086,9 +1110,9 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
           )}
 
           {/* Educational Note on Distance & GPS accuracy */}
-          <div className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[10px] text-[var(--ink-dim)] leading-relaxed mt-4">
+          <div className="p-3 cockpit-subcard text-[10.5px] text-[var(--ink-dim)] leading-relaxed mt-4">
             <div className="font-bold text-[var(--ink)] flex items-center gap-1.5 mb-1">
-              <span>💡</span>
+              <Lightbulb className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
               <span>Why is there a distance between devices in the same building?</span>
             </div>
             Smartphones have hardware satellite GPS (±3–8m accuracy), while laptops use Wi-Fi network location (±30–100m accuracy). An indoor variance of 30–50 meters is normal. When riding or driving on the road under an open sky, both devices lock onto satellites with high precision.
@@ -1096,10 +1120,11 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
         </div>
       )}
 
-      {/* QR Code Modal for Scanning from Phone Camera */}
+      {/* QR Code Mobile Bottom-Sheet Modal for Scanning from Phone Camera */}
       {showQrModal && roomCode && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[1200] bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="cockpit-shell border-t sm:border border-[var(--border)] rounded-t-3xl sm:rounded-3xl p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-w-sm w-full text-center space-y-4 shadow-2xl animate-in fade-in duration-150">
+            <div className="w-10 h-1 rounded-full bg-purple-400/35 mx-auto sm:hidden" />
             <div className="flex items-center justify-between">
               <span className="mono text-xs uppercase tracking-wider font-bold text-[var(--ink)]">
                 Scan to Join Convoy
@@ -1107,9 +1132,10 @@ export const ConvoyPanel: React.FC<ConvoyPanelProps> = ({
               <button
                 type="button"
                 onClick={() => setShowQrModal(false)}
-                className="w-7 h-7 rounded-full bg-[var(--surface-glass)] text-[var(--ink-dim)] hover:text-[var(--ink)] flex items-center justify-center cursor-pointer"
+                aria-label="Close QR dialog"
+                className="w-8 h-8 rounded-full cockpit-pill text-[var(--ink-dim)] hover:text-[var(--ink)] flex items-center justify-center cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
